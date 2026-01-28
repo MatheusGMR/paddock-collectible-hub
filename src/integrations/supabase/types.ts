@@ -83,6 +83,104 @@ export type Database = {
         }
         Relationships: []
       }
+      listings: {
+        Row: {
+          created_at: string
+          currency: string
+          description: string | null
+          external_url: string | null
+          id: string
+          image_url: string
+          item_id: string | null
+          price: number
+          source: string
+          source_country: string
+          source_name: string
+          status: string
+          title: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          currency?: string
+          description?: string | null
+          external_url?: string | null
+          id?: string
+          image_url: string
+          item_id?: string | null
+          price: number
+          source: string
+          source_country?: string
+          source_name: string
+          status?: string
+          title: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          currency?: string
+          description?: string | null
+          external_url?: string | null
+          id?: string
+          image_url?: string
+          item_id?: string | null
+          price?: number
+          source?: string
+          source_country?: string
+          source_name?: string
+          status?: string
+          title?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "listings_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      marketplace_sources: {
+        Row: {
+          category: string
+          code: string
+          country: string
+          created_at: string
+          id: string
+          is_active: boolean
+          logo_url: string | null
+          name: string
+          scrape_config: Json | null
+          url: string
+        }
+        Insert: {
+          category: string
+          code: string
+          country: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          logo_url?: string | null
+          name: string
+          scrape_config?: Json | null
+          url: string
+        }
+        Update: {
+          category?: string
+          code?: string
+          country?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          logo_url?: string | null
+          name?: string
+          scrape_config?: Json | null
+          url?: string
+        }
+        Relationships: []
+      }
       posts: {
         Row: {
           caption: string | null
