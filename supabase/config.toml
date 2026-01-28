@@ -1,0 +1,4 @@
+project_id = "tsnlbfjltskscgyidgdt"
+
+[functions.analyze-collectible]
+verify_jwt = false
