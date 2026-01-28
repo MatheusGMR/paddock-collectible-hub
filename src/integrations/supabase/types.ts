@@ -14,7 +14,184 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      follows: {
+        Row: {
+          created_at: string
+          follower_id: string
+          following_id: string
+          id: string
+        }
+        Insert: {
+          created_at?: string
+          follower_id: string
+          following_id: string
+          id?: string
+        }
+        Update: {
+          created_at?: string
+          follower_id?: string
+          following_id?: string
+          id?: string
+        }
+        Relationships: []
+      }
+      items: {
+        Row: {
+          collectible_condition: string | null
+          collectible_manufacturer: string | null
+          collectible_notes: string | null
+          collectible_origin: string | null
+          collectible_scale: string | null
+          collectible_series: string | null
+          collectible_year: string | null
+          created_at: string
+          historical_fact: string | null
+          id: string
+          real_car_brand: string
+          real_car_model: string
+          real_car_year: string | null
+        }
+        Insert: {
+          collectible_condition?: string | null
+          collectible_manufacturer?: string | null
+          collectible_notes?: string | null
+          collectible_origin?: string | null
+          collectible_scale?: string | null
+          collectible_series?: string | null
+          collectible_year?: string | null
+          created_at?: string
+          historical_fact?: string | null
+          id?: string
+          real_car_brand: string
+          real_car_model: string
+          real_car_year?: string | null
+        }
+        Update: {
+          collectible_condition?: string | null
+          collectible_manufacturer?: string | null
+          collectible_notes?: string | null
+          collectible_origin?: string | null
+          collectible_scale?: string | null
+          collectible_series?: string | null
+          collectible_year?: string | null
+          created_at?: string
+          historical_fact?: string | null
+          id?: string
+          real_car_brand?: string
+          real_car_model?: string
+          real_car_year?: string | null
+        }
+        Relationships: []
+      }
+      posts: {
+        Row: {
+          caption: string | null
+          collection_item_id: string | null
+          comments_count: number
+          created_at: string
+          id: string
+          image_url: string
+          likes_count: number
+          user_id: string
+        }
+        Insert: {
+          caption?: string | null
+          collection_item_id?: string | null
+          comments_count?: number
+          created_at?: string
+          id?: string
+          image_url: string
+          likes_count?: number
+          user_id: string
+        }
+        Update: {
+          caption?: string | null
+          collection_item_id?: string | null
+          comments_count?: number
+          created_at?: string
+          id?: string
+          image_url?: string
+          likes_count?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "posts_collection_item_id_fkey"
+            columns: ["collection_item_id"]
+            isOneToOne: false
+            referencedRelation: "user_collection"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          bio: string | null
+          created_at: string
+          id: string
+          updated_at: string
+          user_id: string
+          username: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          bio?: string | null
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id: string
+          username: string
+        }
+        Update: {
+          avatar_url?: string | null
+          bio?: string | null
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id?: string
+          username?: string
+        }
+        Relationships: []
+      }
+      user_collection: {
+        Row: {
+          acquired_at: string | null
+          created_at: string
+          id: string
+          image_url: string | null
+          item_id: string
+          notes: string | null
+          user_id: string
+        }
+        Insert: {
+          acquired_at?: string | null
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          item_id: string
+          notes?: string | null
+          user_id: string
+        }
+        Update: {
+          acquired_at?: string | null
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          item_id?: string
+          notes?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_collection_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never

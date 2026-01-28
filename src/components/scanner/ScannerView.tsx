@@ -3,6 +3,9 @@ import { X, Zap, RotateCcw, Check, Plus, Camera, SwitchCamera, Loader2 } from "l
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
+import { addToCollection, checkItemInCollection } from "@/lib/database";
+import { useNavigate } from "react-router-dom";
 
 interface AnalysisResult {
   identified: boolean;
@@ -30,11 +33,14 @@ export const ScannerView = () => {
   const [isInCollection, setIsInCollection] = useState(false);
   const [cameraActive, setCameraActive] = useState(false);
   const [facingMode, setFacingMode] = useState<"environment" | "user">("environment");
+  const [isAddingToCollection, setIsAddingToCollection] = useState(false);
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const { toast } = useToast();
+  const { user } = useAuth();
+  const navigate = useNavigate();
 
   const startCamera = useCallback(async () => {
     try {
@@ -90,21 +96,13 @@ export const ScannerView = () => {
 
     if (!context) return;
 
-    // Set canvas dimensions to match video
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
-
-    // Draw the video frame to canvas
     context.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-    // Get base64 image data
     const imageBase64 = canvas.toDataURL("image/jpeg", 0.8);
     setCapturedImage(imageBase64);
-    
-    // Stop camera after capture
     stopCamera();
-
-    // Analyze the image
     setIsScanning(true);
 
     try {
@@ -112,9 +110,7 @@ export const ScannerView = () => {
         body: { imageBase64 },
       });
 
-      if (error) {
-        throw error;
-      }
+      if (error) throw error;
 
       if (!data.identified) {
         toast({
@@ -125,8 +121,16 @@ export const ScannerView = () => {
         setAnalysisResult(null);
       } else {
         setAnalysisResult(data);
-        // Simulate checking if in collection (would be a real DB check)
-        setIsInCollection(Math.random() > 0.7);
+        
+        // Check if already in collection
+        if (user) {
+          const inCollection = await checkItemInCollection(
+            user.id,
+            data.realCar.brand,
+            data.realCar.model
+          );
+          setIsInCollection(inCollection);
+        }
       }
     } catch (error) {
       console.error("Analysis error:", error);
@@ -138,7 +142,58 @@ export const ScannerView = () => {
     } finally {
       setIsScanning(false);
     }
-  }, [stopCamera, toast]);
+  }, [stopCamera, toast, user]);
+
+  const handleAddToCollection = async () => {
+    if (!user) {
+      toast({
+        title: "Sign in required",
+        description: "Please sign in to add items to your collection.",
+      });
+      navigate("/auth");
+      return;
+    }
+
+    if (!analysisResult) return;
+
+    setIsAddingToCollection(true);
+
+    try {
+      await addToCollection(
+        user.id,
+        {
+          real_car_brand: analysisResult.realCar.brand,
+          real_car_model: analysisResult.realCar.model,
+          real_car_year: analysisResult.realCar.year,
+          historical_fact: analysisResult.realCar.historicalFact,
+          collectible_manufacturer: analysisResult.collectible.manufacturer,
+          collectible_scale: analysisResult.collectible.scale,
+          collectible_year: analysisResult.collectible.estimatedYear,
+          collectible_origin: analysisResult.collectible.origin,
+          collectible_series: analysisResult.collectible.series,
+          collectible_condition: analysisResult.collectible.condition,
+          collectible_notes: analysisResult.collectible.notes,
+        },
+        capturedImage || undefined
+      );
+
+      toast({
+        title: "Added to collection!",
+        description: `${analysisResult.realCar.brand} ${analysisResult.realCar.model} has been added.`,
+      });
+      
+      setIsInCollection(true);
+    } catch (error) {
+      console.error("Add to collection error:", error);
+      toast({
+        title: "Error",
+        description: "Failed to add item to collection. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsAddingToCollection(false);
+    }
+  };
 
   const resetScan = useCallback(() => {
     setAnalysisResult(null);
@@ -155,7 +210,6 @@ export const ScannerView = () => {
     <div className="fixed inset-0 z-50 bg-background flex flex-col">
       {/* Camera/Preview View */}
       <div className="relative flex-1 bg-black overflow-hidden">
-        {/* Video element for camera feed */}
         {cameraActive && (
           <video
             ref={videoRef}
@@ -166,7 +220,6 @@ export const ScannerView = () => {
           />
         )}
 
-        {/* Captured image preview */}
         {capturedImage && !cameraActive && (
           <img
             src={capturedImage}
@@ -175,12 +228,10 @@ export const ScannerView = () => {
           />
         )}
 
-        {/* Fallback background when no camera/image */}
         {!cameraActive && !capturedImage && (
           <div className="absolute inset-0 bg-gradient-to-b from-background-secondary to-background opacity-50" />
         )}
 
-        {/* Hidden canvas for capturing */}
         <canvas ref={canvasRef} className="hidden" />
 
         {/* Scanner Frame */}
@@ -190,13 +241,11 @@ export const ScannerView = () => {
           <div className="absolute -bottom-px -left-px w-8 h-8 border-b-2 border-l-2 border-primary rounded-bl-2xl" />
           <div className="absolute -bottom-px -right-px w-8 h-8 border-b-2 border-r-2 border-primary rounded-br-2xl" />
 
-          {/* Scanning Animation */}
           {isScanning && (
             <div className="absolute left-4 right-4 h-0.5 bg-gradient-to-r from-transparent via-primary to-transparent animate-scanner-line" />
           )}
         </div>
 
-        {/* Close Button */}
         <button
           onClick={handleClose}
           className="absolute top-4 right-4 p-2 bg-background/50 backdrop-blur-sm rounded-full z-10"
@@ -204,7 +253,6 @@ export const ScannerView = () => {
           <X className="h-6 w-6 text-foreground" />
         </button>
 
-        {/* Switch Camera Button */}
         {cameraActive && (
           <button
             onClick={switchCamera}
@@ -214,7 +262,6 @@ export const ScannerView = () => {
           </button>
         )}
 
-        {/* Scanning Status */}
         {isScanning && (
           <div className="absolute inset-0 flex items-center justify-center bg-black/50">
             <div className="flex flex-col items-center gap-3">
@@ -238,7 +285,6 @@ export const ScannerView = () => {
           )}
 
           <div className="space-y-6">
-            {/* Real Car Info */}
             <div>
               <h3 className="text-lg font-semibold text-foreground mb-2">
                 {analysisResult.realCar.brand} {analysisResult.realCar.model}
@@ -254,7 +300,6 @@ export const ScannerView = () => {
               </div>
             </div>
 
-            {/* Collectible Info */}
             <div className="border-t border-border pt-4">
               <p className="text-xs uppercase tracking-wide text-primary mb-3">Collectible Details</p>
               <div className="grid grid-cols-2 gap-3">
@@ -272,11 +317,18 @@ export const ScannerView = () => {
               )}
             </div>
 
-            {/* Actions */}
             <div className="flex gap-3">
               {!isInCollection && (
-                <Button className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90">
-                  <Plus className="h-4 w-4 mr-2" />
+                <Button 
+                  onClick={handleAddToCollection}
+                  disabled={isAddingToCollection}
+                  className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90"
+                >
+                  {isAddingToCollection ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Plus className="h-4 w-4 mr-2" />
+                  )}
                   Add to Collection
                 </Button>
               )}
