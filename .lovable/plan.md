@@ -1,225 +1,202 @@
 
-# Plano: Transformar Explore em Mercado (Marketplace)
+# Plano: Indice de Precificacao para Colecionaveis
 
 ## Visao Geral
 
-Transformar a secao "Explore" em "Mercado", criando um marketplace completo que combina:
-- Anuncios internos de usuarios da plataforma Paddock
-- Anuncios externos agregados de multiplas fontes internacionais
-- Feed infinito com scroll vertical
-- Redirecionamento para lojas externas quando aplicavel
+Criar um sistema de indice de precificacao que avalia cada colecionavel escaneado com base em criterios como raridade, condicao, fabricante e outros fatores. O indice sera:
+- Calculado automaticamente ao escanear um item
+- Exibido como um numero clicavel no resultado do scanner
+- Acessivel em uma pagina dedicada com todos os itens ja capturados para comparacao
 
 ---
 
-## Fontes de Anuncios Externos
+## Criterios do Indice de Precificacao
 
-### Brasil
-| Loja | URL | Categoria |
-|------|-----|-----------|
-| OLX | olx.com.br | Marketplace geral |
-| Mercado Livre | mercadolivre.com.br | Marketplace geral |
-| Escala Miniaturas | escalaminiaturas.com.br | Especializada |
-| Orangebox Miniaturas | orangeboxminiaturas.com.br | Especializada |
-| Semaan | semaanbrinquedos.com.br | Especializada |
-| MiniMundi | minimundi.com.br | Especializada |
-| MG Minis | mgminis.com | Especializada |
-| AutoMOTIVO Store | automotivostore.com.br | Especializada |
-| Wale Miniaturas | shopee.com.br/wale_miniaturas | Shopee |
-| Coleciona Brinquedos | coleciona.com.br | Especializada |
-| Lima Hobbies | limahobbies.com.br | Especializada |
-| Shopee Brasil | shopee.com.br | Marketplace geral |
+O indice sera calculado de 1 a 100 pontos, considerando:
 
-### Estados Unidos
-| Loja | URL | Categoria |
-|------|-----|-----------|
-| Jcar Diecast | jcardiecast.com | Especializada |
-| Diecast Models Wholesale | diecastmodelswholesale.com | Atacado |
-| Mattel Creations (RLC) | creations.mattel.com | Oficial Hot Wheels |
-| A&J Toys | aandjtoys.com | Especializada |
-| eBay | ebay.com | Marketplace geral |
-
-### Asia (Japao e China)
-| Loja | URL | Categoria |
-|------|-----|-----------|
-| AliExpress | aliexpress.com | Marketplace geral |
-| Hobby Search | 1999.co.jp/eng | Japao |
-| AmiAmi | amiami.com | Japao |
-| Plaza Japan | plazajapan.com | Japao |
-| rcMart | rcmart.com | Asia |
+| Criterio | Peso | Descricao |
+|----------|------|-----------|
+| Raridade | 35% | Series limitadas, RLC, Chase, Super Treasure Hunt |
+| Condicao | 25% | Mint, Near Mint, Good, Fair |
+| Fabricante | 15% | Hot Wheels, Matchbox, Tomica, Greenlight, etc |
+| Escala | 10% | 1:18 vale mais que 1:64 tipicamente |
+| Idade | 10% | Itens vintage (pre-2000) pontuam mais |
+| Origem | 5% | Made in Japan, Thailand vs China |
 
 ---
 
 ## Arquitetura da Solucao
 
 ```text
-+-------------------+     +----------------------+     +------------------+
-|    Frontend       |     |   Edge Function      |     |  Firecrawl API   |
-|    Mercado        | --> |  fetch-listings      | --> |  Web Scraping    |
-+-------------------+     +----------------------+     +------------------+
-        |                          |                           |
-        v                          v                           v
-+-------------------+     +----------------------+     +------------------+
-|   Anuncios        |     |   Cache/Agregacao    |     |  22+ Fontes      |
-|   Internos (DB)   |     |   de Resultados      |     |  Externas        |
-+-------------------+     +----------------------+     +------------------+
++------------------+     +---------------------+     +------------------+
+|    Scanner       |     |   Edge Function     |     |   AI Analysis    |
+|    (Foto)        | --> | analyze-collectible | --> |   + Price Index  |
++------------------+     +---------------------+     +------------------+
+        |                         |
+        v                         v
++------------------+     +---------------------+
+|   Result View    |     |   DB: items table   |
+|   [Indice: 85]   |     |   price_index: 85   |
++------------------+     +---------------------+
+        |
+        v
++------------------+
+|   Index Page     |
+|   (Comparacao)   |
++------------------+
 ```
 
 ---
 
 ## Mudancas no Banco de Dados
 
-### Nova Tabela: `listings`
+### Alterar Tabela: `items`
+
+Adicionar nova coluna:
 
 | Coluna | Tipo | Descricao |
 |--------|------|-----------|
-| id | uuid | Identificador unico |
-| user_id | uuid (nullable) | Usuario vendedor (null se externo) |
-| item_id | uuid (nullable) | Referencia ao item da colecao |
-| title | text | Titulo do anuncio |
-| description | text | Descricao do produto |
-| price | numeric | Valor |
-| currency | text | Moeda (BRL, USD, JPY, CNY) |
-| image_url | text | Imagem principal |
-| source | text | Codigo da fonte |
-| source_name | text | Nome amigavel da fonte |
-| source_country | text | Pais de origem (BR, US, JP, CN) |
-| external_url | text (nullable) | Link externo |
-| status | text | 'active', 'sold', 'expired' |
-| created_at | timestamp | Data de criacao |
-
-### Nova Tabela: `marketplace_sources`
-
-| Coluna | Tipo | Descricao |
-|--------|------|-----------|
-| id | uuid | Identificador unico |
-| code | text | Codigo unico (ex: 'escala_miniaturas') |
-| name | text | Nome amigavel |
-| url | text | URL base do site |
-| country | text | Codigo do pais |
-| category | text | 'marketplace', 'specialized', 'official' |
-| logo_url | text | Logo da loja |
-| is_active | boolean | Se esta ativa para scraping |
-| scrape_config | jsonb | Configuracoes de scraping |
+| price_index | integer | Indice de 1-100 baseado em raridade e outros fatores |
+| rarity_tier | text | 'common', 'uncommon', 'rare', 'super_rare', 'ultra_rare' |
+| index_breakdown | jsonb | Detalhamento dos pontos por criterio |
 
 ---
 
-## Componentes Frontend
+## Componentes e Arquivos
 
 ### Novos Arquivos
 
 | Arquivo | Descricao |
 |---------|-----------|
-| `src/pages/Mercado.tsx` | Pagina principal do marketplace |
-| `src/components/mercado/MercadoHeader.tsx` | Header com busca e filtros |
-| `src/components/mercado/ListingCard.tsx` | Card de anuncio |
-| `src/components/mercado/ListingFeed.tsx` | Feed infinito |
-| `src/components/mercado/SourceBadge.tsx` | Badge com logo/bandeira da fonte |
-| `src/components/mercado/SourceFilter.tsx` | Filtro por loja/regiao |
-| `src/components/mercado/PriceFilter.tsx` | Filtro por faixa de preco |
-| `src/data/marketplaceSources.ts` | Configuracao das fontes |
+| `src/pages/PriceIndex.tsx` | Pagina com ranking de todos itens capturados |
+| `src/components/index/IndexCard.tsx` | Card de item no ranking |
+| `src/components/index/IndexBadge.tsx` | Badge clicavel com o numero do indice |
+| `src/components/index/IndexBreakdown.tsx` | Modal/Sheet com detalhamento dos criterios |
+| `src/components/index/IndexFilters.tsx` | Filtros por raridade, fabricante, etc |
+| `src/lib/priceIndex.ts` | Logica de calculo do indice no frontend (referencia) |
 
-### Arquivos a Remover
+### Arquivos a Modificar
 
-| Arquivo | Motivo |
-|---------|--------|
-| `src/pages/Explore.tsx` | Substituido por Mercado |
-| `src/components/explore/ExploreHeader.tsx` | Substituido |
-| `src/components/explore/ExploreGrid.tsx` | Substituido |
+| Arquivo | Mudanca |
+|---------|---------|
+| `supabase/functions/analyze-collectible/index.ts` | Adicionar calculo do price_index na resposta |
+| `src/components/scanner/ScannerView.tsx` | Exibir badge do indice clicavel |
+| `src/lib/database.ts` | Adicionar funcoes para buscar items com indice |
+| `src/components/layout/BottomNav.tsx` | Considerar adicionar acesso ao Indice (opcional) |
+| `src/pages/Profile.tsx` | Adicionar link para ver indice da colecao |
 
 ---
 
-## Design do Card de Anuncio
+## Design da Interface
+
+### Badge do Indice no Scanner
+
+Apos escanear, junto com os detalhes do item:
 
 ```text
 +----------------------------------+
-|  [IMAGEM DO ITEM]                |
-|                     [🇧🇷 Badge]  |
-+----------------------------------+
-|  [Logo Loja] R$ 120,00           |
 |  Ferrari 250 GTO - Hot Wheels    |
-|  Escala Miniaturas               |
+|  1965 • 1:64                     |
+|                                  |
+|  +---------------------------+   |
+|  |  INDICE DE VALOR          |   |
+|  |  [  85  ]  Raro           |   |
+|  |  Toque para ver criterios |   |
+|  +---------------------------+   |
 +----------------------------------+
 ```
 
-Elementos visuais:
-- Bandeira do pais no canto superior
-- Logo pequeno da loja origem
-- Preco com moeda correta (R$, $, ¥)
-- Nome do item
-- Nome da loja de origem
+### Modal de Criterios (ao clicar no indice)
 
----
-
-## Filtros Disponiveis
-
-### Por Regiao
-- Todas
-- Brasil
-- Estados Unidos
-- Asia (Japao/China)
-
-### Por Tipo de Loja
-- Todas
-- Marketplaces (OLX, ML, eBay, Ali)
-- Especializadas (Escala, Orangebox, etc)
-- Oficiais (Mattel Creations)
-- Paddock (usuarios internos)
-
-### Por Preco
-- Qualquer valor
-- Ate R$ 50
-- R$ 50 - R$ 150
-- R$ 150 - R$ 500
-- Acima de R$ 500
-
----
-
-## Edge Function: fetch-listings
-
-### Responsabilidades
-1. Buscar anuncios internos do banco de dados
-2. Chamar Firecrawl para scraping das fontes externas
-3. Normalizar precos para BRL (conversao de moedas)
-4. Mesclar e ordenar resultados
-5. Cachear resultados para performance
-
-### Parametros de Entrada
 ```text
-{
-  search?: string,
-  sources?: string[],
-  country?: string,
-  min_price?: number,
-  max_price?: number,
-  page?: number,
-  limit?: number
-}
++----------------------------------+
+|  INDICE DE VALOR: 85             |
++----------------------------------+
+|  Raridade          32/35 pts     |
+|  ████████████████░░░ Super TH    |
+|                                  |
+|  Condicao          23/25 pts     |
+|  ██████████████████░ Near Mint   |
+|                                  |
+|  Fabricante        12/15 pts     |
+|  █████████████░░░░░ Hot Wheels   |
+|                                  |
+|  Escala             8/10 pts     |
+|  ████████████████░░ 1:64         |
+|                                  |
+|  Idade              7/10 pts     |
+|  ██████████████░░░░ 2019         |
+|                                  |
+|  Origem             3/5 pts      |
+|  ████████████░░░░░░ Malaysia     |
++----------------------------------+
 ```
 
-### Resposta
+### Pagina de Indice (Ranking)
+
+```text
++----------------------------------+
+|  INDICE PADDOCK                  |
+|  [Buscar...]    [Filtros]        |
++----------------------------------+
+|  #1  [IMG] Ferrari 250 GTO   85  |
+|      Hot Wheels • Super TH       |
++----------------------------------+
+|  #2  [IMG] Porsche 911 GT3   78  |
+|      Tomica • Limited            |
++----------------------------------+
+|  #3  [IMG] Toyota Supra      72  |
+|      Hot Wheels • Premium        |
++----------------------------------+
+```
+
+---
+
+## Edge Function: Calculo do Indice
+
+### Prompt Atualizado para IA
+
+O prompt sera atualizado para incluir:
+- Identificacao de series especiais (Super Treasure Hunt, RLC, Chase, etc)
+- Estimativa de raridade baseada em caracteristicas visuais
+- Calculo estruturado do indice com breakdown
+
+### Nova Estrutura de Resposta
+
 ```text
 {
-  listings: [...],
-  total: number,
-  has_more: boolean,
-  sources_status: {
-    [source]: 'success' | 'error' | 'cached'
+  "identified": true,
+  "realCar": { ... },
+  "collectible": { ... },
+  "priceIndex": {
+    "score": 85,
+    "tier": "rare",
+    "breakdown": {
+      "rarity": { "score": 32, "max": 35, "reason": "Super Treasure Hunt" },
+      "condition": { "score": 23, "max": 25, "reason": "Near Mint" },
+      "manufacturer": { "score": 12, "max": 15, "reason": "Hot Wheels" },
+      "scale": { "score": 8, "max": 10, "reason": "1:64" },
+      "age": { "score": 7, "max": 10, "reason": "2019" },
+      "origin": { "score": 3, "max": 5, "reason": "Malaysia" }
+    }
   }
 }
 ```
 
 ---
 
-## Navegacao
+## Navegacao e Acesso ao Indice
 
-### BottomNav.tsx
-- Icone: `ShoppingBag` (no lugar de `Compass`)
-- Label: "Mercado" (no lugar de "Explore")
-- Rota: `/mercado` (no lugar de `/explore`)
+### Opcao 1: Botao no Menu do Perfil
+Adicionar botao "Ver Indice" na pagina de perfil que leva para `/indice`
 
-### App.tsx
-- Substituir rota `/explore` por `/mercado`
-- Importar novo componente `Mercado`
+### Opcao 2: Tab no Perfil
+Adicionar terceira aba "Indice" nas tabs do perfil (Posts | Colecao | Indice)
+
+### Opcao 3: Acesso via Colecao
+Cada item na lista de colecao mostra o indice, com botao para ver ranking completo
+
+Recomendacao: Implementar Opcao 2 (tab no perfil) para acesso facil e contextual.
 
 ---
 
@@ -229,43 +206,48 @@ Adicionar em `src/lib/database.ts`:
 
 | Funcao | Descricao |
 |--------|-----------|
-| `getListings(filters)` | Buscar anuncios com filtros e paginacao |
-| `createListing(data)` | Criar anuncio interno |
-| `getMarketplaceSources()` | Listar fontes disponiveis |
-| `getListingById(id)` | Detalhes de um anuncio |
+| `getCollectionWithIndex(userId)` | Busca colecao ordenada por indice |
+| `getTopIndexItems(userId, limit)` | Top N itens por indice |
+| `updateItemIndex(itemId, indexData)` | Atualiza indice de um item |
 
 ---
 
-## Fluxo de Usuario
+## Fluxo do Usuario
 
-1. Usuario acessa aba "Mercado"
-2. Ve feed misto com anuncios de 22+ fontes
-3. Pode identificar origem pelo badge/bandeira
-4. Filtra por regiao, loja ou preco
-5. Ao clicar em anuncio:
-   - **Interno (Paddock)**: abre detalhes no app
-   - **Externo**: `window.open(external_url, '_blank')`
-
----
-
-## Integracao com Firecrawl
-
-Para scraping real das lojas externas, sera necessario:
-1. Conectar Firecrawl via conector
-2. Configurar regras de scraping por loja
-3. Implementar cache para evitar requests excessivos
-
-Na primeira versao, usaremos mock data representando cada fonte, ja com a estrutura pronta para integracao real.
+1. Usuario escaneia um colecionavel
+2. IA analisa e calcula o indice automaticamente
+3. Resultado mostra badge "Indice: 85 - Raro" (clicavel)
+4. Ao clicar, abre modal com breakdown dos criterios
+5. Usuario adiciona a colecao (indice e salvo junto)
+6. No perfil, aba "Indice" mostra ranking de toda colecao
+7. Usuario pode comparar raridade entre seus itens
 
 ---
 
 ## Ordem de Implementacao
 
-1. Criar migracao do banco (listings, marketplace_sources)
-2. Popular tabela de fontes com as 22+ lojas
-3. Atualizar navegacao (BottomNav, App.tsx)
-4. Criar configuracao de fontes no frontend
-5. Criar componentes do Mercado
-6. Implementar Edge Function
-7. Adicionar mock data representando cada fonte
+1. Criar migracao do banco (adicionar colunas price_index, rarity_tier, index_breakdown)
+2. Atualizar Edge Function com novo prompt e calculo de indice
+3. Criar componente IndexBadge e IndexBreakdown (modal)
+4. Atualizar ScannerView para exibir e salvar o indice
+5. Atualizar database.ts com funcoes de indice
+6. Criar pagina PriceIndex.tsx
+7. Adicionar tab "Indice" no ProfileTabs
 8. Testar fluxo completo
+
+---
+
+## Consideracoes Tecnicas
+
+### Precisao do Indice
+- O calculo e baseado em analise visual da IA, podendo haver margem de erro
+- Usuarios poderao eventualmente ajustar manualmente (fase futura)
+
+### Performance
+- Indice calculado uma vez no momento do scan
+- Armazenado no banco para consultas rapidas
+- Ranking ordenado por indice para comparacao instantanea
+
+### Escalabilidade
+- Estrutura JSONB permite adicionar novos criterios sem migracao
+- Tier de raridade facilita filtragem rapida
