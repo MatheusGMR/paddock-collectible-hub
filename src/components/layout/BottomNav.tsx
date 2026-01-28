@@ -1,9 +1,9 @@
-import { Home, Compass, Camera, Bell, User } from "lucide-react";
+import { Home, ShoppingBag, Camera, Bell, User } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 
 const navItems = [
   { icon: Home, label: "Home", path: "/" },
-  { icon: Compass, label: "Explore", path: "/explore" },
+  { icon: ShoppingBag, label: "Mercado", path: "/mercado" },
   { icon: Camera, label: "Scan", path: "/scanner", isCenter: true },
   { icon: Bell, label: "Alerts", path: "/notifications" },
   { icon: User, label: "Profile", path: "/profile" },

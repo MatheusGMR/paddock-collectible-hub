@@ -8,7 +8,7 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { SplashScreen } from "@/components/SplashScreen";
 import { AuthProvider } from "@/contexts/AuthContext";
 import Index from "./pages/Index";
-import Explore from "./pages/Explore";
+import Mercado from "./pages/Mercado";
 import Scanner from "./pages/Scanner";
 import Notifications from "./pages/Notifications";
 import Profile from "./pages/Profile";
@@ -37,7 +37,7 @@ const App = () => {
                   <AppLayout>
                     <Routes>
                       <Route path="/" element={<Index />} />
-                      <Route path="/explore" element={<Explore />} />
+                      <Route path="/mercado" element={<Mercado />} />
                       <Route path="/notifications" element={<Notifications />} />
                       <Route path="/profile" element={<Profile />} />
                       <Route path="*" element={<NotFound />} />
