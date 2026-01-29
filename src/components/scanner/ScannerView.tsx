@@ -36,6 +36,8 @@ export const ScannerView = () => {
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [isInCollection, setIsInCollection] = useState(false);
   const [cameraActive, setCameraActive] = useState(false);
+  const [cameraError, setCameraError] = useState(false);
+  const [isInitializing, setIsInitializing] = useState(true);
   const [facingMode, setFacingMode] = useState<"environment" | "user">("environment");
   const [isAddingToCollection, setIsAddingToCollection] = useState(false);
   const [breakdownOpen, setBreakdownOpen] = useState(false);
@@ -47,12 +49,36 @@ export const ScannerView = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
 
+  // Effect to attach stream to video element when cameraActive changes
+  useEffect(() => {
+    const attachStreamToVideo = async () => {
+      if (cameraActive && videoRef.current && streamRef.current) {
+        console.log("[Scanner] Attaching stream to video element");
+        videoRef.current.srcObject = streamRef.current;
+        try {
+          await videoRef.current.play();
+          console.log("[Scanner] Video playback started");
+        } catch (err) {
+          console.warn("[Scanner] Video play() failed:", err);
+        }
+      }
+    };
+    
+    attachStreamToVideo();
+  }, [cameraActive]);
+
   // Auto-start camera on mount
   useEffect(() => {
     const initCamera = async () => {
+      console.log("[Scanner] Initializing camera automatically...");
+      setIsInitializing(true);
+      setCameraError(false);
+      
       try {
+        // Stop any existing stream first
         if (streamRef.current) {
           streamRef.current.getTracks().forEach(track => track.stop());
+          streamRef.current = null;
         }
 
         const stream = await navigator.mediaDevices.getUserMedia({
@@ -63,13 +89,19 @@ export const ScannerView = () => {
           }
         });
 
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          streamRef.current = stream;
-          setCameraActive(true);
-        }
+        console.log("[Scanner] Camera stream acquired");
+        
+        // Store stream immediately
+        streamRef.current = stream;
+        
+        // Set camera active - the other useEffect will attach the stream
+        setCameraActive(true);
+        setIsInitializing(false);
+        
       } catch (error) {
-        console.error("Camera access error:", error);
+        console.error("[Scanner] Camera access error:", error);
+        setCameraError(true);
+        setIsInitializing(false);
         toast({
           title: "Camera Error",
           description: "Could not access camera. Please check permissions.",
@@ -80,17 +112,28 @@ export const ScannerView = () => {
 
     initCamera();
 
+    // Cleanup on unmount
     return () => {
+      console.log("[Scanner] Cleanup: stopping camera");
       if (streamRef.current) {
         streamRef.current.getTracks().forEach(track => track.stop());
+        streamRef.current = null;
+      }
+      if (videoRef.current) {
+        videoRef.current.srcObject = null;
       }
     };
   }, [toast]);
 
   const startCamera = useCallback(async () => {
+    console.log("[Scanner] Manual startCamera called");
+    setIsInitializing(true);
+    setCameraError(false);
+    
     try {
       if (streamRef.current) {
         streamRef.current.getTracks().forEach(track => track.stop());
+        streamRef.current = null;
       }
 
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -101,13 +144,15 @@ export const ScannerView = () => {
         }
       });
 
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        streamRef.current = stream;
-        setCameraActive(true);
-      }
+      console.log("[Scanner] Camera stream acquired (manual)");
+      streamRef.current = stream;
+      setCameraActive(true);
+      setIsInitializing(false);
+      
     } catch (error) {
-      console.error("Camera access error:", error);
+      console.error("[Scanner] Camera access error:", error);
+      setCameraError(true);
+      setIsInitializing(false);
       toast({
         title: "Camera Error",
         description: "Could not access camera. Please check permissions.",
@@ -117,20 +162,25 @@ export const ScannerView = () => {
   }, [facingMode, toast]);
 
   const stopCamera = useCallback(() => {
+    console.log("[Scanner] Stopping camera");
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(track => track.stop());
       streamRef.current = null;
+    }
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
     }
     setCameraActive(false);
   }, []);
 
   const switchCamera = useCallback(() => {
-    setFacingMode(prev => prev === "environment" ? "user" : "environment");
+    const newMode = facingMode === "environment" ? "user" : "environment";
+    setFacingMode(newMode);
     if (cameraActive) {
       stopCamera();
-      setTimeout(startCamera, 100);
+      setTimeout(() => startCamera(), 100);
     }
-  }, [cameraActive, startCamera, stopCamera]);
+  }, [cameraActive, facingMode, startCamera, stopCamera]);
 
   const capturePhoto = useCallback(async () => {
     if (!videoRef.current || !canvasRef.current) return;
@@ -248,7 +298,11 @@ export const ScannerView = () => {
     setCapturedImage(null);
     setIsInCollection(false);
     setBreakdownOpen(false);
-  }, []);
+    setCameraError(false);
+    setIsInitializing(true);
+    // Restart camera
+    startCamera();
+  }, [startCamera]);
 
   const handleClose = useCallback(() => {
     stopCamera();
@@ -259,17 +313,18 @@ export const ScannerView = () => {
     <div className="fixed inset-0 z-50 bg-background flex flex-col">
       {/* Camera/Preview View */}
       <div className="relative flex-1 bg-black overflow-hidden">
-        {cameraActive && (
-          <video
-            ref={videoRef}
-            autoPlay
-            playsInline
-            muted
-            className="absolute inset-0 w-full h-full object-cover"
-          />
-        )}
+        {/* Video element is ALWAYS rendered, visibility controlled by CSS */}
+        <video
+          ref={videoRef}
+          autoPlay
+          playsInline
+          muted
+          className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-200 ${
+            cameraActive && !capturedImage ? 'opacity-100' : 'opacity-0 pointer-events-none'
+          }`}
+        />
 
-        {capturedImage && !cameraActive && (
+        {capturedImage && (
           <img
             src={capturedImage}
             alt="Captured"
@@ -415,17 +470,24 @@ export const ScannerView = () => {
       ) : (
         <div className="bg-card border-t border-border p-6 safe-bottom">
           <div className="flex flex-col items-center gap-4">
-            {!cameraActive && !capturedImage ? (
+            {isInitializing ? (
+              <>
+                <Loader2 className="h-8 w-8 text-primary animate-spin" />
+                <p className="text-sm text-foreground-secondary text-center">
+                  Abrindo câmera…
+                </p>
+              </>
+            ) : cameraError ? (
               <>
                 <p className="text-sm text-foreground-secondary text-center">
-                  Tap below to open camera and scan your collectible
+                  Não foi possível acessar a câmera. Verifique as permissões.
                 </p>
                 <Button
                   onClick={startCamera}
                   className="w-full bg-primary text-primary-foreground hover:bg-primary/90 h-12"
                 >
                   <Camera className="h-5 w-5 mr-2" />
-                  Open Camera
+                  Tentar Novamente
                 </Button>
               </>
             ) : cameraActive ? (
@@ -442,7 +504,7 @@ export const ScannerView = () => {
                   Capture & Analyze
                 </Button>
               </>
-            ) : (
+            ) : capturedImage ? (
               <>
                 <p className="text-sm text-foreground-secondary text-center">
                   Analysis failed. Try again with a clearer photo.
@@ -453,6 +515,19 @@ export const ScannerView = () => {
                 >
                   <RotateCcw className="h-5 w-5 mr-2" />
                   Try Again
+                </Button>
+              </>
+            ) : (
+              <>
+                <p className="text-sm text-foreground-secondary text-center">
+                  Tap below to open camera and scan your collectible
+                </p>
+                <Button
+                  onClick={startCamera}
+                  className="w-full bg-primary text-primary-foreground hover:bg-primary/90 h-12"
+                >
+                  <Camera className="h-5 w-5 mr-2" />
+                  Open Camera
                 </Button>
               </>
             )}
