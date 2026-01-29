@@ -52,9 +52,16 @@ export interface CollectionItemWithIndex {
     collectible_scale?: string | null;
     collectible_manufacturer: string | null;
     collectible_series: string | null;
+    collectible_origin?: string | null;
+    collectible_condition?: string | null;
+    collectible_year?: string | null;
+    collectible_notes?: string | null;
+    historical_fact?: string | null;
     price_index: number | null;
     rarity_tier: string | null;
     index_breakdown: PriceIndexBreakdown | null;
+    music_suggestion?: string | null;
+    real_car_photos?: string[] | null;
   } | null;
 }
 
@@ -120,9 +127,16 @@ export const getCollectionWithIndex = async (userId: string): Promise<Collection
         collectible_scale,
         collectible_manufacturer,
         collectible_series,
+        collectible_origin,
+        collectible_condition,
+        collectible_year,
+        collectible_notes,
+        historical_fact,
         price_index,
         rarity_tier,
-        index_breakdown
+        index_breakdown,
+        music_suggestion,
+        real_car_photos
       )
     `)
     .eq("user_id", userId)
@@ -140,9 +154,16 @@ export const getCollectionWithIndex = async (userId: string): Promise<Collection
       collectible_scale: item.item.collectible_scale,
       collectible_manufacturer: item.item.collectible_manufacturer,
       collectible_series: item.item.collectible_series,
+      collectible_origin: item.item.collectible_origin,
+      collectible_condition: item.item.collectible_condition,
+      collectible_year: item.item.collectible_year,
+      collectible_notes: item.item.collectible_notes,
+      historical_fact: item.item.historical_fact,
       price_index: item.item.price_index,
       rarity_tier: item.item.rarity_tier,
-      index_breakdown: parseIndexBreakdown(item.item.index_breakdown)
+      index_breakdown: parseIndexBreakdown(item.item.index_breakdown),
+      music_suggestion: item.item.music_suggestion,
+      real_car_photos: item.item.real_car_photos as string[] | null
     } : null
   }));
 };

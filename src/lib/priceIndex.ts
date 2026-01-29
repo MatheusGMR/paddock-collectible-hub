@@ -67,3 +67,11 @@ export const getCriteriaLabel = (key: string): string => {
 export const getScorePercentage = (score: number, max: number): number => {
   return Math.round((score / max) * 100);
 };
+
+export const getRarityTier = (score: number): string => {
+  if (score >= 85) return 'ultra_rare';
+  if (score >= 70) return 'super_rare';
+  if (score >= 50) return 'rare';
+  if (score >= 30) return 'uncommon';
+  return 'common';
+};

@@ -84,16 +84,6 @@ const ProfilePage = () => {
     image: item.image_url || "https://images.unsplash.com/photo-1594787318286-3d835c1d207f?w=300&h=300&fit=crop",
   }));
 
-  // Transform collection items for list view
-  const listItems = collection.map((item) => ({
-    id: item.id,
-    brand: item.item?.real_car_brand || "",
-    model: item.item?.real_car_model || "",
-    year: item.item?.real_car_year || "",
-    scale: item.item?.collectible_scale || "",
-    image: item.image_url || "https://images.unsplash.com/photo-1594787318286-3d835c1d207f?w=100&h=100&fit=crop",
-  }));
-
   return (
     <div className="min-h-screen">
       <ProfileHeader user={userData} />
@@ -120,8 +110,8 @@ const ProfilePage = () => {
           </div>
         )
       ) : activeTab === "collection" ? (
-        listItems.length > 0 ? (
-          <CollectionList items={listItems} />
+        collection.length > 0 ? (
+          <CollectionList items={collection} />
         ) : (
           <div className="p-8 text-center text-foreground-secondary">
             <p>Your collection is empty</p>
