@@ -5,16 +5,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { addToCollection, checkItemInCollection } from "@/lib/database";
+import { addToCollection } from "@/lib/database";
 import { useNavigate } from "react-router-dom";
-import { IndexBadge } from "@/components/index/IndexBadge";
-import { IndexBreakdown } from "@/components/index/IndexBreakdown";
 import { CreatePostDialog } from "@/components/posts/CreatePostDialog";
 import { CaptureButton } from "@/components/scanner/CaptureButton";
+import { ResultCarousel } from "@/components/scanner/ResultCarousel";
 import { PriceIndex } from "@/lib/priceIndex";
 
 interface AnalysisResult {
-  identified: boolean;
   realCar: {
     brand: string;
     model: string;
@@ -33,21 +31,29 @@ interface AnalysisResult {
   priceIndex?: PriceIndex;
 }
 
+interface MultiCarAnalysisResponse {
+  identified: boolean;
+  count: number;
+  items: AnalysisResult[];
+  warning?: string;
+}
+
 const MAX_RECORDING_DURATION = 30; // seconds
 
 export const ScannerView = () => {
   const [isScanning, setIsScanning] = useState(false);
-  const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
+  const [analysisResults, setAnalysisResults] = useState<AnalysisResult[]>([]);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
-  const [isInCollection, setIsInCollection] = useState(false);
   const [cameraActive, setCameraActive] = useState(false);
   const [cameraError, setCameraError] = useState(false);
   const [isInitializing, setIsInitializing] = useState(true);
   const [facingMode, setFacingMode] = useState<"environment" | "user">("environment");
-  const [isAddingToCollection, setIsAddingToCollection] = useState(false);
-  const [breakdownOpen, setBreakdownOpen] = useState(false);
   const [showPostDialog, setShowPostDialog] = useState(false);
-  const [addedCollectionItemId, setAddedCollectionItemId] = useState<string | null>(null);
+  const [warningMessage, setWarningMessage] = useState<string | null>(null);
+  
+  // Multi-car state
+  const [addedIndices, setAddedIndices] = useState<Set<number>>(new Set());
+  const [skippedIndices, setSkippedIndices] = useState<Set<number>>(new Set());
   
   // Video recording states
   const [isRecording, setIsRecording] = useState(false);
@@ -244,24 +250,26 @@ export const ScannerView = () => {
 
       if (error) throw error;
 
-      if (!data.identified) {
+      const response = data as MultiCarAnalysisResponse;
+
+      if (!response.identified || response.count === 0) {
         toast({
           title: t.scanner.itemNotIdentified,
           description: t.scanner.itemNotIdentifiedDesc,
           variant: "destructive",
         });
-        setAnalysisResult(null);
+        setAnalysisResults([]);
       } else {
-        setAnalysisResult(data);
+        setAnalysisResults(response.items);
+        setAddedIndices(new Set());
+        setSkippedIndices(new Set());
         
-        // Check if already in collection
-        if (user) {
-          const inCollection = await checkItemInCollection(
-            user.id,
-            data.realCar.brand,
-            data.realCar.model
-          );
-          setIsInCollection(inCollection);
+        if (response.warning) {
+          setWarningMessage(response.warning);
+          toast({
+            title: t.scanner.maxCarsWarning,
+            description: response.warning,
+          });
         }
       }
     } catch (error) {
@@ -274,7 +282,7 @@ export const ScannerView = () => {
     } finally {
       setIsScanning(false);
     }
-  }, [stopCamera, toast, user, t]);
+  }, [stopCamera, toast, t]);
 
   // Video recording functions
   const startRecording = useCallback(() => {
@@ -379,7 +387,7 @@ export const ScannerView = () => {
     isPressedRef.current = false;
   }, [isRecording, capturePhoto, stopRecording]);
 
-  const handleAddToCollection = async () => {
+  const handleAddToCollection = async (index: number) => {
     if (!user) {
       toast({
         title: t.scanner.signInRequired,
@@ -389,39 +397,37 @@ export const ScannerView = () => {
       return;
     }
 
-    if (!analysisResult) return;
-
-    setIsAddingToCollection(true);
+    const result = analysisResults[index];
+    if (!result) return;
 
     try {
-      const collectionItem = await addToCollection(
+      await addToCollection(
         user.id,
         {
-          real_car_brand: analysisResult.realCar.brand,
-          real_car_model: analysisResult.realCar.model,
-          real_car_year: analysisResult.realCar.year,
-          historical_fact: analysisResult.realCar.historicalFact,
-          collectible_manufacturer: analysisResult.collectible.manufacturer,
-          collectible_scale: analysisResult.collectible.scale,
-          collectible_year: analysisResult.collectible.estimatedYear,
-          collectible_origin: analysisResult.collectible.origin,
-          collectible_series: analysisResult.collectible.series,
-          collectible_condition: analysisResult.collectible.condition,
-          collectible_notes: analysisResult.collectible.notes,
-          price_index: analysisResult.priceIndex?.score || null,
-          rarity_tier: analysisResult.priceIndex?.tier || null,
-          index_breakdown: analysisResult.priceIndex?.breakdown || null,
+          real_car_brand: result.realCar.brand,
+          real_car_model: result.realCar.model,
+          real_car_year: result.realCar.year,
+          historical_fact: result.realCar.historicalFact,
+          collectible_manufacturer: result.collectible.manufacturer,
+          collectible_scale: result.collectible.scale,
+          collectible_year: result.collectible.estimatedYear,
+          collectible_origin: result.collectible.origin,
+          collectible_series: result.collectible.series,
+          collectible_condition: result.collectible.condition,
+          collectible_notes: result.collectible.notes,
+          price_index: result.priceIndex?.score || null,
+          rarity_tier: result.priceIndex?.tier || null,
+          index_breakdown: result.priceIndex?.breakdown || null,
         },
         capturedImage || undefined
       );
 
       toast({
         title: t.scanner.addedToCollection,
-        description: `${analysisResult.realCar.brand} ${analysisResult.realCar.model}`,
+        description: `${result.realCar.brand} ${result.realCar.model}`,
       });
       
-      setIsInCollection(true);
-      setAddedCollectionItemId(collectionItem.id);
+      setAddedIndices(prev => new Set(prev).add(index));
     } catch (error) {
       console.error("Add to collection error:", error);
       toast({
@@ -429,19 +435,25 @@ export const ScannerView = () => {
         description: t.scanner.addErrorDesc,
         variant: "destructive",
       });
-    } finally {
-      setIsAddingToCollection(false);
     }
   };
 
+  const handleSkipItem = (index: number) => {
+    setSkippedIndices(prev => new Set(prev).add(index));
+  };
+
+  const handleComplete = () => {
+    navigate("/profile");
+  };
+
   const resetScan = useCallback(() => {
-    setAnalysisResult(null);
+    setAnalysisResults([]);
     setCapturedImage(null);
-    setIsInCollection(false);
-    setBreakdownOpen(false);
     setCameraError(false);
     setIsInitializing(true);
-    setAddedCollectionItemId(null);
+    setAddedIndices(new Set());
+    setSkippedIndices(new Set());
+    setWarningMessage(null);
     setRecordedVideo(null);
     setRecordingDuration(0);
     if (videoPreviewUrl) {
@@ -476,6 +488,8 @@ export const ScannerView = () => {
       setShowPostDialog(true);
     }
   };
+
+  const hasResults = analysisResults.length > 0;
 
   return (
     <div className="fixed inset-0 z-50 bg-background flex flex-col">
@@ -558,7 +572,7 @@ export const ScannerView = () => {
       </div>
 
       {/* Video recorded panel */}
-      {videoPreviewUrl && !analysisResult && (
+      {videoPreviewUrl && !hasResults && (
         <div className="bg-card border-t border-border p-6 safe-bottom">
           <div className="flex flex-col items-center gap-4">
             <div className="flex items-center gap-2 text-primary">
@@ -587,103 +601,18 @@ export const ScannerView = () => {
         </div>
       )}
 
-      {/* Results Panel */}
-      {analysisResult ? (
-        <div className="bg-card border-t border-border p-6 animate-slide-up safe-bottom max-h-[60vh] overflow-y-auto">
-          {isInCollection && (
-            <div className="flex items-center gap-3 mb-4 p-3 bg-primary/10 rounded-lg">
-              <Check className="h-5 w-5 text-primary" />
-              <span className="text-sm font-medium text-primary">{t.scanner.alreadyInCollection}</span>
-            </div>
-          )}
-
-          <div className="space-y-6">
-            <div>
-              <h3 className="text-lg font-semibold text-foreground mb-2">
-                {analysisResult.realCar.brand} {analysisResult.realCar.model}
-              </h3>
-              <p className="text-sm text-foreground-secondary mb-3">
-                {analysisResult.realCar.year}
-              </p>
-              <div className="p-3 bg-muted rounded-lg">
-                <p className="text-xs uppercase tracking-wide text-primary mb-1">{t.scanner.historicalFact}</p>
-                <p className="text-sm text-foreground/90 leading-relaxed">
-                  {analysisResult.realCar.historicalFact}
-                </p>
-              </div>
-            </div>
-
-            {/* Price Index Badge */}
-            {analysisResult.priceIndex && (
-              <IndexBadge
-                score={analysisResult.priceIndex.score}
-                tier={analysisResult.priceIndex.tier}
-                onClick={() => setBreakdownOpen(true)}
-              />
-            )}
-
-            <div className="border-t border-border pt-4">
-              <p className="text-xs uppercase tracking-wide text-primary mb-3">{t.scanner.collectibleDetails}</p>
-              <div className="grid grid-cols-2 gap-3">
-                <InfoRow label={t.scanner.manufacturer} value={analysisResult.collectible.manufacturer} />
-                <InfoRow label={t.scanner.scale} value={analysisResult.collectible.scale} />
-                <InfoRow label={t.scanner.year} value={analysisResult.collectible.estimatedYear} />
-                <InfoRow label={t.scanner.origin} value={analysisResult.collectible.origin} />
-                <InfoRow label={t.scanner.series} value={analysisResult.collectible.series || "N/A"} />
-                <InfoRow label={t.scanner.condition} value={analysisResult.collectible.condition} />
-              </div>
-              {analysisResult.collectible.notes && (
-                <p className="text-xs text-foreground-secondary mt-3">
-                  {analysisResult.collectible.notes}
-                </p>
-              )}
-            </div>
-
-            <div className="flex gap-3">
-              {!isInCollection ? (
-                <Button 
-                  onClick={handleAddToCollection}
-                  disabled={isAddingToCollection}
-                  className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90"
-                >
-                  {isAddingToCollection ? (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  ) : (
-                    <Plus className="h-4 w-4 mr-2" />
-                  )}
-                  {t.scanner.addToCollection}
-                </Button>
-              ) : (
-                <Button 
-                  onClick={() => setShowPostDialog(true)}
-                  className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90"
-                >
-                  <Share className="h-4 w-4 mr-2" />
-                  {t.scanner.postToFeed}
-                </Button>
-              )}
-              <Button
-                variant="outline"
-                className="flex-1 border-border text-foreground hover:bg-muted"
-                onClick={resetScan}
-              >
-                <RotateCcw className="h-4 w-4 mr-2" />
-                {t.scanner.scanAgain}
-              </Button>
-            </div>
-          </div>
-
-          {/* Index Breakdown Sheet */}
-          {analysisResult.priceIndex && (
-            <IndexBreakdown
-              open={breakdownOpen}
-              onOpenChange={setBreakdownOpen}
-              score={analysisResult.priceIndex.score}
-              tier={analysisResult.priceIndex.tier}
-              breakdown={analysisResult.priceIndex.breakdown}
-            />
-          )}
-        </div>
+      {/* Results Panel - Multi-car Carousel */}
+      {hasResults ? (
+        <ResultCarousel
+          results={analysisResults}
+          onAddToCollection={handleAddToCollection}
+          onSkip={handleSkipItem}
+          onComplete={handleComplete}
+          onScanAgain={resetScan}
+          addedIndices={addedIndices}
+          skippedIndices={skippedIndices}
+          warning={warningMessage || undefined}
+        />
       ) : !videoPreviewUrl && (
         <div className="bg-card border-t border-border p-6 safe-bottom">
           <div className="flex flex-col items-center gap-4">
@@ -738,20 +667,8 @@ export const ScannerView = () => {
         </div>
       )}
 
-      {/* Post Dialog - for photos */}
-      {capturedImage && analysisResult && (
-        <CreatePostDialog
-          open={showPostDialog}
-          onOpenChange={setShowPostDialog}
-          imageBase64={capturedImage}
-          collectionItemId={addedCollectionItemId || undefined}
-          itemTitle={`${analysisResult.realCar.brand} ${analysisResult.realCar.model}`}
-          onSuccess={handlePostSuccess}
-        />
-      )}
-
       {/* Post Dialog - for videos */}
-      {videoPreviewUrl && !analysisResult && (
+      {videoPreviewUrl && !hasResults && (
         <CreatePostDialog
           open={showPostDialog}
           onOpenChange={setShowPostDialog}
@@ -763,10 +680,3 @@ export const ScannerView = () => {
     </div>
   );
 };
-
-const InfoRow = ({ label, value }: { label: string; value: string }) => (
-  <div>
-    <p className="text-xs text-foreground-secondary">{label}</p>
-    <p className="text-sm font-medium text-foreground">{value}</p>
-  </div>
-);

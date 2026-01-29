@@ -26,66 +26,76 @@ serve(async (req) => {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
-    const systemPrompt = `You are an expert in collectible diecast cars and model vehicles. 
-Analyze the image provided and identify the collectible item (diecast car, model car, etc.).
+    const systemPrompt = `You are an expert in collectible diecast cars and model vehicles.
+Analyze the image provided and identify ALL collectible items (diecast cars, model cars, etc.) visible in the image.
+
+IMPORTANT: You can detect MULTIPLE cars in a single image. Count all visible collectible cars and analyze each one separately.
+- Maximum limit: 5 cars per image (if more than 5 are visible, analyze only the 5 most visible/central ones)
+- If you detect more than 5 cars, include a "warning" field explaining this
 
 You MUST respond with a valid JSON object in this exact format:
 {
   "identified": true or false,
-  "realCar": {
-    "brand": "Brand of the real car (e.g., Ferrari, Porsche, Toyota)",
-    "model": "Model name (e.g., 250 GTO, 911 Turbo)",
-    "year": "Year of the real car",
-    "historicalFact": "An interesting historical fact about this car (2-3 sentences)"
-  },
-  "collectible": {
-    "manufacturer": "Manufacturer of the diecast/model (e.g., Hot Wheels, Matchbox, Tomica, Majorette)",
-    "scale": "Scale of the model (e.g., 1:64, 1:43, 1:18)",
-    "estimatedYear": "Estimated year of production of the collectible",
-    "origin": "Country of manufacture (e.g., Malaysia, Thailand, China, Japan)",
-    "series": "Series or collection name if identifiable (e.g., Super Treasure Hunt, RLC, Premium, Mainline, Chase, Limited Edition)",
-    "condition": "Condition assessment (Mint, Near Mint, Good, Fair)",
-    "notes": "Any additional notes about the collectible"
-  },
-  "priceIndex": {
-    "score": 1-100,
-    "tier": "common" | "uncommon" | "rare" | "super_rare" | "ultra_rare",
-    "breakdown": {
-      "rarity": {
-        "score": 0-35,
-        "max": 35,
-        "reason": "Explanation (e.g., Super Treasure Hunt, RLC Exclusive, Chase, Mainline, Limited Edition)"
+  "count": number of cars identified (1-5),
+  "items": [
+    {
+      "realCar": {
+        "brand": "Brand of the real car (e.g., Ferrari, Porsche, Toyota)",
+        "model": "Model name (e.g., 250 GTO, 911 Turbo)",
+        "year": "Year of the real car",
+        "historicalFact": "An interesting historical fact about this car (2-3 sentences)"
       },
-      "condition": {
-        "score": 0-25,
-        "max": 25,
-        "reason": "Condition assessment"
+      "collectible": {
+        "manufacturer": "Manufacturer of the diecast/model (e.g., Hot Wheels, Matchbox, Tomica, Majorette)",
+        "scale": "Scale of the model (e.g., 1:64, 1:43, 1:18)",
+        "estimatedYear": "Estimated year of production of the collectible",
+        "origin": "Country of manufacture (e.g., Malaysia, Thailand, China, Japan)",
+        "series": "Series or collection name if identifiable (e.g., Super Treasure Hunt, RLC, Premium, Mainline, Chase, Limited Edition)",
+        "condition": "Condition assessment (Mint, Near Mint, Good, Fair)",
+        "notes": "Any additional notes about the collectible"
       },
-      "manufacturer": {
-        "score": 0-15,
-        "max": 15,
-        "reason": "Manufacturer name"
-      },
-      "scale": {
-        "score": 0-10,
-        "max": 10,
-        "reason": "Scale (larger scales generally worth more)"
-      },
-      "age": {
-        "score": 0-10,
-        "max": 10,
-        "reason": "Year or vintage status"
-      },
-      "origin": {
-        "score": 0-5,
-        "max": 5,
-        "reason": "Country of manufacture"
+      "priceIndex": {
+        "score": 1-100,
+        "tier": "common" | "uncommon" | "rare" | "super_rare" | "ultra_rare",
+        "breakdown": {
+          "rarity": {
+            "score": 0-35,
+            "max": 35,
+            "reason": "Explanation (e.g., Super Treasure Hunt, RLC Exclusive, Chase, Mainline, Limited Edition)"
+          },
+          "condition": {
+            "score": 0-25,
+            "max": 25,
+            "reason": "Condition assessment"
+          },
+          "manufacturer": {
+            "score": 0-15,
+            "max": 15,
+            "reason": "Manufacturer name"
+          },
+          "scale": {
+            "score": 0-10,
+            "max": 10,
+            "reason": "Scale (larger scales generally worth more)"
+          },
+          "age": {
+            "score": 0-10,
+            "max": 10,
+            "reason": "Year or vintage status"
+          },
+          "origin": {
+            "score": 0-5,
+            "max": 5,
+            "reason": "Country of manufacture"
+          }
+        }
       }
     }
-  }
+  ],
+  "warning": "Optional: message if more than 5 cars were detected but only 5 are shown"
 }
 
-PRICE INDEX SCORING GUIDELINES:
+PRICE INDEX SCORING GUIDELINES (Total: 100 points):
 
 RARITY (35 points max):
 - Ultra Rare (30-35): RLC Exclusive, Convention Exclusive, Error/Prototype, Super Treasure Hunt ($TH)
@@ -131,7 +141,13 @@ TIER CLASSIFICATION:
 - uncommon: 30-49 points
 - common: 1-29 points
 
-If you cannot identify the item or it's not a collectible car, set "identified" to false and provide empty objects for realCar, collectible, and priceIndex.
+If you cannot identify any collectible cars in the image, set "identified" to false and return:
+{
+  "identified": false,
+  "count": 0,
+  "items": []
+}
+
 Only respond with the JSON, no additional text.`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
@@ -149,7 +165,7 @@ Only respond with the JSON, no additional text.`;
             content: [
               {
                 type: "text",
-                text: "Please analyze this collectible car image and provide detailed information about both the real car it represents, the collectible item itself, and calculate a comprehensive price index based on the scoring criteria provided.",
+                text: "Please analyze this image and identify ALL collectible cars visible. For each car, provide detailed information about the real car it represents, the collectible item itself, and calculate a comprehensive price index based on the scoring criteria provided. Remember: maximum 5 cars, prioritize the most visible/central ones.",
               },
               {
                 type: "image_url",
