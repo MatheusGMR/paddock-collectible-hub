@@ -10,6 +10,7 @@ import { useNavigate } from "react-router-dom";
 import { CreatePostDialog } from "@/components/posts/CreatePostDialog";
 import { CaptureButton } from "@/components/scanner/CaptureButton";
 import { ResultCarousel } from "@/components/scanner/ResultCarousel";
+import { ImageQualityError, ImageQualityIssue } from "@/components/scanner/ImageQualityError";
 import { PriceIndex } from "@/lib/priceIndex";
 
 interface AnalysisResult {
@@ -31,7 +32,14 @@ interface AnalysisResult {
   priceIndex?: PriceIndex;
 }
 
+interface ImageQualityResponse {
+  isValid: boolean;
+  issues: ImageQualityIssue[];
+  suggestion: string;
+}
+
 interface MultiCarAnalysisResponse {
+  imageQuality?: ImageQualityResponse;
   identified: boolean;
   count: number;
   items: AnalysisResult[];
@@ -50,6 +58,9 @@ export const ScannerView = () => {
   const [facingMode, setFacingMode] = useState<"environment" | "user">("environment");
   const [showPostDialog, setShowPostDialog] = useState(false);
   const [warningMessage, setWarningMessage] = useState<string | null>(null);
+  
+  // Image quality validation state
+  const [imageQualityError, setImageQualityError] = useState<ImageQualityResponse | null>(null);
   
   // Multi-car state
   const [addedIndices, setAddedIndices] = useState<Set<number>>(new Set());
@@ -251,6 +262,17 @@ export const ScannerView = () => {
       if (error) throw error;
 
       const response = data as MultiCarAnalysisResponse;
+
+      // Check image quality first
+      if (response.imageQuality && !response.imageQuality.isValid) {
+        setImageQualityError(response.imageQuality);
+        setAnalysisResults([]);
+        setIsScanning(false);
+        return;
+      }
+
+      // Clear any previous quality errors
+      setImageQualityError(null);
 
       if (!response.identified || response.count === 0) {
         toast({
@@ -454,6 +476,7 @@ export const ScannerView = () => {
     setAddedIndices(new Set());
     setSkippedIndices(new Set());
     setWarningMessage(null);
+    setImageQualityError(null);
     setRecordedVideo(null);
     setRecordingDuration(0);
     if (videoPreviewUrl) {
@@ -490,6 +513,18 @@ export const ScannerView = () => {
   };
 
   const hasResults = analysisResults.length > 0;
+
+  // Show image quality error screen if there are issues
+  if (imageQualityError && capturedImage) {
+    return (
+      <ImageQualityError
+        issues={imageQualityError.issues}
+        suggestion={imageQualityError.suggestion}
+        capturedImage={capturedImage}
+        onRetry={resetScan}
+      />
+    );
+  }
 
   return (
     <div className="fixed inset-0 z-50 bg-background flex flex-col">
