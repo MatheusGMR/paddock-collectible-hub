@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { X, Zap, RotateCcw, Check, Plus, Camera, SwitchCamera, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
@@ -46,6 +46,16 @@ export const ScannerView = () => {
   const { toast } = useToast();
   const { user } = useAuth();
   const navigate = useNavigate();
+
+  // Auto-start camera on mount
+  useEffect(() => {
+    startCamera();
+    return () => {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, []);
 
   const startCamera = useCallback(async () => {
     try {
