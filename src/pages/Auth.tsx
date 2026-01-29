@@ -53,7 +53,7 @@ const Auth = () => {
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6">
       {/* Logo */}
       <div className="mb-10 animate-scale-in">
-        <PaddockLogo size={64} showText />
+        <PaddockLogo variant="wordmark" size={48} />
       </div>
 
       {/* Form Card */}
