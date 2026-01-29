@@ -76,6 +76,16 @@
     font-feature-settings: "ss01", "ss02", "cv01";
     letter-spacing: -0.01em;
   }
+
+  /* Hide scrollbar while keeping scroll functionality */
+  * {
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE and Edge */
+  }
+
+  *::-webkit-scrollbar {
+    display: none; /* Chrome, Safari, Opera */
+  }
 }
 
 @layer components {
