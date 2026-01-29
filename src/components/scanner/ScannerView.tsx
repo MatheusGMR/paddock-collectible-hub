@@ -49,13 +49,43 @@ export const ScannerView = () => {
 
   // Auto-start camera on mount
   useEffect(() => {
-    startCamera();
+    const initCamera = async () => {
+      try {
+        if (streamRef.current) {
+          streamRef.current.getTracks().forEach(track => track.stop());
+        }
+
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: "environment",
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
+          }
+        });
+
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          streamRef.current = stream;
+          setCameraActive(true);
+        }
+      } catch (error) {
+        console.error("Camera access error:", error);
+        toast({
+          title: "Camera Error",
+          description: "Could not access camera. Please check permissions.",
+          variant: "destructive",
+        });
+      }
+    };
+
+    initCamera();
+
     return () => {
       if (streamRef.current) {
         streamRef.current.getTracks().forEach(track => track.stop());
       }
     };
-  }, []);
+  }, [toast]);
 
   const startCamera = useCallback(async () => {
     try {
