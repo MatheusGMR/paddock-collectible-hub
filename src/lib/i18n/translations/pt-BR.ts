@@ -96,6 +96,15 @@ export const ptBR = {
     postVideo: "Postar Vídeo",
     recordAgain: "Gravar Outro",
     maxDuration: "Máximo 30 segundos",
+    // Multi-car detection
+    multipleCarsDetected: "carros detectados",
+    swipeToSee: "Deslize para ver todos",
+    skipToNext: "Pular",
+    addingProgress: "de",
+    allItemsProcessed: "Todos processados!",
+    itemsAdded: "itens adicionados",
+    maxCarsWarning: "Muitos carros na foto. Exibindo os 5 mais visíveis.",
+    viewCollection: "Ver Coleção",
   },
 
   // Mercado (Marketplace)

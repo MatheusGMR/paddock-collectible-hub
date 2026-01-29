@@ -98,6 +98,15 @@ export const en: Translations = {
     postVideo: "Post Video",
     recordAgain: "Record Again",
     maxDuration: "Maximum 30 seconds",
+    // Multi-car detection
+    multipleCarsDetected: "cars detected",
+    swipeToSee: "Swipe to see all",
+    skipToNext: "Skip",
+    addingProgress: "of",
+    allItemsProcessed: "All done!",
+    itemsAdded: "items added",
+    maxCarsWarning: "Too many cars in photo. Showing 5 most visible.",
+    viewCollection: "View Collection",
   },
 
   // Mercado (Marketplace)
