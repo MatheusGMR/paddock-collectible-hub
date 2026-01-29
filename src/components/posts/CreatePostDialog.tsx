@@ -11,12 +11,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { createPost, uploadPostImage } from "@/lib/api/posts";
+import { createPost, uploadPostImage, uploadPostVideo } from "@/lib/api/posts";
 
 interface CreatePostDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  imageBase64: string;
+  imageBase64?: string;
+  videoUrl?: string;
+  videoBlob?: Blob;
   collectionItemId?: string;
   itemTitle?: string;
   onSuccess?: () => void;
@@ -26,6 +28,8 @@ export function CreatePostDialog({
   open,
   onOpenChange,
   imageBase64,
+  videoUrl,
+  videoBlob,
   collectionItemId,
   itemTitle,
   onSuccess,
@@ -35,6 +39,8 @@ export function CreatePostDialog({
   const { toast } = useToast();
   const { user } = useAuth();
   const { t } = useLanguage();
+
+  const isVideo = !!videoUrl && !!videoBlob;
 
   const handlePublish = async () => {
     if (!user) {
@@ -49,17 +55,32 @@ export function CreatePostDialog({
     setIsPublishing(true);
 
     try {
-      // Upload image first
-      const uploadResult = await uploadPostImage(user.id, imageBase64);
-      
-      if (!uploadResult.success || !uploadResult.url) {
-        throw new Error(uploadResult.error || "Failed to upload image");
+      let mediaUrl: string;
+
+      if (isVideo && videoBlob) {
+        // Upload video
+        const uploadResult = await uploadPostVideo(user.id, videoBlob);
+        
+        if (!uploadResult.success || !uploadResult.url) {
+          throw new Error(uploadResult.error || "Failed to upload video");
+        }
+        mediaUrl = uploadResult.url;
+      } else if (imageBase64) {
+        // Upload image
+        const uploadResult = await uploadPostImage(user.id, imageBase64);
+        
+        if (!uploadResult.success || !uploadResult.url) {
+          throw new Error(uploadResult.error || "Failed to upload image");
+        }
+        mediaUrl = uploadResult.url;
+      } else {
+        throw new Error("No media to upload");
       }
 
       // Create the post
       const postResult = await createPost({
         userId: user.id,
-        imageUrl: uploadResult.url,
+        imageUrl: mediaUrl,
         caption: caption.trim() || undefined,
         collectionItemId,
       });
@@ -96,13 +117,24 @@ export function CreatePostDialog({
         </DialogHeader>
 
         <div className="space-y-4">
-          {/* Image Preview */}
+          {/* Media Preview */}
           <div className="relative aspect-square rounded-lg overflow-hidden bg-muted">
-            <img
-              src={imageBase64}
-              alt={itemTitle || "Post image"}
-              className="w-full h-full object-cover"
-            />
+            {isVideo && videoUrl ? (
+              <video
+                src={videoUrl}
+                autoPlay
+                loop
+                muted
+                playsInline
+                className="w-full h-full object-cover"
+              />
+            ) : imageBase64 ? (
+              <img
+                src={imageBase64}
+                alt={itemTitle || "Post image"}
+                className="w-full h-full object-cover"
+              />
+            ) : null}
           </div>
 
           {/* Caption Input */}

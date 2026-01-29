@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from "react";
-import { X, RotateCcw, Check, Plus, Camera, SwitchCamera, Loader2, Share } from "lucide-react";
+import { X, RotateCcw, Check, Plus, Camera, SwitchCamera, Loader2, Share, Video } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -10,6 +10,7 @@ import { useNavigate } from "react-router-dom";
 import { IndexBadge } from "@/components/index/IndexBadge";
 import { IndexBreakdown } from "@/components/index/IndexBreakdown";
 import { CreatePostDialog } from "@/components/posts/CreatePostDialog";
+import { CaptureButton } from "@/components/scanner/CaptureButton";
 import { PriceIndex } from "@/lib/priceIndex";
 
 interface AnalysisResult {
@@ -32,6 +33,8 @@ interface AnalysisResult {
   priceIndex?: PriceIndex;
 }
 
+const MAX_RECORDING_DURATION = 30; // seconds
+
 export const ScannerView = () => {
   const [isScanning, setIsScanning] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
@@ -46,13 +49,34 @@ export const ScannerView = () => {
   const [showPostDialog, setShowPostDialog] = useState(false);
   const [addedCollectionItemId, setAddedCollectionItemId] = useState<string | null>(null);
   
+  // Video recording states
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordedVideo, setRecordedVideo] = useState<Blob | null>(null);
+  const [recordingDuration, setRecordingDuration] = useState(0);
+  const [videoPreviewUrl, setVideoPreviewUrl] = useState<string | null>(null);
+  
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+  const pressTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const isPressedRef = useRef(false);
+  
   const { toast } = useToast();
   const { user } = useAuth();
   const { t } = useLanguage();
   const navigate = useNavigate();
+
+  // Cleanup video preview URL when component unmounts
+  useEffect(() => {
+    return () => {
+      if (videoPreviewUrl) {
+        URL.revokeObjectURL(videoPreviewUrl);
+      }
+    };
+  }, [videoPreviewUrl]);
 
   // Effect to attach stream to video element when cameraActive changes
   useEffect(() => {
@@ -91,7 +115,8 @@ export const ScannerView = () => {
             facingMode: "environment",
             width: { ideal: 1280 },
             height: { ideal: 720 }
-          }
+          },
+          audio: true // Enable audio for video recording
         });
 
         console.log("[Scanner] Camera stream acquired");
@@ -127,6 +152,12 @@ export const ScannerView = () => {
       if (videoRef.current) {
         videoRef.current.srcObject = null;
       }
+      if (pressTimerRef.current) {
+        clearTimeout(pressTimerRef.current);
+      }
+      if (recordingTimerRef.current) {
+        clearInterval(recordingTimerRef.current);
+      }
     };
   }, [toast, t]);
 
@@ -146,7 +177,8 @@ export const ScannerView = () => {
           facingMode: facingMode,
           width: { ideal: 1280 },
           height: { ideal: 720 }
-        }
+        },
+        audio: true
       });
 
       console.log("[Scanner] Camera stream acquired (manual)");
@@ -244,6 +276,109 @@ export const ScannerView = () => {
     }
   }, [stopCamera, toast, user, t]);
 
+  // Video recording functions
+  const startRecording = useCallback(() => {
+    if (!streamRef.current) return;
+    
+    console.log("[Scanner] Starting video recording");
+    
+    try {
+      const mediaRecorder = new MediaRecorder(streamRef.current, {
+        mimeType: MediaRecorder.isTypeSupported('video/webm;codecs=vp9') 
+          ? 'video/webm;codecs=vp9' 
+          : 'video/webm'
+      });
+      
+      chunksRef.current = [];
+      
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) {
+          chunksRef.current.push(e.data);
+        }
+      };
+      
+      mediaRecorder.onstop = () => {
+        console.log("[Scanner] Recording stopped, creating blob");
+        const blob = new Blob(chunksRef.current, { type: 'video/webm' });
+        setRecordedVideo(blob);
+        const url = URL.createObjectURL(blob);
+        setVideoPreviewUrl(url);
+        stopCamera();
+      };
+      
+      mediaRecorder.start();
+      mediaRecorderRef.current = mediaRecorder;
+      setIsRecording(true);
+      setRecordingDuration(0);
+      
+      // Start duration timer
+      recordingTimerRef.current = setInterval(() => {
+        setRecordingDuration(prev => {
+          if (prev >= MAX_RECORDING_DURATION - 1) {
+            stopRecording();
+            return MAX_RECORDING_DURATION;
+          }
+          return prev + 1;
+        });
+      }, 1000);
+      
+    } catch (error) {
+      console.error("[Scanner] Recording error:", error);
+      toast({
+        title: t.common.error,
+        description: "Não foi possível iniciar a gravação",
+        variant: "destructive",
+      });
+    }
+  }, [stopCamera, toast, t]);
+
+  const stopRecording = useCallback(() => {
+    console.log("[Scanner] Stopping recording");
+    
+    if (recordingTimerRef.current) {
+      clearInterval(recordingTimerRef.current);
+      recordingTimerRef.current = null;
+    }
+    
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
+      mediaRecorderRef.current.stop();
+    }
+    
+    setIsRecording(false);
+    isPressedRef.current = false;
+  }, []);
+
+  // Press handlers for CaptureButton
+  const handlePressStart = useCallback(() => {
+    if (isScanning || !cameraActive) return;
+    
+    isPressedRef.current = true;
+    
+    // Start timer - if held > 500ms, start recording
+    pressTimerRef.current = setTimeout(() => {
+      if (isPressedRef.current) {
+        startRecording();
+      }
+    }, 500);
+  }, [isScanning, cameraActive, startRecording]);
+
+  const handlePressEnd = useCallback(() => {
+    // If timer still active, it was a quick tap = photo
+    if (pressTimerRef.current) {
+      clearTimeout(pressTimerRef.current);
+      pressTimerRef.current = null;
+      
+      if (isPressedRef.current && !isRecording) {
+        capturePhoto();
+      }
+    } else if (isRecording) {
+      // Was recording, stop video
+      stopRecording();
+    }
+    
+    isPressedRef.current = false;
+  }, [isRecording, capturePhoto, stopRecording]);
+
   const handleAddToCollection = async () => {
     if (!user) {
       toast({
@@ -307,9 +442,15 @@ export const ScannerView = () => {
     setCameraError(false);
     setIsInitializing(true);
     setAddedCollectionItemId(null);
+    setRecordedVideo(null);
+    setRecordingDuration(0);
+    if (videoPreviewUrl) {
+      URL.revokeObjectURL(videoPreviewUrl);
+      setVideoPreviewUrl(null);
+    }
     // Restart camera
     startCamera();
-  }, [startCamera]);
+  }, [startCamera, videoPreviewUrl]);
 
   const handleClose = useCallback(() => {
     stopCamera();
@@ -319,6 +460,21 @@ export const ScannerView = () => {
   const handlePostSuccess = () => {
     // Optionally navigate to feed or show success
     setShowPostDialog(false);
+  };
+
+  const handlePostVideo = () => {
+    if (!user) {
+      toast({
+        title: t.scanner.signInRequired,
+        description: t.scanner.signInRequiredDesc,
+      });
+      navigate("/auth");
+      return;
+    }
+    
+    if (videoPreviewUrl) {
+      setShowPostDialog(true);
+    }
   };
 
   return (
@@ -332,11 +488,11 @@ export const ScannerView = () => {
           playsInline
           muted
           className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-200 ${
-            cameraActive && !capturedImage ? 'opacity-100' : 'opacity-0 pointer-events-none'
+            cameraActive && !capturedImage && !videoPreviewUrl ? 'opacity-100' : 'opacity-0 pointer-events-none'
           }`}
         />
 
-        {capturedImage && (
+        {capturedImage && !videoPreviewUrl && (
           <img
             src={capturedImage}
             alt="Captured"
@@ -344,7 +500,18 @@ export const ScannerView = () => {
           />
         )}
 
-        {!cameraActive && !capturedImage && (
+        {/* Video preview */}
+        {videoPreviewUrl && (
+          <video
+            src={videoPreviewUrl}
+            autoPlay
+            loop
+            playsInline
+            className="absolute inset-0 w-full h-full object-cover"
+          />
+        )}
+
+        {!cameraActive && !capturedImage && !videoPreviewUrl && (
           <div className="absolute inset-0 bg-gradient-to-b from-background-secondary to-background opacity-50" />
         )}
 
@@ -369,7 +536,7 @@ export const ScannerView = () => {
           <X className="h-6 w-6 text-foreground" />
         </button>
 
-        {cameraActive && (
+        {cameraActive && !isRecording && (
           <button
             onClick={switchCamera}
             className="absolute top-4 left-4 p-2 bg-background/50 backdrop-blur-sm rounded-full z-10"
@@ -389,6 +556,36 @@ export const ScannerView = () => {
           </div>
         )}
       </div>
+
+      {/* Video recorded panel */}
+      {videoPreviewUrl && !analysisResult && (
+        <div className="bg-card border-t border-border p-6 safe-bottom">
+          <div className="flex flex-col items-center gap-4">
+            <div className="flex items-center gap-2 text-primary">
+              <Video className="h-5 w-5" />
+              <p className="text-sm font-medium">{t.scanner.videoRecorded}</p>
+            </div>
+            
+            <div className="flex gap-3 w-full">
+              <Button 
+                onClick={handlePostVideo}
+                className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90"
+              >
+                <Share className="h-4 w-4 mr-2" />
+                {t.scanner.postVideo}
+              </Button>
+              <Button
+                variant="outline"
+                className="flex-1 border-border text-foreground hover:bg-muted"
+                onClick={resetScan}
+              >
+                <RotateCcw className="h-4 w-4 mr-2" />
+                {t.scanner.recordAgain}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Results Panel */}
       {analysisResult ? (
@@ -487,7 +684,7 @@ export const ScannerView = () => {
             />
           )}
         </div>
-      ) : (
+      ) : !videoPreviewUrl && (
         <div className="bg-card border-t border-border p-6 safe-bottom">
           <div className="flex flex-col items-center gap-4">
             {isInitializing ? (
@@ -512,16 +709,16 @@ export const ScannerView = () => {
               </>
             ) : cameraActive ? (
               <>
-                <p className="text-sm text-foreground-secondary text-center">
-                  {t.scanner.positionItem}
+                <p className="text-xs text-foreground-secondary text-center mb-2">
+                  {t.scanner.tapToCapture} • {t.scanner.holdToRecord}
                 </p>
-                <Button
-                  onClick={capturePhoto}
-                  className="w-full bg-primary text-primary-foreground hover:bg-primary/90 h-12"
-                >
-                  <Camera className="h-5 w-5 mr-2" />
-                  {t.scanner.capture}
-                </Button>
+                <CaptureButton
+                  isRecording={isRecording}
+                  recordingDuration={recordingDuration}
+                  disabled={isScanning}
+                  onPressStart={handlePressStart}
+                  onPressEnd={handlePressEnd}
+                />
               </>
             ) : (
               <>
@@ -541,7 +738,7 @@ export const ScannerView = () => {
         </div>
       )}
 
-      {/* Post Dialog */}
+      {/* Post Dialog - for photos */}
       {capturedImage && analysisResult && (
         <CreatePostDialog
           open={showPostDialog}
@@ -549,6 +746,17 @@ export const ScannerView = () => {
           imageBase64={capturedImage}
           collectionItemId={addedCollectionItemId || undefined}
           itemTitle={`${analysisResult.realCar.brand} ${analysisResult.realCar.model}`}
+          onSuccess={handlePostSuccess}
+        />
+      )}
+
+      {/* Post Dialog - for videos */}
+      {videoPreviewUrl && !analysisResult && (
+        <CreatePostDialog
+          open={showPostDialog}
+          onOpenChange={setShowPostDialog}
+          videoUrl={videoPreviewUrl}
+          videoBlob={recordedVideo || undefined}
           onSuccess={handlePostSuccess}
         />
       )}
