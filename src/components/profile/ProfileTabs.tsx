@@ -1,9 +1,8 @@
-import { useState } from "react";
-import { Grid3X3, List } from "lucide-react";
+import { Grid3X3, List, TrendingUp } from "lucide-react";
 
 interface ProfileTabsProps {
-  activeTab: "posts" | "collection";
-  onTabChange: (tab: "posts" | "collection") => void;
+  activeTab: "posts" | "collection" | "index";
+  onTabChange: (tab: "posts" | "collection" | "index") => void;
 }
 
 export const ProfileTabs = ({ activeTab, onTabChange }: ProfileTabsProps) => {
@@ -18,6 +17,11 @@ export const ProfileTabs = ({ activeTab, onTabChange }: ProfileTabsProps) => {
         icon={List}
         isActive={activeTab === "collection"}
         onClick={() => onTabChange("collection")}
+      />
+      <TabButton 
+        icon={TrendingUp}
+        isActive={activeTab === "index"}
+        onClick={() => onTabChange("index")}
       />
     </div>
   );
