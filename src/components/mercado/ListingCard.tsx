@@ -1,4 +1,5 @@
 import { ExternalLink } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { SourceBadge } from "./SourceBadge";
 import { formatPrice, getSourceByCode } from "@/data/marketplaceSources";
 import { cn } from "@/lib/utils";
@@ -24,12 +25,18 @@ interface ListingCardProps {
 }
 
 export const ListingCard = ({ listing, onClick }: ListingCardProps) => {
+  const navigate = useNavigate();
   const isExternal = !!listing.external_url;
+  const isInternal = listing.source === "paddock";
   const sourceData = getSourceByCode(listing.source);
 
   const handleClick = () => {
-    if (isExternal && listing.external_url) {
-      window.open(listing.external_url, '_blank', 'noopener,noreferrer');
+    if (isInternal) {
+      // Navigate to listing details for internal Paddock listings
+      navigate(`/listing/${listing.id}`);
+    } else if (isExternal && listing.external_url) {
+      // Open external URL for marketplace listings
+      window.open(listing.external_url, "_blank", "noopener,noreferrer");
     } else if (onClick) {
       onClick();
     }
@@ -52,14 +59,14 @@ export const ListingCard = ({ listing, onClick }: ListingCardProps) => {
           className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
           loading="lazy"
         />
-        
+
         {/* Country Badge */}
         <div className="absolute top-2 right-2">
           <SourceBadge source={listing.source} size="sm" />
         </div>
 
-        {/* External Link Indicator */}
-        {isExternal && (
+        {/* External Link Indicator - only show for external listings */}
+        {isExternal && !isInternal && (
           <div className="absolute top-2 left-2 rounded-full bg-background/80 backdrop-blur-sm p-1.5">
             <ExternalLink className="h-3 w-3 text-foreground-secondary" />
           </div>
