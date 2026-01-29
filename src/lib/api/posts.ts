@@ -91,3 +91,42 @@ export async function uploadPostImage(
     };
   }
 }
+
+/**
+ * Upload a video to storage and get the public URL
+ */
+export async function uploadPostVideo(
+  userId: string,
+  videoBlob: Blob
+): Promise<{ success: boolean; url?: string; error?: string }> {
+  try {
+    // Generate unique filename
+    const fileName = `${userId}/${Date.now()}-${Math.random().toString(36).substr(2, 9)}.webm`;
+
+    // Upload to storage
+    const { data, error } = await supabase.storage
+      .from("post-images")
+      .upload(fileName, videoBlob, {
+        contentType: "video/webm",
+        upsert: false,
+      });
+
+    if (error) {
+      console.error("Error uploading video:", error);
+      return { success: false, error: error.message };
+    }
+
+    // Get public URL
+    const { data: urlData } = supabase.storage
+      .from("post-images")
+      .getPublicUrl(data.path);
+
+    return { success: true, url: urlData.publicUrl };
+  } catch (error) {
+    console.error("Error uploading video:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to upload video",
+    };
+  }
+}

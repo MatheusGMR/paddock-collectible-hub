@@ -88,6 +88,14 @@ export const ptBR = {
     postToFeed: "Postar na Rede",
     shareSuccess: "Deseja compartilhar?",
     laterOption: "Depois",
+    // Video recording
+    tapToCapture: "Toque para foto",
+    holdToRecord: "Segure para gravar",
+    recording: "Gravando...",
+    videoRecorded: "Vídeo gravado!",
+    postVideo: "Postar Vídeo",
+    recordAgain: "Gravar Outro",
+    maxDuration: "Máximo 30 segundos",
   },
 
   // Mercado (Marketplace)

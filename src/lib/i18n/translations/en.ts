@@ -90,6 +90,14 @@ export const en: Translations = {
     postToFeed: "Post to Feed",
     shareSuccess: "Share this item?",
     laterOption: "Later",
+    // Video recording
+    tapToCapture: "Tap to capture",
+    holdToRecord: "Hold to record",
+    recording: "Recording...",
+    videoRecorded: "Video recorded!",
+    postVideo: "Post Video",
+    recordAgain: "Record Again",
+    maxDuration: "Maximum 30 seconds",
   },
 
   // Mercado (Marketplace)
