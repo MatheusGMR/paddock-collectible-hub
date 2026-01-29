@@ -241,7 +241,31 @@ export const ResultCarousel = ({
                       <span className="text-foreground-secondary">{t.scanner.condition}:</span>
                       <span className="ml-1 text-foreground">{result.collectible.condition}</span>
                     </div>
+                    {result.collectible.origin && (
+                      <div className="col-span-2">
+                        <span className="text-foreground-secondary">Origem:</span>
+                        <span className="ml-1 text-foreground">{result.collectible.origin}</span>
+                      </div>
+                    )}
                   </div>
+
+                  {/* Historical Fact */}
+                  {result.realCar.historicalFact && (
+                    <div className="pt-3 border-t border-border">
+                      <p className="text-xs text-primary font-semibold mb-1">Fato Histórico</p>
+                      <p className="text-sm text-foreground/90 italic leading-relaxed">
+                        "{result.realCar.historicalFact}"
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Notes */}
+                  {result.collectible.notes && (
+                    <div className="pt-2">
+                      <p className="text-xs text-foreground-secondary mb-1">Notas</p>
+                      <p className="text-sm text-foreground/80">{result.collectible.notes}</p>
+                    </div>
+                  )}
 
                   {/* Action buttons */}
                   <div className="flex gap-3 pt-2">

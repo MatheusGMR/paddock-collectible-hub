@@ -48,10 +48,12 @@ export type Database = {
           historical_fact: string | null
           id: string
           index_breakdown: Json | null
+          music_suggestion: string | null
           price_index: number | null
           rarity_tier: string | null
           real_car_brand: string
           real_car_model: string
+          real_car_photos: Json | null
           real_car_year: string | null
         }
         Insert: {
@@ -66,10 +68,12 @@ export type Database = {
           historical_fact?: string | null
           id?: string
           index_breakdown?: Json | null
+          music_suggestion?: string | null
           price_index?: number | null
           rarity_tier?: string | null
           real_car_brand: string
           real_car_model: string
+          real_car_photos?: Json | null
           real_car_year?: string | null
         }
         Update: {
@@ -84,10 +88,12 @@ export type Database = {
           historical_fact?: string | null
           id?: string
           index_breakdown?: Json | null
+          music_suggestion?: string | null
           price_index?: number | null
           rarity_tier?: string | null
           real_car_brand?: string
           real_car_model?: string
+          real_car_photos?: Json | null
           real_car_year?: string | null
         }
         Relationships: []

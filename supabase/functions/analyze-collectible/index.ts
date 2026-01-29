@@ -121,7 +121,13 @@ You MUST respond with a valid JSON object in this exact format:
             "reason": "Country of manufacture"
           }
         }
-      }
+      },
+      "musicSuggestion": "A song that matches the car's vibe/era (format: 'Song Title' - Artist Name (Year))",
+      "realCarPhotos": [
+        "URL of a real photo of this car model (from Wikipedia Commons, Wikimedia, or other public domain sources)",
+        "URL of another angle/photo",
+        "URL of a third photo"
+      ]
     }
   ],
   "warning": "Optional: message if more than 5 cars were detected but only 5 are shown"
