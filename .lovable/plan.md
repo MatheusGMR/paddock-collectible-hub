@@ -1,105 +1,59 @@
 
-# Plano de Correção: Câmera, Apple Sign-In e Scroll do Mercado
+## Diagnóstico (por que continua aparecendo “Open Camera”)
+O problema não é que o `getUserMedia` não está rodando — na verdade ele roda e abre a câmera (o “pontinho verde” no iPhone confirma isso).  
+O problema é que o preview não aparece porque o `<video>` só é renderizado quando `cameraActive === true`, mas `cameraActive` só vira `true` **depois** que o código consegue acessar `videoRef.current`. Em outras palavras: o vídeo não existe na tela → o `ref` é `null` → não seta `cameraActive` → o vídeo nunca aparece (ciclo).
 
-## Resumo dos Problemas Identificados
+Isso também explica por que o usuário vê a tela do scanner com o botão “Open Camera” mesmo com a câmera já “em uso” pelo sistema.
 
-1. **Câmera não abre automaticamente** - Quando o usuário clica no ícone de scanner, a câmera deveria abrir imediatamente mas fica aguardando um segundo clique
-2. **Apple Sign-In não progride** - Após autenticação com Apple, o app não redireciona para a tela principal
-3. **Scroll do Mercado limitado** - O scroll infinito não está carregando mais anúncios corretamente
+## Objetivo de UX
+Ao tocar no ícone da câmera na página principal (BottomNav), ao entrar no Scanner:
+- a câmera já deve abrir automaticamente
+- o preview deve aparecer
+- o usuário só precisa do segundo clique para “Capture & Analyze” (enquadrar → capturar)
 
----
+## Mudanças que vou implementar (todas em `src/components/scanner/ScannerView.tsx`)
+### 1) Renderizar o `<video>` sempre (não condicionalmente)
+- Em vez de:
+  - `cameraActive && <video ref=... />`
+- Passará a existir **sempre** um `<video ref={videoRef} />`, e a visibilidade será controlada por CSS (ex.: `hidden/opacity-0` quando não estiver ativo).
+- Assim `videoRef.current` sempre existe e podemos “plugar” o stream nele.
 
-## Correção 1: Câmera Automática ao Abrir Scanner
+### 2) Guardar o stream mesmo se o `ref` ainda não estiver pronto (proteção extra)
+- No `initCamera`/`startCamera`, assim que o stream vier do `getUserMedia`:
+  - salvar imediatamente em `streamRef.current`
+  - setar `cameraActive(true)` independentemente do `videoRef.current`
+- Isso evita perda de stream e garante consistência.
 
-### Problema
-O componente `ScannerView` inicia com a câmera desligada e requer que o usuário clique em "Open Camera" manualmente.
+### 3) Efeito dedicado para “anexar” o stream ao vídeo + `play()`
+Adicionar um `useEffect` que roda quando `cameraActive` muda e:
+- se existir `videoRef.current` e `streamRef.current`, faz:
+  - `videoRef.current.srcObject = streamRef.current`
+  - `await videoRef.current.play().catch(() => {})`
+- Isso resolve timing/race conditions (React render vs. stream chegando).
 
-### Solução
-Iniciar a câmera automaticamente quando o componente for montado.
+### 4) Cleanup e “Close” realmente liberando a câmera
+- No `stopCamera` e no `useEffect` cleanup:
+  - parar tracks
+  - `streamRef.current = null`
+  - também limpar `videoRef.current.srcObject = null` (quando existir)
+- Meta: ao fechar o scanner, o “pontinho verde” deve sumir em poucos instantes.
 
-### Mudanças Técnicas
-**Arquivo:** `src/components/scanner/ScannerView.tsx`
-- Adicionar `useEffect` para chamar `startCamera()` automaticamente na montagem
-- Configurar cleanup adequado para parar a câmera ao desmontar
+### 5) Ajuste de UI para não sugerir clique extra
+- Enquanto estiver “iniciando” a câmera automaticamente, mostrar uma mensagem curta (“Abrindo câmera…”) e esconder o call-to-action “Open Camera”.
+- O botão “Open Camera” vira fallback apenas para caso de erro/permissão negada.
 
----
+### 6) (Opcional) Pequenos logs de diagnóstico
+- Adicionar `console.log`/`console.warn` bem objetivos (ex.: “camera stream acquired”, “video attached”) para facilitar validar rapidamente se o fluxo está certo.
 
-## Correção 2: Redirecionamento após Apple Sign-In
+## Critérios de aceite (o que deve acontecer depois)
+1. Toque no ícone central de câmera (na barra inferior) → entra no scanner já com preview da câmera.
+2. Sem precisar tocar em “Open Camera”.
+3. Usuário enquadra e toca apenas em “Capture & Analyze”.
+4. Ao fechar no “X”, a câmera é liberada (pontinho verde desliga).
 
-### Problema
-Após o usuário autenticar com Apple, a função `onAuthStateChange` detecta a sessão mas o app não redireciona automaticamente porque:
-- O `AppContent` verifica `!user` para redirecionar ao `/auth`, mas não redireciona de volta ao `/` quando o usuário está logado
-- A página `/auth` não monitora mudanças de estado de autenticação para redirecionar
+## Teste recomendado
+- Testar no iPhone Safari e também no navegador “dentro” do WhatsApp/Instagram (se for o caso).
+- Se em algum in-app browser específico a Apple bloquear o preview, o fallback “Open Camera” + mensagem de instrução continuará existindo, mas no Safari deve funcionar 100%.
 
-### Solução
-Adicionar lógica de redirecionamento na página `Auth.tsx` quando um usuário já estiver autenticado.
-
-### Mudanças Técnicas
-**Arquivo:** `src/pages/Auth.tsx`
-- Importar `useEffect` 
-- Monitorar o estado `user` do `useAuth()`
-- Redirecionar automaticamente para `/` quando `user` existir
-
----
-
-## Correção 3: Scroll Infinito do Mercado
-
-### Problema
-Os logs mostram que o Firecrawl está retornando 0 resultados, então o app deveria estar usando mock data. O problema é:
-- A função `getMockListings` tem apenas 12 itens mock
-- A paginação funciona mas quando acaba os 12 itens, não há mais conteúdo
-- O `IntersectionObserver` pode não estar disparando corretamente
-
-### Solução
-1. Expandir a quantidade de dados mock para simular um feed maior
-2. Garantir que o observer está funcionando corretamente
-3. Adicionar mais variedade de anúncios mock para testes
-
-### Mudanças Técnicas
-**Arquivo:** `src/data/mockListings.ts`
-- Expandir `mockListings` para pelo menos 30-40 itens
-- Adicionar função para gerar listings variados
-
-**Arquivo:** `src/components/mercado/ListingFeed.tsx`
-- Verificar configuração do IntersectionObserver
-- Ajustar threshold se necessário
-
----
-
-## Sequência de Implementação
-
-1. Corrigir abertura automática da câmera (maior impacto na UX)
-2. Corrigir redirecionamento do Apple Sign-In
-3. Expandir mock data e verificar scroll infinito
-
----
-
-## Detalhes Técnicos
-
-### ScannerView.tsx - Auto-start Camera
-```typescript
-// Adicionar useEffect para iniciar câmera automaticamente
-useEffect(() => {
-  startCamera();
-  return () => stopCamera();
-}, []);
-```
-
-### Auth.tsx - Redirect quando logado
-```typescript
-// Adicionar useEffect para redirecionar usuário autenticado
-useEffect(() => {
-  if (user) {
-    navigate("/", { replace: true });
-  }
-}, [user, navigate]);
-```
-
-### mockListings.ts - Mais dados
-```typescript
-// Gerar mais listings programaticamente
-const generateMoreListings = (): Listing[] => {
-  // Criar variações baseadas nos existentes
-  // para ter 30-40 itens no feed
-};
-```
+## Arquivos envolvidos
+- `src/components/scanner/ScannerView.tsx` (refatoração do preview + controle de stream)
