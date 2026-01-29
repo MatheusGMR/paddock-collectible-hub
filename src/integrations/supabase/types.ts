@@ -47,6 +47,9 @@ export type Database = {
           created_at: string
           historical_fact: string | null
           id: string
+          index_breakdown: Json | null
+          price_index: number | null
+          rarity_tier: string | null
           real_car_brand: string
           real_car_model: string
           real_car_year: string | null
@@ -62,6 +65,9 @@ export type Database = {
           created_at?: string
           historical_fact?: string | null
           id?: string
+          index_breakdown?: Json | null
+          price_index?: number | null
+          rarity_tier?: string | null
           real_car_brand: string
           real_car_model: string
           real_car_year?: string | null
@@ -77,6 +83,9 @@ export type Database = {
           created_at?: string
           historical_fact?: string | null
           id?: string
+          index_breakdown?: Json | null
+          price_index?: number | null
+          rarity_tier?: string | null
           real_car_brand?: string
           real_car_model?: string
           real_car_year?: string | null

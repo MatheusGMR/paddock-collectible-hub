@@ -6,6 +6,9 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { addToCollection, checkItemInCollection } from "@/lib/database";
 import { useNavigate } from "react-router-dom";
+import { IndexBadge } from "@/components/index/IndexBadge";
+import { IndexBreakdown } from "@/components/index/IndexBreakdown";
+import { PriceIndex } from "@/lib/priceIndex";
 
 interface AnalysisResult {
   identified: boolean;
@@ -24,6 +27,7 @@ interface AnalysisResult {
     condition: string;
     notes: string;
   };
+  priceIndex?: PriceIndex;
 }
 
 export const ScannerView = () => {
@@ -34,6 +38,7 @@ export const ScannerView = () => {
   const [cameraActive, setCameraActive] = useState(false);
   const [facingMode, setFacingMode] = useState<"environment" | "user">("environment");
   const [isAddingToCollection, setIsAddingToCollection] = useState(false);
+  const [breakdownOpen, setBreakdownOpen] = useState(false);
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -173,6 +178,9 @@ export const ScannerView = () => {
           collectible_series: analysisResult.collectible.series,
           collectible_condition: analysisResult.collectible.condition,
           collectible_notes: analysisResult.collectible.notes,
+          price_index: analysisResult.priceIndex?.score || null,
+          rarity_tier: analysisResult.priceIndex?.tier || null,
+          index_breakdown: analysisResult.priceIndex?.breakdown || null,
         },
         capturedImage || undefined
       );
@@ -199,6 +207,7 @@ export const ScannerView = () => {
     setAnalysisResult(null);
     setCapturedImage(null);
     setIsInCollection(false);
+    setBreakdownOpen(false);
   }, []);
 
   const handleClose = useCallback(() => {
@@ -300,6 +309,15 @@ export const ScannerView = () => {
               </div>
             </div>
 
+            {/* Price Index Badge */}
+            {analysisResult.priceIndex && (
+              <IndexBadge
+                score={analysisResult.priceIndex.score}
+                tier={analysisResult.priceIndex.tier}
+                onClick={() => setBreakdownOpen(true)}
+              />
+            )}
+
             <div className="border-t border-border pt-4">
               <p className="text-xs uppercase tracking-wide text-primary mb-3">Collectible Details</p>
               <div className="grid grid-cols-2 gap-3">
@@ -342,6 +360,17 @@ export const ScannerView = () => {
               </Button>
             </div>
           </div>
+
+          {/* Index Breakdown Sheet */}
+          {analysisResult.priceIndex && (
+            <IndexBreakdown
+              open={breakdownOpen}
+              onOpenChange={setBreakdownOpen}
+              score={analysisResult.priceIndex.score}
+              tier={analysisResult.priceIndex.tier}
+              breakdown={analysisResult.priceIndex.breakdown}
+            />
+          )}
         </div>
       ) : (
         <div className="bg-card border-t border-border p-6 safe-bottom">

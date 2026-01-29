@@ -42,14 +42,96 @@ You MUST respond with a valid JSON object in this exact format:
     "manufacturer": "Manufacturer of the diecast/model (e.g., Hot Wheels, Matchbox, Tomica, Majorette)",
     "scale": "Scale of the model (e.g., 1:64, 1:43, 1:18)",
     "estimatedYear": "Estimated year of production of the collectible",
-    "origin": "Country of manufacture (e.g., Malaysia, Thailand, China)",
-    "series": "Series or collection name if identifiable",
+    "origin": "Country of manufacture (e.g., Malaysia, Thailand, China, Japan)",
+    "series": "Series or collection name if identifiable (e.g., Super Treasure Hunt, RLC, Premium, Mainline, Chase, Limited Edition)",
     "condition": "Condition assessment (Mint, Near Mint, Good, Fair)",
     "notes": "Any additional notes about the collectible"
+  },
+  "priceIndex": {
+    "score": 1-100,
+    "tier": "common" | "uncommon" | "rare" | "super_rare" | "ultra_rare",
+    "breakdown": {
+      "rarity": {
+        "score": 0-35,
+        "max": 35,
+        "reason": "Explanation (e.g., Super Treasure Hunt, RLC Exclusive, Chase, Mainline, Limited Edition)"
+      },
+      "condition": {
+        "score": 0-25,
+        "max": 25,
+        "reason": "Condition assessment"
+      },
+      "manufacturer": {
+        "score": 0-15,
+        "max": 15,
+        "reason": "Manufacturer name"
+      },
+      "scale": {
+        "score": 0-10,
+        "max": 10,
+        "reason": "Scale (larger scales generally worth more)"
+      },
+      "age": {
+        "score": 0-10,
+        "max": 10,
+        "reason": "Year or vintage status"
+      },
+      "origin": {
+        "score": 0-5,
+        "max": 5,
+        "reason": "Country of manufacture"
+      }
+    }
   }
 }
 
-If you cannot identify the item or it's not a collectible car, set "identified" to false and provide empty objects for realCar and collectible.
+PRICE INDEX SCORING GUIDELINES:
+
+RARITY (35 points max):
+- Ultra Rare (30-35): RLC Exclusive, Convention Exclusive, Error/Prototype, Super Treasure Hunt ($TH)
+- Super Rare (24-29): Regular Treasure Hunt, Chase variants, Japan-only releases
+- Rare (18-23): Premium lines (Car Culture, Team Transport), Limited editions, numbered series
+- Uncommon (10-17): Special store exclusives, themed series, older mainlines (pre-2000)
+- Common (0-9): Current mainline releases, basic series
+
+CONDITION (25 points max):
+- Mint (23-25): Perfect, unopened or like-new
+- Near Mint (18-22): Excellent with minimal wear
+- Good (12-17): Light wear, minor scratches
+- Fair (0-11): Visible wear, missing parts
+
+MANUFACTURER (15 points max):
+- Premium (12-15): Tomica Limited Vintage, Kyosho, AutoArt, Greenlight
+- Mid-tier (8-11): Hot Wheels Premium, Matchbox Premium, Majorette Premium
+- Standard (4-7): Hot Wheels Mainline, Matchbox, Majorette, Maisto
+- Budget (0-3): Generic brands, unknown manufacturers
+
+SCALE (10 points max):
+- Large (8-10): 1:18, 1:24
+- Medium (5-7): 1:32, 1:43
+- Small (2-4): 1:64
+- Mini (0-1): 1:87, 1:144
+
+AGE (10 points max):
+- Vintage (8-10): Pre-1980
+- Classic (5-7): 1980-1999
+- Modern (2-4): 2000-2015
+- Recent (0-1): 2016-present
+
+ORIGIN (5 points max):
+- Japan (4-5): Highest quality control
+- Thailand/USA (3): Good quality
+- Malaysia (2): Standard quality
+- China (0-1): Variable quality
+
+TIER CLASSIFICATION:
+- ultra_rare: 85-100 points
+- super_rare: 70-84 points
+- rare: 50-69 points
+- uncommon: 30-49 points
+- common: 1-29 points
+
+If you cannot identify the item or it's not a collectible car, set "identified" to false and provide empty objects for realCar, collectible, and priceIndex.
 Only respond with the JSON, no additional text.`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
@@ -67,7 +149,7 @@ Only respond with the JSON, no additional text.`;
             content: [
               {
                 type: "text",
-                text: "Please analyze this collectible car image and provide detailed information about both the real car it represents and the collectible item itself.",
+                text: "Please analyze this collectible car image and provide detailed information about both the real car it represents, the collectible item itself, and calculate a comprehensive price index based on the scoring criteria provided.",
               },
               {
                 type: "image_url",

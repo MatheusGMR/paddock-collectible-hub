@@ -1,4 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
+import { PriceIndexBreakdown } from "./priceIndex";
+import { Json } from "@/integrations/supabase/types";
 
 export interface Profile {
   id: string;
@@ -23,6 +25,9 @@ export interface Item {
   collectible_series: string | null;
   collectible_condition: string | null;
   collectible_notes: string | null;
+  price_index: number | null;
+  rarity_tier: string | null;
+  index_breakdown: PriceIndexBreakdown | null;
   created_at: string;
 }
 
@@ -36,6 +41,27 @@ export interface CollectionItem {
   created_at: string;
   item?: Item;
 }
+
+export interface CollectionItemWithIndex {
+  id: string;
+  image_url: string | null;
+  item: {
+    real_car_brand: string;
+    real_car_model: string;
+    real_car_year?: string | null;
+    collectible_scale?: string | null;
+    collectible_manufacturer: string | null;
+    collectible_series: string | null;
+    price_index: number | null;
+    rarity_tier: string | null;
+    index_breakdown: PriceIndexBreakdown | null;
+  } | null;
+}
+
+const parseIndexBreakdown = (json: Json | null): PriceIndexBreakdown | null => {
+  if (!json || typeof json !== 'object' || Array.isArray(json)) return null;
+  return json as unknown as PriceIndexBreakdown;
+};
 
 export const getProfile = async (userId: string): Promise<Profile | null> => {
   const { data, error } = await supabase
@@ -71,7 +97,92 @@ export const getUserCollection = async (userId: string): Promise<CollectionItem[
     .order("created_at", { ascending: false });
   
   if (error) throw error;
-  return data || [];
+  
+  return (data || []).map(item => ({
+    ...item,
+    item: item.item ? {
+      ...item.item,
+      index_breakdown: parseIndexBreakdown(item.item.index_breakdown)
+    } : undefined
+  }));
+};
+
+export const getCollectionWithIndex = async (userId: string): Promise<CollectionItemWithIndex[]> => {
+  const { data, error } = await supabase
+    .from("user_collection")
+    .select(`
+      id,
+      image_url,
+      item:items(
+        real_car_brand,
+        real_car_model,
+        real_car_year,
+        collectible_scale,
+        collectible_manufacturer,
+        collectible_series,
+        price_index,
+        rarity_tier,
+        index_breakdown
+      )
+    `)
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false });
+  
+  if (error) throw error;
+  
+  return (data || []).map(item => ({
+    id: item.id,
+    image_url: item.image_url,
+    item: item.item ? {
+      real_car_brand: item.item.real_car_brand,
+      real_car_model: item.item.real_car_model,
+      real_car_year: item.item.real_car_year,
+      collectible_scale: item.item.collectible_scale,
+      collectible_manufacturer: item.item.collectible_manufacturer,
+      collectible_series: item.item.collectible_series,
+      price_index: item.item.price_index,
+      rarity_tier: item.item.rarity_tier,
+      index_breakdown: parseIndexBreakdown(item.item.index_breakdown)
+    } : null
+  }));
+};
+
+export const getTopIndexItems = async (userId: string, limit: number = 10): Promise<CollectionItemWithIndex[]> => {
+  const { data, error } = await supabase
+    .from("user_collection")
+    .select(`
+      id,
+      image_url,
+      item:items!inner(
+        real_car_brand,
+        real_car_model,
+        collectible_manufacturer,
+        collectible_series,
+        price_index,
+        rarity_tier,
+        index_breakdown
+      )
+    `)
+    .eq("user_id", userId)
+    .not("items.price_index", "is", null)
+    .order("items(price_index)", { ascending: false })
+    .limit(limit);
+  
+  if (error) throw error;
+  
+  return (data || []).map(item => ({
+    id: item.id,
+    image_url: item.image_url,
+    item: item.item ? {
+      real_car_brand: item.item.real_car_brand,
+      real_car_model: item.item.real_car_model,
+      collectible_manufacturer: item.item.collectible_manufacturer,
+      collectible_series: item.item.collectible_series,
+      price_index: item.item.price_index,
+      rarity_tier: item.item.rarity_tier,
+      index_breakdown: parseIndexBreakdown(item.item.index_breakdown)
+    } : null
+  }));
 };
 
 export const addToCollection = async (
@@ -94,6 +205,9 @@ export const addToCollection = async (
       collectible_series: itemData.collectible_series,
       collectible_condition: itemData.collectible_condition,
       collectible_notes: itemData.collectible_notes,
+      price_index: itemData.price_index,
+      rarity_tier: itemData.rarity_tier,
+      index_breakdown: itemData.index_breakdown as unknown as Json,
     })
     .select()
     .single();
@@ -113,7 +227,13 @@ export const addToCollection = async (
 
   if (collectionError) throw collectionError;
 
-  return { ...collectionItem, item };
+  return { 
+    ...collectionItem, 
+    item: {
+      ...item,
+      index_breakdown: parseIndexBreakdown(item.index_breakdown)
+    }
+  };
 };
 
 export const checkItemInCollection = async (

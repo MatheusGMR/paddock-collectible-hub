@@ -4,15 +4,16 @@ import { ProfileHeader } from "@/components/profile/ProfileHeader";
 import { ProfileTabs } from "@/components/profile/ProfileTabs";
 import { PostGrid } from "@/components/profile/PostGrid";
 import { CollectionList } from "@/components/profile/CollectionList";
+import { IndexRanking } from "@/components/index/IndexRanking";
 import { useAuth } from "@/contexts/AuthContext";
-import { getProfile, getUserCollection, getFollowCounts, getCollectionCount, Profile, CollectionItem } from "@/lib/database";
+import { getProfile, getCollectionWithIndex, getFollowCounts, getCollectionCount, Profile, CollectionItemWithIndex } from "@/lib/database";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const ProfilePage = () => {
-  const [activeTab, setActiveTab] = useState<"posts" | "collection">("posts");
+  const [activeTab, setActiveTab] = useState<"posts" | "collection" | "index">("posts");
   const [profile, setProfile] = useState<Profile | null>(null);
-  const [collection, setCollection] = useState<CollectionItem[]>([]);
+  const [collection, setCollection] = useState<CollectionItemWithIndex[]>([]);
   const [stats, setStats] = useState({ followers: 0, following: 0, collection: 0 });
   const [loading, setLoading] = useState(true);
   
@@ -29,7 +30,7 @@ const ProfilePage = () => {
       try {
         const [profileData, collectionData, followCounts, collectionCount] = await Promise.all([
           getProfile(user.id),
-          getUserCollection(user.id),
+          getCollectionWithIndex(user.id),
           getFollowCounts(user.id),
           getCollectionCount(user.id),
         ]);
@@ -118,13 +119,17 @@ const ProfilePage = () => {
             <p className="text-sm mt-1">Scan items to add to your collection</p>
           </div>
         )
-      ) : listItems.length > 0 ? (
-        <CollectionList items={listItems} />
+      ) : activeTab === "collection" ? (
+        listItems.length > 0 ? (
+          <CollectionList items={listItems} />
+        ) : (
+          <div className="p-8 text-center text-foreground-secondary">
+            <p>Your collection is empty</p>
+            <p className="text-sm mt-1">Use the scanner to add items</p>
+          </div>
+        )
       ) : (
-        <div className="p-8 text-center text-foreground-secondary">
-          <p>Your collection is empty</p>
-          <p className="text-sm mt-1">Use the scanner to add items</p>
-        </div>
+        <IndexRanking items={collection} loading={false} />
       )}
     </div>
   );
