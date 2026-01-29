@@ -15,7 +15,7 @@ export interface Listing {
   source_country: string;
   external_url?: string;
   user_id?: string;
-  created_at: string;
+  created_at?: string;
 }
 
 interface ListingCardProps {

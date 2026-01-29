@@ -2,3 +2,6 @@ project_id = "tsnlbfjltskscgyidgdt"
 
 [functions.analyze-collectible]
 verify_jwt = false
+
+[functions.fetch-listings]
+verify_jwt = false
