@@ -15,6 +15,9 @@ import Notifications from "./pages/Notifications";
 import Profile from "./pages/Profile";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
+import ListingDetails from "./pages/ListingDetails";
+import PaymentSuccess from "./pages/PaymentSuccess";
+import PaymentCanceled from "./pages/PaymentCanceled";
 
 const queryClient = new QueryClient();
 
@@ -47,6 +50,9 @@ const AppContent = () => {
       <Routes>
         <Route path="/auth" element={<Auth />} />
         <Route path="/scanner" element={<Scanner />} />
+        <Route path="/listing/:id" element={<ListingDetails />} />
+        <Route path="/payment-success" element={<PaymentSuccess />} />
+        <Route path="/payment-canceled" element={<PaymentCanceled />} />
         <Route
           path="/*"
           element={

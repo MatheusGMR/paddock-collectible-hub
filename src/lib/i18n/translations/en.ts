@@ -237,4 +237,20 @@ export const en: Translations = {
     unauthorized: "Unauthorized",
     networkError: "Connection error",
   },
+
+  // Checkout
+  checkout: {
+    buyNow: "Buy Now",
+    securePayment: "Secure Payment",
+    processing: "Processing...",
+    paymentSuccess: "Payment Approved!",
+    paymentSuccessDesc: "Your payment was processed successfully.",
+    paymentCanceled: "Payment Canceled",
+    paymentCanceledDesc: "You canceled the payment. Would you like to try again?",
+    tryAgain: "Try Again",
+    backToMarket: "Back to Market",
+    contactSeller: "Contact Seller",
+    orderConfirmed: "Order Confirmed",
+    viewOrder: "View Order",
+  },
 };

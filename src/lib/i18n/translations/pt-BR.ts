@@ -235,6 +235,22 @@ export const ptBR = {
     unauthorized: "Não autorizado",
     networkError: "Erro de conexão",
   },
+
+  // Checkout
+  checkout: {
+    buyNow: "Comprar Agora",
+    securePayment: "Pagamento Seguro",
+    processing: "Processando...",
+    paymentSuccess: "Pagamento Aprovado!",
+    paymentSuccessDesc: "Seu pagamento foi processado com sucesso.",
+    paymentCanceled: "Pagamento Cancelado",
+    paymentCanceledDesc: "Você cancelou o pagamento. Deseja tentar novamente?",
+    tryAgain: "Tentar Novamente",
+    backToMarket: "Voltar ao Mercado",
+    contactSeller: "Entrar em Contato",
+    orderConfirmed: "Pedido Confirmado",
+    viewOrder: "Ver Pedido",
+  },
 };
 
 export type Translations = typeof ptBR;
