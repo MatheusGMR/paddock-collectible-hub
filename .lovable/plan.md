@@ -1,219 +1,230 @@
 
-# Plano: Câmera Aprimorada com Captura de Foto/Vídeo e Índice 100 Pontos
+
+# Plano: Captura Múltipla de Carros com Carrossel
 
 ## Resumo das Mudanças Solicitadas
 
-1. **Índice de Valor = 100 pontos** - Manter a soma total em 100 para facilitar a contagem
-2. **Análise mais rápida** - Otimizar o modelo de IA para velocidade sem perder qualidade
-3. **Botão de câmera redesenhado** - Trocar "Capture & Analyze" por um botão de câmera circular com símbolo de IA/raio sutil
-4. **Captura dupla (foto/vídeo)** - Clique = foto, segurar = gravar vídeo
-5. **Postar vídeo no perfil** - Após gravar, poder compartilhar na rede
+1. **Limite rigoroso de carros por foto** - Definir e avaliar a quantidade máxima de carros que podem ser identificados em uma única imagem
+2. **Exibição em carrossel** - Quando múltiplos carros forem detectados, mostrar cards em formato de carrossel deslizável
+3. **Remoção progressiva** - À medida que o usuário adiciona cada carro à coleção, o card desaparece e o próximo é exibido automaticamente
 
 ---
 
-## 1. Índice de Valor = 100 Pontos
+## 1. Limite de Carros por Foto
 
-### Situação Atual
-O sistema já está configurado para totalizar 100 pontos:
-- Raridade: 35 pts
-- Condição: 25 pts
-- Fabricante: 15 pts
-- Escala: 10 pts
-- Idade: 10 pts
-- Origem: 5 pts
-- **Total: 100 pts** ✓
+### Análise Técnica
+Com base em testes de modelos de visão e considerações práticas:
 
-### Ação
-Nenhuma mudança necessária - o sistema já está correto! Apenas confirmarei que o prompt da IA reforça isso.
+| Quantidade | Viabilidade | Qualidade da Análise |
+|------------|-------------|---------------------|
+| 1-2 carros | Excelente | Detecção precisa de todos os detalhes |
+| 3-4 carros | Boa | Boa detecção, possível perda de detalhes menores |
+| 5-6 carros | Moderada | Detecção básica, raridade/condição imprecisos |
+| 7+ carros | Não recomendado | Muitos erros, processamento lento |
 
----
+**Limite proposto: Máximo de 5 carros por foto**
 
-## 2. Análise Mais Rápida
+Este limite equilibra:
+- Qualidade da análise individual
+- Tempo de resposta aceitável
+- Espaço no carrossel mobile
 
-### Mudança Proposta
-Trocar o modelo de IA de `openai/gpt-5` para `google/gemini-3-flash-preview`:
-- Modelo mais rápido
-- Excelente para análise de imagens
-- Mantém qualidade para identificação de colecionáveis
-
-### Arquivo a Modificar
-- `supabase/functions/analyze-collectible/index.ts`
-  - Linha 144: trocar `model: "openai/gpt-5"` por `model: "google/gemini-3-flash-preview"`
+### Implementação no Prompt da IA
+O prompt será modificado para:
+1. Detectar múltiplos carros na imagem
+2. Retornar um array de resultados
+3. Limitar a 5 itens, priorizando os mais visíveis/centrais
 
 ---
 
-## 3. Botão de Câmera Redesenhado
+## 2. Nova Estrutura de Resposta da IA
 
-### Design Atual
-```text
-┌─────────────────────────────────────┐
-│  Posicione o item no centro         │
-│                                     │
-│  [    📷 Capture & Analyze    ]     │ ← Botão retangular com texto
-│                                     │
-└─────────────────────────────────────┘
+### Formato Atual (um carro)
+```json
+{
+  "identified": true,
+  "realCar": { ... },
+  "collectible": { ... },
+  "priceIndex": { ... }
+}
 ```
 
-### Novo Design
-```text
-┌─────────────────────────────────────┐
-│  Posicione o item no centro         │
-│                                     │
-│            ╭─────────╮              │
-│            │   ⚡    │              │ ← Botão circular grande
-│            │   ◯    │              │    com ícone de raio/IA sutil
-│            ╰─────────╯              │
-│    Toque para foto • Segure para    │
-│              gravar vídeo           │
-└─────────────────────────────────────┘
-```
-
-### Novo Componente
-Criar `src/components/scanner/CaptureButton.tsx`:
-- Botão circular grande (80x80px ou similar)
-- Ícone de raio (Zap do Lucide) centralizado, em tom sutil (primary/30)
-- Círculo interno quando pressionado para indicar gravação
-- Estados visuais:
-  - Padrão: círculo branco com raio sutil
-  - Hover/pressionado: escala ligeiramente
-  - Gravando: anel vermelho pulsante ao redor
-
----
-
-## 4. Captura Dupla: Foto + Vídeo
-
-### Comportamento
-| Interação | Ação | Resultado |
-|-----------|------|-----------|
-| Clique rápido (< 500ms) | Captura foto | Mesmo comportamento atual |
-| Segurar (> 500ms) | Inicia gravação de vídeo | Grava até soltar ou limite de 30s |
-| Soltar após segurar | Para gravação | Mostra preview do vídeo |
-
-### Implementação Técnica
-
-#### Estados Novos em `ScannerView.tsx`
-```typescript
-const [isRecording, setIsRecording] = useState(false);
-const [recordedVideo, setRecordedVideo] = useState<Blob | null>(null);
-const [recordingDuration, setRecordingDuration] = useState(0);
-const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-const chunksRef = useRef<Blob[]>([]);
-const pressTimerRef = useRef<NodeJS.Timeout | null>(null);
-```
-
-#### Handlers para o Botão
-```typescript
-const handlePressStart = () => {
-  // Inicia timer - se segurar > 500ms, começa gravação
-  pressTimerRef.current = setTimeout(() => {
-    startRecording();
-  }, 500);
-};
-
-const handlePressEnd = () => {
-  // Se timer ainda ativo, foi clique rápido = foto
-  if (pressTimerRef.current) {
-    clearTimeout(pressTimerRef.current);
-    pressTimerRef.current = null;
-    capturePhoto();
-  } else if (isRecording) {
-    // Estava gravando, para o vídeo
-    stopRecording();
-  }
-};
-```
-
-#### Funções de Gravação
-```typescript
-const startRecording = async () => {
-  if (!streamRef.current) return;
-  
-  const mediaRecorder = new MediaRecorder(streamRef.current, {
-    mimeType: 'video/webm;codecs=vp9'
-  });
-  
-  chunksRef.current = [];
-  mediaRecorder.ondataavailable = (e) => {
-    if (e.data.size > 0) chunksRef.current.push(e.data);
-  };
-  
-  mediaRecorder.onstop = () => {
-    const blob = new Blob(chunksRef.current, { type: 'video/webm' });
-    setRecordedVideo(blob);
-  };
-  
-  mediaRecorder.start();
-  mediaRecorderRef.current = mediaRecorder;
-  setIsRecording(true);
-};
-
-const stopRecording = () => {
-  mediaRecorderRef.current?.stop();
-  setIsRecording(false);
-};
+### Novo Formato (múltiplos carros)
+```json
+{
+  "identified": true,
+  "count": 3,
+  "items": [
+    {
+      "realCar": { ... },
+      "collectible": { ... },
+      "priceIndex": { ... }
+    },
+    {
+      "realCar": { ... },
+      "collectible": { ... },
+      "priceIndex": { ... }
+    },
+    {
+      "realCar": { ... },
+      "collectible": { ... },
+      "priceIndex": { ... }
+    }
+  ],
+  "warning": "Foram detectados 7 carros. Exibindo os 5 mais visíveis."
+}
 ```
 
 ---
 
-## 5. Postar Vídeo no Perfil
+## 3. Interface de Carrossel
 
-### Fluxo Após Gravar Vídeo
+### Layout Visual
 ```text
 ┌─────────────────────────────────────────────────────────────────────────┐
-│  Fluxo de Vídeo                                                         │
+│                                                                         │
+│                         [Imagem Capturada]                              │
+│                                                                         │
 ├─────────────────────────────────────────────────────────────────────────┤
 │                                                                         │
-│  Usuário segura botão                                                   │
-│       ↓                                                                 │
-│  Grava vídeo (max 30s)                                                  │
-│       ↓                                                                 │
-│  Solta o botão → Para gravação                                          │
-│       ↓                                                                 │
-│  Mostra preview do vídeo                                                │
-│       ↓                                                                 │
-│  ┌─────────────────────────────────────┐                                │
-│  │  [▶️ Preview do Vídeo]              │                                │
-│  │                                     │                                │
-│  │  [Postar Vídeo]  [Gravar Outro]     │                                │
-│  └─────────────────────────────────────┘                                │
-│       ↓                                                                 │
-│  [Postar Vídeo] → Abre CreatePostDialog com vídeo                       │
+│   ← Deslize para ver mais (2 de 3)                                      │
+│                                                                         │
+│  ┌───────────────────────────────────────────────────────────────────┐  │
+│  │                                                                   │  │
+│  │   Ferrari 250 GTO                                        ⚡ 87   │  │
+│  │   1962                                                           │  │
+│  │                                                                   │  │
+│  │   Fabricante: Hot Wheels Premium                                 │  │
+│  │   Escala: 1:64                                                   │  │
+│  │   ...                                                            │  │
+│  │                                                                   │  │
+│  │   [Adicionar à Coleção] [Pular para Próximo]                     │  │
+│  │                                                                   │  │
+│  └───────────────────────────────────────────────────────────────────┘  │
+│                                                                         │
+│                           ● ○ ○                                         │
+│                       (indicadores)                                     │
 │                                                                         │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
 
-### Nota sobre Análise de Vídeo
-Para vídeos, não faremos análise automática da IA (seria lento demais). O usuário posta o vídeo direto, sem adicionar à coleção. Para adicionar à coleção, precisa usar foto.
+### Comportamento do Carrossel
+1. **Swipe horizontal** - Navegar entre os carros detectados
+2. **Indicadores de paginação** - Pontos mostrando posição atual
+3. **Contador** - "2 de 3" ou "2/3"
+4. **Animação suave** - Transição fade/slide entre cards
 
 ---
 
-## Arquivos a Modificar
+## 4. Fluxo de Adição com Remoção Progressiva
 
+### Comportamento ao Adicionar
+```text
+┌─────────────────────────────────────────────────────────────────────────┐
+│  Usuário adiciona carro #1 à coleção                                    │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                         │
+│  1. Card do carro #1 faz animação de "check" ✓                          │
+│       ↓                                                                 │
+│  2. Card desliza para fora (animação slide-left + fade)                 │
+│       ↓                                                                 │
+│  3. Carrossel move automaticamente para carro #2                        │
+│       ↓                                                                 │
+│  4. Contagem atualiza: "1 de 2" (removeu o #1)                          │
+│       ↓                                                                 │
+│  5. Se era o último, mostra tela de conclusão                           │
+│                                                                         │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### Opções por Card
+| Botão | Ação |
+|-------|------|
+| **Adicionar à Coleção** | Adiciona o carro, remove card, vai para próximo |
+| **Pular** | Mantém na lista mas vai para próximo (pode voltar) |
+| **Postar Agora** | Adiciona + abre dialog de post |
+
+### Tela de Conclusão
+Após processar todos os carros (ou pular todos):
+```text
+┌─────────────────────────────────────────────────────────────────────────┐
+│                                                                         │
+│                            ✅                                           │
+│                                                                         │
+│          3 carros adicionados à coleção!                                │
+│                                                                         │
+│   [Escanear Novamente]   [Ver Minha Coleção]                            │
+│                                                                         │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 5. Arquivos a Modificar
+
+### Edge Function
 | Arquivo | Mudanças |
 |---------|----------|
-| `supabase/functions/analyze-collectible/index.ts` | Trocar modelo para Gemini Flash |
-| `src/components/scanner/ScannerView.tsx` | Adicionar estados/lógica de vídeo, substituir botão |
-| `src/components/scanner/CaptureButton.tsx` | **NOVO** - Botão circular com ícone IA |
-| `src/lib/i18n/translations/pt-BR.ts` | Adicionar textos de vídeo |
-| `src/lib/i18n/translations/en.ts` | Adicionar textos de vídeo |
-| `src/components/posts/CreatePostDialog.tsx` | Suportar vídeo além de imagem |
-| `src/lib/api/posts.ts` | Função para upload de vídeo |
+| `supabase/functions/analyze-collectible/index.ts` | Modificar prompt para detectar múltiplos carros, retornar array, limitar a 5 |
+
+### Componente Scanner
+| Arquivo | Mudanças |
+|---------|----------|
+| `src/components/scanner/ScannerView.tsx` | Novo estado para array de resultados, lógica de carrossel, remoção progressiva |
+
+### Novo Componente
+| Arquivo | Propósito |
+|---------|-----------|
+| `src/components/scanner/ResultCarousel.tsx` | **NOVO** - Componente de carrossel para exibir múltiplos resultados |
+
+### Traduções
+| Arquivo | Mudanças |
+|---------|----------|
+| `src/lib/i18n/translations/pt-BR.ts` | Novos textos para multi-car |
+| `src/lib/i18n/translations/en.ts` | Novos textos para multi-car |
 
 ---
 
-## Novas Traduções
+## 6. Novos Estados no Scanner
+
+```typescript
+// Estado atual (um resultado)
+const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
+
+// Novos estados (múltiplos resultados)
+const [analysisResults, setAnalysisResults] = useState<AnalysisResult[]>([]);
+const [currentResultIndex, setCurrentResultIndex] = useState(0);
+const [addedItems, setAddedItems] = useState<Set<number>>(new Set()); // índices já adicionados
+const [skippedItems, setSkippedItems] = useState<Set<number>>(new Set()); // índices pulados
+```
+
+---
+
+## 7. Novo Prompt para IA
+
+O prompt da Edge Function será atualizado para:
+
+1. **Detectar quantidade** - "Analise a imagem e conte quantos carros colecionáveis estão presentes"
+2. **Priorizar visíveis** - "Se houver mais de 5, analise apenas os 5 mais visíveis/centrais"
+3. **Retornar array** - "Retorne um array 'items' com cada carro identificado"
+4. **Informar excesso** - "Se detectar mais de 5, inclua um campo 'warning' informando"
+
+---
+
+## 8. Novas Traduções
 
 ### Português (pt-BR)
 ```typescript
 scanner: {
   // ... existentes
-  holdToRecord: "Segure para gravar vídeo",
-  recording: "Gravando...",
-  tapToCapture: "Toque para foto",
-  videoRecorded: "Vídeo gravado!",
-  postVideo: "Postar Vídeo",
-  recordAgain: "Gravar Outro",
-  maxDuration: "Máximo 30 segundos",
+  multipleCarsDetected: "carros detectados",
+  swipeToSee: "Deslize para ver todos",
+  skipToNext: "Pular",
+  addingProgress: "de",
+  allItemsProcessed: "Todos processados!",
+  itemsAdded: "itens adicionados",
+  maxCarsWarning: "Muitos carros na foto. Exibindo os 5 mais visíveis.",
+  viewCollection: "Ver Coleção",
 }
 ```
 
@@ -221,50 +232,64 @@ scanner: {
 ```typescript
 scanner: {
   // ... existing
-  holdToRecord: "Hold to record video",
-  recording: "Recording...",
-  tapToCapture: "Tap to capture",
-  videoRecorded: "Video recorded!",
-  postVideo: "Post Video",
-  recordAgain: "Record Again",
-  maxDuration: "Maximum 30 seconds",
+  multipleCarsDetected: "cars detected",
+  swipeToSee: "Swipe to see all",
+  skipToNext: "Skip",
+  addingProgress: "of",
+  allItemsProcessed: "All done!",
+  itemsAdded: "items added",
+  maxCarsWarning: "Too many cars in photo. Showing 5 most visible.",
+  viewCollection: "View Collection",
 }
 ```
 
 ---
 
-## Detalhes do CaptureButton
+## 9. Estrutura do ResultCarousel
 
-### Visual do Componente
-```text
-        ╭──────────────────╮
-        │                  │
-        │    ╭────────╮    │
-        │    │   ⚡   │    │  ← Raio sutil (opacity 30%)
-        │    │        │    │
-        │    ╰────────╯    │
-        │                  │
-        ╰──────────────────╯
-              80x80px
-          Borda branca 3px
+```typescript
+interface ResultCarouselProps {
+  results: AnalysisResult[];
+  capturedImage: string;
+  onAddToCollection: (index: number) => Promise<void>;
+  onSkip: (index: number) => void;
+  onComplete: () => void;
+  addedIndices: Set<number>;
+}
+
+const ResultCarousel = ({
+  results,
+  capturedImage,
+  onAddToCollection,
+  onSkip,
+  onComplete,
+  addedIndices,
+}: ResultCarouselProps) => {
+  // Usa Embla Carousel (já instalado)
+  // Filtra resultados já adicionados para não exibir
+  // Mostra animação de saída quando item é adicionado
+  // Mostra tela de conclusão quando todos processados
+};
 ```
-
-### Estados Visuais
-| Estado | Visual |
-|--------|--------|
-| Normal | Círculo branco com raio azul sutil |
-| Hover | Escala 1.05x |
-| Pressionado | Escala 0.95x, fundo ligeiramente azul |
-| Gravando | Anel vermelho pulsante, duração exibida |
 
 ---
 
 ## Resumo da Implementação
 
-1. **Modelo IA mais rápido** → 1 linha de mudança
-2. **Botão de captura redesenhado** → Novo componente
-3. **Gravação de vídeo** → Estados + MediaRecorder API
-4. **Postar vídeo** → Extensão do CreatePostDialog
-5. **Traduções** → Novos textos em PT/EN
+| Passo | Descrição |
+|-------|-----------|
+| 1 | Modificar prompt da IA para detectar múltiplos carros (máx 5) |
+| 2 | Atualizar Edge Function para retornar array de resultados |
+| 3 | Criar componente `ResultCarousel` usando Embla |
+| 4 | Modificar `ScannerView` para suportar múltiplos resultados |
+| 5 | Implementar lógica de remoção progressiva com animações |
+| 6 | Adicionar traduções para novos textos |
+| 7 | Testar fluxo completo: captura → análise → carrossel → adição |
 
-O índice já totaliza 100 pontos, então essa parte está pronta!
+### Considerações de UX
+
+- **Feedback visual claro** quando um carro é adicionado (animação ✓)
+- **Possibilidade de voltar** para carros pulados antes de finalizar
+- **Contador visível** mostrando progresso (2 de 3)
+- **Botão de conclusão rápida** para adicionar todos de uma vez
+
