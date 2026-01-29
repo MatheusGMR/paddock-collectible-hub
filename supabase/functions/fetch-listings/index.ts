@@ -124,7 +124,7 @@ serve(async (req) => {
     const searchData = await searchResponse.json();
     console.log(`Firecrawl returned ${searchData.data?.length || 0} results`);
 
-    // Parse search results into listings
+    // Parse search results into listings - only include those with REAL images
     if (searchData.data && Array.isArray(searchData.data)) {
       for (const result of searchData.data) {
         // Determine which store this result is from
@@ -136,6 +136,15 @@ serve(async (req) => {
           const [sourceCode, sourceConfig] = storeEntry;
           sourcesStatus[sourceCode] = "success";
 
+          // Get real image from metadata - skip listings without real images
+          const realImage = result.metadata?.ogImage || result.metadata?.image;
+          
+          // Only add listings that have a real image from the source
+          if (!realImage) {
+            console.log(`Skipping listing without real image: ${result.title}`);
+            continue;
+          }
+
           // Extract price from content (basic pattern matching)
           const priceMatch = result.markdown?.match(/(?:R\$|US\$|\$|¥)\s*([\d.,]+)/);
           const price = priceMatch ? parseFloat(priceMatch[1].replace(",", ".")) : 0;
@@ -146,8 +155,7 @@ serve(async (req) => {
             price: price,
             currency: sourceConfig.country === "BR" ? "BRL" : 
                      sourceConfig.country === "JP" ? "JPY" : "USD",
-            image_url: result.metadata?.ogImage || 
-                      "https://images.unsplash.com/photo-1594787318286-3d835c1d207f?w=300&h=300&fit=crop",
+            image_url: realImage,
             source: sourceCode,
             source_name: sourceConfig.name,
             source_country: sourceConfig.country,

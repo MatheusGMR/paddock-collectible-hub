@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { ListingCard, Listing } from "./ListingCard";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface ListingFeedProps {
   listings: Listing[];
@@ -16,6 +17,7 @@ export const ListingFeed = ({
   onLoadMore 
 }: ListingFeedProps) => {
   const observerTarget = useRef<HTMLDivElement>(null);
+  const { t } = useLanguage();
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -51,9 +53,9 @@ export const ListingFeed = ({
   if (listings.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
-        <p className="text-lg font-medium text-foreground">Nenhum anúncio encontrado</p>
+        <p className="text-lg font-medium text-foreground">{t.mercado.noListingsFound}</p>
         <p className="text-sm text-foreground-secondary mt-1">
-          Tente ajustar os filtros ou buscar por outro termo
+          {t.mercado.noListingsFoundDesc}
         </p>
       </div>
     );
