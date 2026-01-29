@@ -1,12 +1,12 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useNavigate } from "react-router-dom";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { SplashScreen } from "@/components/SplashScreen";
-import { AuthProvider } from "@/contexts/AuthContext";
+import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import Index from "./pages/Index";
 import Mercado from "./pages/Mercado";
 import Scanner from "./pages/Scanner";
@@ -17,35 +17,63 @@ import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
-const App = () => {
+// Component that handles splash → auth check → redirect
+const AppContent = () => {
   const [showSplash, setShowSplash] = useState(true);
+  const { user, loading } = useAuth();
+  const navigate = useNavigate();
 
+  // After splash completes, redirect based on auth state
+  const handleSplashComplete = () => {
+    setShowSplash(false);
+    
+    // If not loading and no user, redirect to auth
+    if (!loading && !user) {
+      navigate("/auth", { replace: true });
+    }
+  };
+
+  // Also handle redirect when auth state changes after splash
+  useEffect(() => {
+    if (!showSplash && !loading && !user) {
+      navigate("/auth", { replace: true });
+    }
+  }, [showSplash, loading, user, navigate]);
+
+  return (
+    <>
+      {showSplash && <SplashScreen onComplete={handleSplashComplete} />}
+      <Routes>
+        <Route path="/auth" element={<Auth />} />
+        <Route path="/scanner" element={<Scanner />} />
+        <Route
+          path="/*"
+          element={
+            <AppLayout>
+              <Routes>
+                <Route path="/" element={<Index />} />
+                <Route path="/mercado" element={<Mercado />} />
+                <Route path="/notifications" element={<Notifications />} />
+                <Route path="/profile" element={<Profile />} />
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </AppLayout>
+          }
+        />
+      </Routes>
+    </>
+  );
+};
+
+const App = () => {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <TooltipProvider>
           <Toaster />
           <Sonner />
-          {showSplash && <SplashScreen onComplete={() => setShowSplash(false)} />}
           <BrowserRouter>
-            <Routes>
-              <Route path="/auth" element={<Auth />} />
-              <Route path="/scanner" element={<Scanner />} />
-              <Route
-                path="/*"
-                element={
-                  <AppLayout>
-                    <Routes>
-                      <Route path="/" element={<Index />} />
-                      <Route path="/mercado" element={<Mercado />} />
-                      <Route path="/notifications" element={<Notifications />} />
-                      <Route path="/profile" element={<Profile />} />
-                      <Route path="*" element={<NotFound />} />
-                    </Routes>
-                  </AppLayout>
-                }
-              />
-            </Routes>
+            <AppContent />
           </BrowserRouter>
         </TooltipProvider>
       </AuthProvider>
