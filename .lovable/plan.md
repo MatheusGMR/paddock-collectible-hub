@@ -1,204 +1,270 @@
 
-# Plano de Implementação: Internacionalização, Busca Avançada, Imagens Reais e Fluxo de Postagem
+# Plano: Câmera Aprimorada com Captura de Foto/Vídeo e Índice 100 Pontos
 
 ## Resumo das Mudanças Solicitadas
 
-1. **Internacionalização (i18n)** - Exibir conteúdo em Português ou Inglês baseado na localização do usuário
-2. **Busca Avançada no Mercado** - Permitir busca por nome do carro ou ano nos repositórios reais
-3. **Imagens Reais** - Usar apenas imagens dos anúncios reais, não placeholder genéricos
-4. **Fluxo "Adicionar → Postar"** - Após adicionar item à coleção, oferecer opção de postar imediatamente
+1. **Índice de Valor = 100 pontos** - Manter a soma total em 100 para facilitar a contagem
+2. **Análise mais rápida** - Otimizar o modelo de IA para velocidade sem perder qualidade
+3. **Botão de câmera redesenhado** - Trocar "Capture & Analyze" por um botão de câmera circular com símbolo de IA/raio sutil
+4. **Captura dupla (foto/vídeo)** - Clique = foto, segurar = gravar vídeo
+5. **Postar vídeo no perfil** - Após gravar, poder compartilhar na rede
 
 ---
 
-## 1. Sistema de Internacionalização (i18n)
+## 1. Índice de Valor = 100 Pontos
 
-### O que será feito
-- Detectar o idioma do usuário automaticamente baseado no IP/localização do navegador
-- Criar sistema de traduções para Português (PT-BR) e Inglês (EN)
-- Traduzir todos os textos da interface dinamicamente
+### Situação Atual
+O sistema já está configurado para totalizar 100 pontos:
+- Raridade: 35 pts
+- Condição: 25 pts
+- Fabricante: 15 pts
+- Escala: 10 pts
+- Idade: 10 pts
+- Origem: 5 pts
+- **Total: 100 pts** ✓
 
-### Arquivos novos a criar
-- `src/lib/i18n/index.ts` - Core do sistema de traduções
-- `src/lib/i18n/translations/pt-BR.ts` - Traduções em Português
-- `src/lib/i18n/translations/en.ts` - Traduções em Inglês
-- `src/contexts/LanguageContext.tsx` - Context para gerenciar idioma globalmente
-- `src/hooks/useTranslation.ts` - Hook para usar traduções nos componentes
+### Ação
+Nenhuma mudança necessária - o sistema já está correto! Apenas confirmarei que o prompt da IA reforça isso.
 
-### Arquivos a modificar
-Todos os componentes com texto visível ao usuário serão atualizados para usar o hook `useTranslation()`:
-- `src/components/scanner/ScannerView.tsx`
-- `src/components/mercado/MercadoHeader.tsx`
-- `src/components/mercado/SourceFilter.tsx`
-- `src/components/mercado/ListingFeed.tsx`
-- `src/components/feed/PostCard.tsx`
-- `src/pages/Auth.tsx`
-- `src/pages/Profile.tsx`
-- Entre outros
+---
 
-### Como funcionará a detecção de idioma
+## 2. Análise Mais Rápida
+
+### Mudança Proposta
+Trocar o modelo de IA de `openai/gpt-5` para `google/gemini-3-flash-preview`:
+- Modelo mais rápido
+- Excelente para análise de imagens
+- Mantém qualidade para identificação de colecionáveis
+
+### Arquivo a Modificar
+- `supabase/functions/analyze-collectible/index.ts`
+  - Linha 144: trocar `model: "openai/gpt-5"` por `model: "google/gemini-3-flash-preview"`
+
+---
+
+## 3. Botão de Câmera Redesenhado
+
+### Design Atual
 ```text
-┌─────────────────────────────────────────────────────────────────────────┐
-│  Fluxo de Detecção de Idioma                                            │
-├─────────────────────────────────────────────────────────────────────────┤
-│                                                                         │
-│  1. App carrega                                                         │
-│       ↓                                                                 │
-│  2. Verifica localStorage (preferência salva)                           │
-│       ↓                                                                 │
-│  3. Se não existir, usa navigator.language                              │
-│       ↓                                                                 │
-│  4. Se começar com "pt" → Português                                     │
-│     Senão → Inglês (padrão)                                             │
-│       ↓                                                                 │
-│  5. Usuário pode mudar manualmente (toggle no perfil)                   │
-│                                                                         │
-└─────────────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────┐
+│  Posicione o item no centro         │
+│                                     │
+│  [    📷 Capture & Analyze    ]     │ ← Botão retangular com texto
+│                                     │
+└─────────────────────────────────────┘
 ```
 
+### Novo Design
+```text
+┌─────────────────────────────────────┐
+│  Posicione o item no centro         │
+│                                     │
+│            ╭─────────╮              │
+│            │   ⚡    │              │ ← Botão circular grande
+│            │   ◯    │              │    com ícone de raio/IA sutil
+│            ╰─────────╯              │
+│    Toque para foto • Segure para    │
+│              gravar vídeo           │
+└─────────────────────────────────────┘
+```
+
+### Novo Componente
+Criar `src/components/scanner/CaptureButton.tsx`:
+- Botão circular grande (80x80px ou similar)
+- Ícone de raio (Zap do Lucide) centralizado, em tom sutil (primary/30)
+- Círculo interno quando pressionado para indicar gravação
+- Estados visuais:
+  - Padrão: círculo branco com raio sutil
+  - Hover/pressionado: escala ligeiramente
+  - Gravando: anel vermelho pulsante ao redor
+
 ---
 
-## 2. Busca Avançada no Mercado
+## 4. Captura Dupla: Foto + Vídeo
 
-### O que será feito
-- Melhorar a barra de busca para aceitar nome do carro OU ano
-- Enviar a query de busca para a API Firecrawl que já está configurada
-- A busca será feita nos sites reais (eBay, Mercado Livre, OLX, etc.)
+### Comportamento
+| Interação | Ação | Resultado |
+|-----------|------|-----------|
+| Clique rápido (< 500ms) | Captura foto | Mesmo comportamento atual |
+| Segurar (> 500ms) | Inicia gravação de vídeo | Grava até soltar ou limite de 30s |
+| Soltar após segurar | Para gravação | Mostra preview do vídeo |
 
-### Arquivos a modificar
-- `src/components/mercado/MercadoHeader.tsx` - Melhorar placeholder e hints de busca
-- `src/pages/Mercado.tsx` - Ajustar lógica de debounce e passagem de query
-- `supabase/functions/fetch-listings/index.ts` - Já está configurado para receber query personalizada
+### Implementação Técnica
 
-### Comportamento atual vs. novo
-| Aspecto | Atual | Novo |
-|---------|-------|------|
-| Placeholder | "Buscar no mercado..." | "Ex: Porsche 911, 1967, Skyline R34..." |
-| Query padrão | "hot wheels diecast" | Query do usuário diretamente |
-| Busca por ano | Não suportado | Sim, o ano é passado na query |
-
----
-
-## 3. Imagens Reais dos Anúncios
-
-### Problema identificado
-O código atual usa imagens placeholder do Unsplash quando a API não retorna imagem:
+#### Estados Novos em `ScannerView.tsx`
 ```typescript
-image_url: result.metadata?.ogImage || 
-  "https://images.unsplash.com/photo-1594787318286-3d835c1d207f?w=300&h=300&fit=crop"
+const [isRecording, setIsRecording] = useState(false);
+const [recordedVideo, setRecordedVideo] = useState<Blob | null>(null);
+const [recordingDuration, setRecordingDuration] = useState(0);
+const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+const chunksRef = useRef<Blob[]>([]);
+const pressTimerRef = useRef<NodeJS.Timeout | null>(null);
 ```
 
-### Solução
-1. **Edge Function**: Não usar fallback genérico - se não tiver imagem real, não incluir o listing
-2. **Mock Data**: Remover completamente quando houver dados reais disponíveis
-3. **UI**: Mostrar indicador de "sem imagem" ao invés de imagem genérica (quando necessário manter listing)
+#### Handlers para o Botão
+```typescript
+const handlePressStart = () => {
+  // Inicia timer - se segurar > 500ms, começa gravação
+  pressTimerRef.current = setTimeout(() => {
+    startRecording();
+  }, 500);
+};
 
-### Arquivos a modificar
-- `supabase/functions/fetch-listings/index.ts` - Filtrar listings sem imagem real ou marcar claramente
-- `src/components/mercado/ListingCard.tsx` - Adicionar estado visual para "imagem indisponível"
-- `src/data/mockListings.ts` - Marcar como dados de demonstração claramente ou remover quando não usado
+const handlePressEnd = () => {
+  // Se timer ainda ativo, foi clique rápido = foto
+  if (pressTimerRef.current) {
+    clearTimeout(pressTimerRef.current);
+    pressTimerRef.current = null;
+    capturePhoto();
+  } else if (isRecording) {
+    // Estava gravando, para o vídeo
+    stopRecording();
+  }
+};
+```
 
-### Nova lógica de filtragem
-```text
-┌─────────────────────────────────────────────────────────────────────────┐
-│  Processamento de Imagens                                               │
-├─────────────────────────────────────────────────────────────────────────┤
-│                                                                         │
-│  Resultado do Firecrawl                                                 │
-│       ↓                                                                 │
-│  Tem ogImage ou imagem no metadata?                                     │
-│       ↓                                                                 │
-│  SIM → Usa imagem real                                                  │
-│  NÃO → Descarta listing ou marca como "sem foto"                        │
-│                                                                         │
-└─────────────────────────────────────────────────────────────────────────┘
+#### Funções de Gravação
+```typescript
+const startRecording = async () => {
+  if (!streamRef.current) return;
+  
+  const mediaRecorder = new MediaRecorder(streamRef.current, {
+    mimeType: 'video/webm;codecs=vp9'
+  });
+  
+  chunksRef.current = [];
+  mediaRecorder.ondataavailable = (e) => {
+    if (e.data.size > 0) chunksRef.current.push(e.data);
+  };
+  
+  mediaRecorder.onstop = () => {
+    const blob = new Blob(chunksRef.current, { type: 'video/webm' });
+    setRecordedVideo(blob);
+  };
+  
+  mediaRecorder.start();
+  mediaRecorderRef.current = mediaRecorder;
+  setIsRecording(true);
+};
+
+const stopRecording = () => {
+  mediaRecorderRef.current?.stop();
+  setIsRecording(false);
+};
 ```
 
 ---
 
-## 4. Fluxo "Adicionar à Coleção → Postar"
+## 5. Postar Vídeo no Perfil
 
-### O que será feito
-Após o usuário adicionar um item à coleção via Scanner, mostrar imediatamente a opção de criar um post para compartilhar na rede.
-
-### Arquivos a modificar
-- `src/components/scanner/ScannerView.tsx` - Adicionar botão "Postar" após sucesso de adicionar
-- Criar: `src/components/posts/CreatePostDialog.tsx` - Modal para criar post com legenda
-
-### Arquivos a criar
-- `src/lib/api/posts.ts` - Funções para criar posts no banco de dados
-
-### Novo fluxo de UX
+### Fluxo Após Gravar Vídeo
 ```text
 ┌─────────────────────────────────────────────────────────────────────────┐
-│  Fluxo Atual                                                            │
+│  Fluxo de Vídeo                                                         │
 ├─────────────────────────────────────────────────────────────────────────┤
 │                                                                         │
-│  Scanner → Captura → Análise → Adicionar à Coleção → FIM                │
-│                                                                         │
-└─────────────────────────────────────────────────────────────────────────┘
-
-┌─────────────────────────────────────────────────────────────────────────┐
-│  Novo Fluxo                                                             │
-├─────────────────────────────────────────────────────────────────────────┤
-│                                                                         │
-│  Scanner → Captura → Análise → Adicionar à Coleção                      │
-│                                            ↓                            │
-│                                     Sucesso! ✅                         │
-│                                            ↓                            │
-│                            ┌───────────────────────────────┐            │
-│                            │  Deseja compartilhar na rede? │            │
-│                            │  [Postar Agora] [Mais Tarde]  │            │
-│                            └───────────────────────────────┘            │
-│                                            ↓                            │
-│                               [Postar Agora] clicado                    │
-│                                            ↓                            │
-│                            ┌───────────────────────────────┐            │
-│                            │  📷 [Imagem do item]          │            │
-│                            │  ✏️ Escreva uma legenda...    │            │
-│                            │  [Publicar]                   │            │
-│                            └───────────────────────────────┘            │
+│  Usuário segura botão                                                   │
+│       ↓                                                                 │
+│  Grava vídeo (max 30s)                                                  │
+│       ↓                                                                 │
+│  Solta o botão → Para gravação                                          │
+│       ↓                                                                 │
+│  Mostra preview do vídeo                                                │
+│       ↓                                                                 │
+│  ┌─────────────────────────────────────┐                                │
+│  │  [▶️ Preview do Vídeo]              │                                │
+│  │                                     │                                │
+│  │  [Postar Vídeo]  [Gravar Outro]     │                                │
+│  └─────────────────────────────────────┘                                │
+│       ↓                                                                 │
+│  [Postar Vídeo] → Abre CreatePostDialog com vídeo                       │
 │                                                                         │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
 
-### Mudança na UI do Scanner (após adicionar)
-Os botões atuais:
-- "Add to Collection" 
-- "Scan Again"
-
-Novos botões após sucesso:
-- "Postar na Rede" (primário, destaque)
-- "Escanear Outro" (secundário)
+### Nota sobre Análise de Vídeo
+Para vídeos, não faremos análise automática da IA (seria lento demais). O usuário posta o vídeo direto, sem adicionar à coleção. Para adicionar à coleção, precisa usar foto.
 
 ---
 
-## Resumo Técnico
+## Arquivos a Modificar
 
-### Arquivos Novos (6 arquivos)
-| Arquivo | Propósito |
-|---------|-----------|
-| `src/lib/i18n/index.ts` | Sistema de traduções |
-| `src/lib/i18n/translations/pt-BR.ts` | Textos em Português |
-| `src/lib/i18n/translations/en.ts` | Textos em Inglês |
-| `src/contexts/LanguageContext.tsx` | Context global de idioma |
-| `src/hooks/useTranslation.ts` | Hook para usar traduções |
-| `src/components/posts/CreatePostDialog.tsx` | Modal de criação de post |
-| `src/lib/api/posts.ts` | API para criar posts |
+| Arquivo | Mudanças |
+|---------|----------|
+| `supabase/functions/analyze-collectible/index.ts` | Trocar modelo para Gemini Flash |
+| `src/components/scanner/ScannerView.tsx` | Adicionar estados/lógica de vídeo, substituir botão |
+| `src/components/scanner/CaptureButton.tsx` | **NOVO** - Botão circular com ícone IA |
+| `src/lib/i18n/translations/pt-BR.ts` | Adicionar textos de vídeo |
+| `src/lib/i18n/translations/en.ts` | Adicionar textos de vídeo |
+| `src/components/posts/CreatePostDialog.tsx` | Suportar vídeo além de imagem |
+| `src/lib/api/posts.ts` | Função para upload de vídeo |
 
-### Arquivos Modificados (8+ arquivos)
-| Arquivo | Tipo de Mudança |
-|---------|-----------------|
-| `supabase/functions/fetch-listings/index.ts` | Filtrar listings sem imagem real |
-| `src/components/scanner/ScannerView.tsx` | Adicionar fluxo de postar + traduções |
-| `src/components/mercado/MercadoHeader.tsx` | Melhorar busca + traduções |
-| `src/components/mercado/ListingCard.tsx` | Estado "sem imagem" |
-| `src/pages/Mercado.tsx` | Lógica de busca avançada |
-| `src/App.tsx` | Wrap com LanguageProvider |
-| Múltiplos componentes | Aplicar `useTranslation()` |
+---
 
-### Priorização Sugerida
-1. **Sistema i18n** (base para traduções)
-2. **Fluxo Postar após Adicionar** (melhoria de UX direta)
-3. **Busca Avançada** (já funcional, melhorias pontuais)
-4. **Imagens Reais** (depende do retorno da API Firecrawl)
+## Novas Traduções
 
+### Português (pt-BR)
+```typescript
+scanner: {
+  // ... existentes
+  holdToRecord: "Segure para gravar vídeo",
+  recording: "Gravando...",
+  tapToCapture: "Toque para foto",
+  videoRecorded: "Vídeo gravado!",
+  postVideo: "Postar Vídeo",
+  recordAgain: "Gravar Outro",
+  maxDuration: "Máximo 30 segundos",
+}
+```
+
+### Inglês (en)
+```typescript
+scanner: {
+  // ... existing
+  holdToRecord: "Hold to record video",
+  recording: "Recording...",
+  tapToCapture: "Tap to capture",
+  videoRecorded: "Video recorded!",
+  postVideo: "Post Video",
+  recordAgain: "Record Again",
+  maxDuration: "Maximum 30 seconds",
+}
+```
+
+---
+
+## Detalhes do CaptureButton
+
+### Visual do Componente
+```text
+        ╭──────────────────╮
+        │                  │
+        │    ╭────────╮    │
+        │    │   ⚡   │    │  ← Raio sutil (opacity 30%)
+        │    │        │    │
+        │    ╰────────╯    │
+        │                  │
+        ╰──────────────────╯
+              80x80px
+          Borda branca 3px
+```
+
+### Estados Visuais
+| Estado | Visual |
+|--------|--------|
+| Normal | Círculo branco com raio azul sutil |
+| Hover | Escala 1.05x |
+| Pressionado | Escala 0.95x, fundo ligeiramente azul |
+| Gravando | Anel vermelho pulsante, duração exibida |
+
+---
+
+## Resumo da Implementação
+
+1. **Modelo IA mais rápido** → 1 linha de mudança
+2. **Botão de captura redesenhado** → Novo componente
+3. **Gravação de vídeo** → Estados + MediaRecorder API
+4. **Postar vídeo** → Extensão do CreatePostDialog
+5. **Traduções** → Novos textos em PT/EN
+
+O índice já totaliza 100 pontos, então essa parte está pronta!
