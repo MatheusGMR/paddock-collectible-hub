@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
-import { countryLabels, categoryLabels } from "@/data/marketplaceSources";
 import { cn } from "@/lib/utils";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface SourceFilterProps {
   selectedCountry: string | null;
@@ -9,33 +9,35 @@ interface SourceFilterProps {
   onCategoryChange: (category: string | null) => void;
 }
 
-const countries = [
-  { code: null, label: "Todos", flag: "🌎" },
-  { code: "BR", label: "Brasil", flag: "🇧🇷" },
-  { code: "US", label: "EUA", flag: "🇺🇸" },
-  { code: "JP", label: "Japão", flag: "🇯🇵" },
-  { code: "CN", label: "China", flag: "🇨🇳" },
-];
-
-const categories = [
-  { code: null, label: "Todas" },
-  { code: "marketplace", label: "Marketplaces" },
-  { code: "specialized", label: "Especializadas" },
-  { code: "official", label: "Oficiais" },
-  { code: "internal", label: "Paddock" },
-];
-
 export const SourceFilter = ({
   selectedCountry,
   onCountryChange,
   selectedCategory,
   onCategoryChange,
 }: SourceFilterProps) => {
+  const { t } = useLanguage();
+
+  const countries = [
+    { code: null, label: t.mercado.countries.all, flag: "🌎" },
+    { code: "BR", label: t.mercado.countries.BR, flag: "🇧🇷" },
+    { code: "US", label: t.mercado.countries.US, flag: "🇺🇸" },
+    { code: "JP", label: t.mercado.countries.JP, flag: "🇯🇵" },
+    { code: "CN", label: t.mercado.countries.CN, flag: "🇨🇳" },
+  ];
+
+  const categories = [
+    { code: null, label: t.mercado.categories.all },
+    { code: "marketplace", label: t.mercado.categories.marketplace },
+    { code: "specialized", label: t.mercado.categories.specialized },
+    { code: "official", label: t.mercado.categories.official },
+    { code: "internal", label: t.mercado.categories.internal },
+  ];
+
   return (
     <div className="px-4 pb-4 space-y-3">
       {/* Country Filter */}
       <div>
-        <p className="text-xs font-medium text-foreground-secondary mb-2">Região</p>
+        <p className="text-xs font-medium text-foreground-secondary mb-2">{t.mercado.region}</p>
         <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
           {countries.map((country) => (
             <Button
@@ -59,7 +61,7 @@ export const SourceFilter = ({
 
       {/* Category Filter */}
       <div>
-        <p className="text-xs font-medium text-foreground-secondary mb-2">Tipo de Loja</p>
+        <p className="text-xs font-medium text-foreground-secondary mb-2">{t.mercado.storeType}</p>
         <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
           {categories.map((category) => (
             <Button

@@ -3,6 +3,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { SourceFilter } from "./SourceFilter";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface MercadoHeaderProps {
   searchQuery: string;
@@ -22,6 +23,7 @@ export const MercadoHeader = ({
   onCategoryChange,
 }: MercadoHeaderProps) => {
   const [showFilters, setShowFilters] = useState(false);
+  const { t } = useLanguage();
 
   return (
     <header className="sticky top-0 z-40 bg-background/95 backdrop-blur-lg border-b border-border">
@@ -30,7 +32,7 @@ export const MercadoHeader = ({
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-foreground-secondary" />
           <Input
-            placeholder="Buscar no mercado..."
+            placeholder={t.mercado.searchPlaceholder}
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
             className="pl-10 bg-muted border-0 text-foreground placeholder:text-foreground-secondary focus-visible:ring-1 focus-visible:ring-primary"

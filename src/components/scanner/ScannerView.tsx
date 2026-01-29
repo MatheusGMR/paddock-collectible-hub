@@ -1,13 +1,15 @@
 import { useState, useRef, useCallback, useEffect } from "react";
-import { X, Zap, RotateCcw, Check, Plus, Camera, SwitchCamera, Loader2 } from "lucide-react";
+import { X, RotateCcw, Check, Plus, Camera, SwitchCamera, Loader2, Share } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { addToCollection, checkItemInCollection } from "@/lib/database";
 import { useNavigate } from "react-router-dom";
 import { IndexBadge } from "@/components/index/IndexBadge";
 import { IndexBreakdown } from "@/components/index/IndexBreakdown";
+import { CreatePostDialog } from "@/components/posts/CreatePostDialog";
 import { PriceIndex } from "@/lib/priceIndex";
 
 interface AnalysisResult {
@@ -41,12 +43,15 @@ export const ScannerView = () => {
   const [facingMode, setFacingMode] = useState<"environment" | "user">("environment");
   const [isAddingToCollection, setIsAddingToCollection] = useState(false);
   const [breakdownOpen, setBreakdownOpen] = useState(false);
+  const [showPostDialog, setShowPostDialog] = useState(false);
+  const [addedCollectionItemId, setAddedCollectionItemId] = useState<string | null>(null);
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const { toast } = useToast();
   const { user } = useAuth();
+  const { t } = useLanguage();
   const navigate = useNavigate();
 
   // Effect to attach stream to video element when cameraActive changes
@@ -103,8 +108,8 @@ export const ScannerView = () => {
         setCameraError(true);
         setIsInitializing(false);
         toast({
-          title: "Camera Error",
-          description: "Could not access camera. Please check permissions.",
+          title: t.common.error,
+          description: t.scanner.cameraError,
           variant: "destructive",
         });
       }
@@ -123,7 +128,7 @@ export const ScannerView = () => {
         videoRef.current.srcObject = null;
       }
     };
-  }, [toast]);
+  }, [toast, t]);
 
   const startCamera = useCallback(async () => {
     console.log("[Scanner] Manual startCamera called");
@@ -154,12 +159,12 @@ export const ScannerView = () => {
       setCameraError(true);
       setIsInitializing(false);
       toast({
-        title: "Camera Error",
-        description: "Could not access camera. Please check permissions.",
+        title: t.common.error,
+        description: t.scanner.cameraError,
         variant: "destructive",
       });
     }
-  }, [facingMode, toast]);
+  }, [facingMode, toast, t]);
 
   const stopCamera = useCallback(() => {
     console.log("[Scanner] Stopping camera");
@@ -209,8 +214,8 @@ export const ScannerView = () => {
 
       if (!data.identified) {
         toast({
-          title: "Item Not Identified",
-          description: "Could not identify a collectible car in the image. Please try again with a clearer photo.",
+          title: t.scanner.itemNotIdentified,
+          description: t.scanner.itemNotIdentifiedDesc,
           variant: "destructive",
         });
         setAnalysisResult(null);
@@ -230,20 +235,20 @@ export const ScannerView = () => {
     } catch (error) {
       console.error("Analysis error:", error);
       toast({
-        title: "Analysis Failed",
-        description: error instanceof Error ? error.message : "Failed to analyze the image. Please try again.",
+        title: t.scanner.analysisFailed,
+        description: t.scanner.analysisFailedDesc,
         variant: "destructive",
       });
     } finally {
       setIsScanning(false);
     }
-  }, [stopCamera, toast, user]);
+  }, [stopCamera, toast, user, t]);
 
   const handleAddToCollection = async () => {
     if (!user) {
       toast({
-        title: "Sign in required",
-        description: "Please sign in to add items to your collection.",
+        title: t.scanner.signInRequired,
+        description: t.scanner.signInRequiredDesc,
       });
       navigate("/auth");
       return;
@@ -254,7 +259,7 @@ export const ScannerView = () => {
     setIsAddingToCollection(true);
 
     try {
-      await addToCollection(
+      const collectionItem = await addToCollection(
         user.id,
         {
           real_car_brand: analysisResult.realCar.brand,
@@ -276,16 +281,17 @@ export const ScannerView = () => {
       );
 
       toast({
-        title: "Added to collection!",
-        description: `${analysisResult.realCar.brand} ${analysisResult.realCar.model} has been added.`,
+        title: t.scanner.addedToCollection,
+        description: `${analysisResult.realCar.brand} ${analysisResult.realCar.model}`,
       });
       
       setIsInCollection(true);
+      setAddedCollectionItemId(collectionItem.id);
     } catch (error) {
       console.error("Add to collection error:", error);
       toast({
-        title: "Error",
-        description: "Failed to add item to collection. Please try again.",
+        title: t.scanner.addError,
+        description: t.scanner.addErrorDesc,
         variant: "destructive",
       });
     } finally {
@@ -300,6 +306,7 @@ export const ScannerView = () => {
     setBreakdownOpen(false);
     setCameraError(false);
     setIsInitializing(true);
+    setAddedCollectionItemId(null);
     // Restart camera
     startCamera();
   }, [startCamera]);
@@ -308,6 +315,11 @@ export const ScannerView = () => {
     stopCamera();
     window.history.back();
   }, [stopCamera]);
+
+  const handlePostSuccess = () => {
+    // Optionally navigate to feed or show success
+    setShowPostDialog(false);
+  };
 
   return (
     <div className="fixed inset-0 z-50 bg-background flex flex-col">
@@ -371,7 +383,7 @@ export const ScannerView = () => {
             <div className="flex flex-col items-center gap-3">
               <Loader2 className="h-12 w-12 text-primary animate-spin" />
               <p className="text-sm font-medium text-primary">
-                Analyzing collectible...
+                {t.scanner.analyzing}
               </p>
             </div>
           </div>
@@ -384,7 +396,7 @@ export const ScannerView = () => {
           {isInCollection && (
             <div className="flex items-center gap-3 mb-4 p-3 bg-primary/10 rounded-lg">
               <Check className="h-5 w-5 text-primary" />
-              <span className="text-sm font-medium text-primary">Already in your collection</span>
+              <span className="text-sm font-medium text-primary">{t.scanner.alreadyInCollection}</span>
             </div>
           )}
 
@@ -397,7 +409,7 @@ export const ScannerView = () => {
                 {analysisResult.realCar.year}
               </p>
               <div className="p-3 bg-muted rounded-lg">
-                <p className="text-xs uppercase tracking-wide text-primary mb-1">Historical Fact</p>
+                <p className="text-xs uppercase tracking-wide text-primary mb-1">{t.scanner.historicalFact}</p>
                 <p className="text-sm text-foreground/90 leading-relaxed">
                   {analysisResult.realCar.historicalFact}
                 </p>
@@ -414,14 +426,14 @@ export const ScannerView = () => {
             )}
 
             <div className="border-t border-border pt-4">
-              <p className="text-xs uppercase tracking-wide text-primary mb-3">Collectible Details</p>
+              <p className="text-xs uppercase tracking-wide text-primary mb-3">{t.scanner.collectibleDetails}</p>
               <div className="grid grid-cols-2 gap-3">
-                <InfoRow label="Manufacturer" value={analysisResult.collectible.manufacturer} />
-                <InfoRow label="Scale" value={analysisResult.collectible.scale} />
-                <InfoRow label="Year" value={analysisResult.collectible.estimatedYear} />
-                <InfoRow label="Origin" value={analysisResult.collectible.origin} />
-                <InfoRow label="Series" value={analysisResult.collectible.series || "N/A"} />
-                <InfoRow label="Condition" value={analysisResult.collectible.condition} />
+                <InfoRow label={t.scanner.manufacturer} value={analysisResult.collectible.manufacturer} />
+                <InfoRow label={t.scanner.scale} value={analysisResult.collectible.scale} />
+                <InfoRow label={t.scanner.year} value={analysisResult.collectible.estimatedYear} />
+                <InfoRow label={t.scanner.origin} value={analysisResult.collectible.origin} />
+                <InfoRow label={t.scanner.series} value={analysisResult.collectible.series || "N/A"} />
+                <InfoRow label={t.scanner.condition} value={analysisResult.collectible.condition} />
               </div>
               {analysisResult.collectible.notes && (
                 <p className="text-xs text-foreground-secondary mt-3">
@@ -431,7 +443,7 @@ export const ScannerView = () => {
             </div>
 
             <div className="flex gap-3">
-              {!isInCollection && (
+              {!isInCollection ? (
                 <Button 
                   onClick={handleAddToCollection}
                   disabled={isAddingToCollection}
@@ -442,7 +454,15 @@ export const ScannerView = () => {
                   ) : (
                     <Plus className="h-4 w-4 mr-2" />
                   )}
-                  Add to Collection
+                  {t.scanner.addToCollection}
+                </Button>
+              ) : (
+                <Button 
+                  onClick={() => setShowPostDialog(true)}
+                  className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90"
+                >
+                  <Share className="h-4 w-4 mr-2" />
+                  {t.scanner.postToFeed}
                 </Button>
               )}
               <Button
@@ -451,7 +471,7 @@ export const ScannerView = () => {
                 onClick={resetScan}
               >
                 <RotateCcw className="h-4 w-4 mr-2" />
-                Scan Again
+                {t.scanner.scanAgain}
               </Button>
             </div>
           </div>
@@ -474,65 +494,63 @@ export const ScannerView = () => {
               <>
                 <Loader2 className="h-8 w-8 text-primary animate-spin" />
                 <p className="text-sm text-foreground-secondary text-center">
-                  Abrindo câmera…
+                  {t.scanner.openingCamera}
                 </p>
               </>
             ) : cameraError ? (
               <>
                 <p className="text-sm text-foreground-secondary text-center">
-                  Não foi possível acessar a câmera. Verifique as permissões.
+                  {t.scanner.cameraError}
                 </p>
                 <Button
                   onClick={startCamera}
                   className="w-full bg-primary text-primary-foreground hover:bg-primary/90 h-12"
                 >
                   <Camera className="h-5 w-5 mr-2" />
-                  Tentar Novamente
+                  {t.scanner.tryAgain}
                 </Button>
               </>
             ) : cameraActive ? (
               <>
                 <p className="text-sm text-foreground-secondary text-center">
-                  Position your collectible in the frame
+                  {t.scanner.positionItem}
                 </p>
                 <Button
                   onClick={capturePhoto}
-                  disabled={isScanning}
                   className="w-full bg-primary text-primary-foreground hover:bg-primary/90 h-12"
                 >
-                  <Zap className="h-5 w-5 mr-2" />
-                  Capture & Analyze
-                </Button>
-              </>
-            ) : capturedImage ? (
-              <>
-                <p className="text-sm text-foreground-secondary text-center">
-                  Analysis failed. Try again with a clearer photo.
-                </p>
-                <Button
-                  onClick={resetScan}
-                  className="w-full bg-primary text-primary-foreground hover:bg-primary/90 h-12"
-                >
-                  <RotateCcw className="h-5 w-5 mr-2" />
-                  Try Again
+                  <Camera className="h-5 w-5 mr-2" />
+                  {t.scanner.capture}
                 </Button>
               </>
             ) : (
               <>
                 <p className="text-sm text-foreground-secondary text-center">
-                  Tap below to open camera and scan your collectible
+                  {t.scanner.cameraError}
                 </p>
                 <Button
                   onClick={startCamera}
                   className="w-full bg-primary text-primary-foreground hover:bg-primary/90 h-12"
                 >
                   <Camera className="h-5 w-5 mr-2" />
-                  Open Camera
+                  {t.scanner.tryAgain}
                 </Button>
               </>
             )}
           </div>
         </div>
+      )}
+
+      {/* Post Dialog */}
+      {capturedImage && analysisResult && (
+        <CreatePostDialog
+          open={showPostDialog}
+          onOpenChange={setShowPostDialog}
+          imageBase64={capturedImage}
+          collectionItemId={addedCollectionItemId || undefined}
+          itemTitle={`${analysisResult.realCar.brand} ${analysisResult.realCar.model}`}
+          onSuccess={handlePostSuccess}
+        />
       )}
     </div>
   );
@@ -540,7 +558,7 @@ export const ScannerView = () => {
 
 const InfoRow = ({ label, value }: { label: string; value: string }) => (
   <div>
-    <p className="text-[10px] uppercase tracking-wide text-foreground-secondary">{label}</p>
+    <p className="text-xs text-foreground-secondary">{label}</p>
     <p className="text-sm font-medium text-foreground">{value}</p>
   </div>
 );
