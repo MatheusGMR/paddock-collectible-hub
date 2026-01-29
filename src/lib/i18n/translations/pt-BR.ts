@@ -1,0 +1,199 @@
+export const ptBR = {
+  // Common
+  common: {
+    loading: "Carregando...",
+    error: "Erro",
+    success: "Sucesso",
+    cancel: "Cancelar",
+    confirm: "Confirmar",
+    save: "Salvar",
+    delete: "Excluir",
+    edit: "Editar",
+    close: "Fechar",
+    back: "Voltar",
+    next: "Próximo",
+    search: "Buscar",
+    filter: "Filtrar",
+    all: "Todos",
+    none: "Nenhum",
+    yes: "Sim",
+    no: "Não",
+    or: "ou",
+    and: "e",
+  },
+
+  // Auth
+  auth: {
+    signIn: "Entrar",
+    signUp: "Cadastrar",
+    signOut: "Sair",
+    email: "E-mail",
+    password: "Senha",
+    confirmPassword: "Confirmar senha",
+    forgotPassword: "Esqueci minha senha",
+    createAccount: "Criar conta",
+    alreadyHaveAccount: "Já tem uma conta?",
+    dontHaveAccount: "Não tem uma conta?",
+    signInWith: "Entrar com",
+    welcomeBack: "Bem-vindo de volta",
+    createYourAccount: "Crie sua conta",
+    enterEmail: "Digite seu e-mail",
+    enterPassword: "Digite sua senha",
+    signingIn: "Entrando...",
+    signingUp: "Cadastrando...",
+    signInError: "Erro ao entrar",
+    signUpError: "Erro ao cadastrar",
+    signUpSuccess: "Conta criada com sucesso!",
+    checkEmail: "Verifique seu e-mail para confirmar sua conta",
+  },
+
+  // Navigation
+  nav: {
+    home: "Início",
+    market: "Mercado",
+    scanner: "Scanner",
+    notifications: "Notificações",
+    profile: "Perfil",
+  },
+
+  // Scanner
+  scanner: {
+    title: "Scanner",
+    openingCamera: "Abrindo câmera...",
+    cameraError: "Não foi possível acessar a câmera. Verifique as permissões.",
+    tryAgain: "Tentar Novamente",
+    positionItem: "Posicione o item no centro",
+    capture: "Capturar",
+    analyzing: "Analisando colecionável...",
+    itemNotIdentified: "Item Não Identificado",
+    itemNotIdentifiedDesc: "Não foi possível identificar um carro colecionável na imagem. Tente novamente com uma foto mais clara.",
+    addToCollection: "Adicionar à Coleção",
+    addedToCollection: "Adicionado à coleção!",
+    alreadyInCollection: "Já está na sua coleção",
+    scanAgain: "Escanear Outro",
+    historicalFact: "Fato Histórico",
+    collectibleDetails: "Detalhes do Colecionável",
+    manufacturer: "Fabricante",
+    scale: "Escala",
+    year: "Ano",
+    origin: "Origem",
+    series: "Série",
+    condition: "Condição",
+    signInRequired: "É necessário entrar",
+    signInRequiredDesc: "Entre na sua conta para adicionar itens à sua coleção.",
+    analysisFailed: "Falha na análise",
+    analysisFailedDesc: "Não foi possível analisar a imagem. Tente novamente.",
+    addError: "Erro ao adicionar",
+    addErrorDesc: "Não foi possível adicionar o item à coleção. Tente novamente.",
+    postToFeed: "Postar na Rede",
+    shareSuccess: "Deseja compartilhar?",
+    laterOption: "Depois",
+  },
+
+  // Mercado (Marketplace)
+  mercado: {
+    title: "Mercado",
+    searchPlaceholder: "Ex: Porsche 911, 1967, Skyline R34...",
+    noListingsFound: "Nenhum anúncio encontrado",
+    noListingsFoundDesc: "Tente ajustar os filtros ou buscar por outro termo",
+    region: "Região",
+    storeType: "Tipo de Loja",
+    countries: {
+      all: "Todos",
+      BR: "Brasil",
+      US: "EUA",
+      JP: "Japão",
+      CN: "China",
+    },
+    categories: {
+      all: "Todas",
+      marketplace: "Marketplaces",
+      specialized: "Especializadas",
+      official: "Oficiais",
+      internal: "Paddock",
+    },
+    externalSearchUnavailable: "Busca externa indisponível",
+    showingDemo: "Exibindo anúncios de demonstração",
+    noImage: "Sem imagem",
+  },
+
+  // Profile
+  profile: {
+    title: "Perfil",
+    collection: "Coleção",
+    posts: "Posts",
+    followers: "Seguidores",
+    following: "Seguindo",
+    editProfile: "Editar Perfil",
+    settings: "Configurações",
+    language: "Idioma",
+    portuguese: "Português",
+    english: "Inglês",
+    items: "itens",
+  },
+
+  // Feed
+  feed: {
+    title: "Feed",
+    forYou: "Para Você",
+    following: "Seguindo",
+    noPostsYet: "Nenhum post ainda",
+    beFirstToPost: "Seja o primeiro a compartilhar!",
+  },
+
+  // Posts
+  posts: {
+    createPost: "Criar Post",
+    writeCaption: "Escreva uma legenda...",
+    publish: "Publicar",
+    publishing: "Publicando...",
+    postSuccess: "Post publicado!",
+    postSuccessDesc: "Seu post foi compartilhado com sucesso.",
+    postError: "Erro ao publicar",
+    postErrorDesc: "Não foi possível publicar o post. Tente novamente.",
+    likes: "curtidas",
+    comments: "comentários",
+    share: "Compartilhar",
+  },
+
+  // Notifications
+  notifications: {
+    title: "Notificações",
+    noNotifications: "Nenhuma notificação",
+    noNotificationsDesc: "Você está em dia!",
+    likedYourPost: "curtiu seu post",
+    commentedOnPost: "comentou no seu post",
+    startedFollowing: "começou a te seguir",
+    today: "Hoje",
+    yesterday: "Ontem",
+    thisWeek: "Esta semana",
+  },
+
+  // Index/Price
+  index: {
+    priceIndex: "Índice de Preço",
+    breakdown: "Detalhamento",
+    rarity: "Raridade",
+    demand: "Demanda",
+    condition: "Condição",
+    age: "Idade",
+    tiers: {
+      legendary: "Lendário",
+      epic: "Épico",
+      rare: "Raro",
+      uncommon: "Incomum",
+      common: "Comum",
+    },
+  },
+
+  // Errors
+  errors: {
+    generic: "Algo deu errado",
+    tryAgain: "Tente novamente",
+    notFound: "Não encontrado",
+    unauthorized: "Não autorizado",
+    networkError: "Erro de conexão",
+  },
+};
+
+export type Translations = typeof ptBR;
