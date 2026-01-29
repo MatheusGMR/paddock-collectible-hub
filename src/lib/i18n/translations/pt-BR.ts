@@ -236,6 +236,58 @@ export const ptBR = {
     networkError: "Erro de conexão",
   },
 
+  // Onboarding
+  onboarding: {
+    skip: "Pular",
+    next: "Próximo",
+    getStarted: "Começar",
+    
+    // Slides
+    slide1Title: "Identifique Instantaneamente",
+    slide1Text: "Escaneie qualquer carrinho e descubra marca, modelo, ano e até o valor de mercado",
+    
+    slide2Title: "Organize Sua Coleção",
+    slide2Text: "Mantenha seu acervo catalogado com fotos, detalhes e histórico de aquisição",
+    
+    slide3Title: "Saiba o Valor Real",
+    slide3Text: "Acompanhe a valorização dos seus itens com nosso índice exclusivo",
+    
+    slide4Title: "Compre e Venda",
+    slide4Text: "Encontre peças raras em marketplaces do mundo todo em um só lugar",
+    
+    // Pricing slide
+    pricingTitle: "Comece Grátis!",
+    freeTrial: "7 dias grátis para experimentar tudo",
+    originalPrice: "R$ 49,90/mês",
+    discountedPrice: "R$ 19,90/mês",
+    discountBadge: "60% OFF",
+    limitedTime: "Oferta por tempo limitado",
+    startTrial: "Começar Trial Grátis",
+    skipForNow: "Pular por enquanto",
+    
+    // Features list
+    feature1: "Scanner de carrinhos com IA",
+    feature2: "Coleção digital ilimitada",
+    feature3: "Índice de preços em tempo real",
+    feature4: "Acesso ao Mercado integrado",
+    
+    // Subscription gate
+    trialExpired: "Seu período de teste acabou",
+    trialExpiredDesc: "Você aproveitou 7 dias grátis. Para continuar usando o Paddock, assine agora.",
+    subscribeNow: "Assinar Agora",
+    restoreSubscription: "Já sou assinante",
+  },
+
+  // Subscription
+  subscription: {
+    active: "Assinatura Ativa",
+    trial: "Período de Teste",
+    expired: "Expirado",
+    daysLeft: "dias restantes",
+    subscribedUntil: "Assinatura até",
+    managePlan: "Gerenciar Plano",
+  },
+
   // Checkout
   checkout: {
     buyNow: "Comprar Agora",

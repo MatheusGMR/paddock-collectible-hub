@@ -238,6 +238,58 @@ export const en: Translations = {
     networkError: "Connection error",
   },
 
+  // Onboarding
+  onboarding: {
+    skip: "Skip",
+    next: "Next",
+    getStarted: "Get Started",
+    
+    // Slides
+    slide1Title: "Identify Instantly",
+    slide1Text: "Scan any car and discover brand, model, year and market value",
+    
+    slide2Title: "Organize Your Collection",
+    slide2Text: "Keep your collection catalogued with photos, details and acquisition history",
+    
+    slide3Title: "Know the Real Value",
+    slide3Text: "Track your items appreciation with our exclusive index",
+    
+    slide4Title: "Buy and Sell",
+    slide4Text: "Find rare pieces from marketplaces around the world in one place",
+    
+    // Pricing slide
+    pricingTitle: "Start Free!",
+    freeTrial: "7 days free to try everything",
+    originalPrice: "$9.90/month",
+    discountedPrice: "$3.90/month",
+    discountBadge: "60% OFF",
+    limitedTime: "Limited time offer",
+    startTrial: "Start Free Trial",
+    skipForNow: "Skip for now",
+    
+    // Features list
+    feature1: "AI-powered car scanner",
+    feature2: "Unlimited digital collection",
+    feature3: "Real-time price index",
+    feature4: "Integrated marketplace access",
+    
+    // Subscription gate
+    trialExpired: "Your trial has ended",
+    trialExpiredDesc: "You enjoyed 7 free days. To continue using Paddock, subscribe now.",
+    subscribeNow: "Subscribe Now",
+    restoreSubscription: "Already subscribed",
+  },
+
+  // Subscription
+  subscription: {
+    active: "Active Subscription",
+    trial: "Trial Period",
+    expired: "Expired",
+    daysLeft: "days left",
+    subscribedUntil: "Subscribed until",
+    managePlan: "Manage Plan",
+  },
+
   // Checkout
   checkout: {
     buyNow: "Buy Now",

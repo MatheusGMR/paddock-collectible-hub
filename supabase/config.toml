@@ -8,3 +8,12 @@ verify_jwt = false
 
 [functions.create-payment]
 verify_jwt = false
+
+[functions.check-subscription]
+verify_jwt = false
+
+[functions.create-subscription]
+verify_jwt = false
+
+[functions.start-trial]
+verify_jwt = false
