@@ -33,7 +33,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
   });
 
   const checkSubscription = useCallback(async () => {
-    if (!session?.access_token) {
+    if (!user) {
       setState(prev => ({ ...prev, isLoading: false }));
       return;
     }
@@ -41,9 +41,16 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
     try {
       setState(prev => ({ ...prev, isLoading: true }));
 
+      // Get fresh session to ensure we have a valid token
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData.session?.access_token) {
+        setState(prev => ({ ...prev, isLoading: false }));
+        return;
+      }
+
       const { data, error } = await supabase.functions.invoke("check-subscription", {
         headers: {
-          Authorization: `Bearer ${session.access_token}`,
+          Authorization: `Bearer ${sessionData.session.access_token}`,
         },
       });
 
@@ -65,15 +72,16 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
       console.error("Failed to check subscription:", err);
       setState(prev => ({ ...prev, isLoading: false }));
     }
-  }, [session?.access_token]);
+  }, [user]);
 
   const startTrial = useCallback(async (): Promise<boolean> => {
-    if (!session?.access_token) return false;
+    const { data: sessionData } = await supabase.auth.getSession();
+    if (!sessionData.session?.access_token) return false;
 
     try {
       const { data, error } = await supabase.functions.invoke("start-trial", {
         headers: {
-          Authorization: `Bearer ${session.access_token}`,
+          Authorization: `Bearer ${sessionData.session.access_token}`,
         },
       });
 
@@ -98,15 +106,16 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
       console.error("Failed to start trial:", err);
       return false;
     }
-  }, [session?.access_token]);
+  }, []);
 
   const createCheckout = useCallback(async (): Promise<string | null> => {
-    if (!session?.access_token) return null;
+    const { data: sessionData } = await supabase.auth.getSession();
+    if (!sessionData.session?.access_token) return null;
 
     try {
       const { data, error } = await supabase.functions.invoke("create-subscription", {
         headers: {
-          Authorization: `Bearer ${session.access_token}`,
+          Authorization: `Bearer ${sessionData.session.access_token}`,
         },
       });
 
@@ -120,7 +129,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
       console.error("Failed to create checkout:", err);
       return null;
     }
-  }, [session?.access_token]);
+  }, []);
 
   // Check subscription when user logs in
   useEffect(() => {
