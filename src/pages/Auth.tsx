@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { lovable } from "@/integrations/lovable/index";
@@ -14,16 +14,23 @@ const Auth = () => {
   const [password, setPassword] = useState("");
   const [username, setUsername] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [appleLoading, setAppleLoading] = useState(false);
   
-  const { signIn, signUp } = useAuth();
+  const { signIn, signUp, user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (!authLoading && user) {
+      navigate("/", { replace: true });
+    }
+  }, [user, authLoading, navigate]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
+    setIsSubmitting(true);
 
     try {
       if (isLogin) {
@@ -47,7 +54,7 @@ const Auth = () => {
         variant: "destructive"
       });
     } finally {
-      setLoading(false);
+      setIsSubmitting(false);
     }
   };
 
@@ -132,10 +139,10 @@ const Auth = () => {
 
           <Button
             type="submit"
-            disabled={loading}
+            disabled={isSubmitting}
             className="w-full h-12 bg-primary text-primary-foreground hover:bg-primary/90 font-medium"
           >
-            {loading ? (
+            {isSubmitting ? (
               <Loader2 className="h-5 w-5 animate-spin" />
             ) : isLogin ? (
               "Sign In"
