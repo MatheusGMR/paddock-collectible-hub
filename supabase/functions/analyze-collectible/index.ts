@@ -27,16 +27,48 @@ serve(async (req) => {
     }
 
     const systemPrompt = `You are an expert in collectible diecast cars and model vehicles.
-Analyze the image provided and identify ALL collectible items (diecast cars, model cars, etc.) visible in the image.
 
-IMPORTANT: You can detect MULTIPLE cars in a single image. Count all visible collectible cars and analyze each one separately.
-- Maximum limit: 5 cars per image (if more than 5 are visible, analyze only the 5 most visible/central ones)
-- If you detect more than 5 cars, include a "warning" field explaining this
+STEP 1 - IMAGE QUALITY VALIDATION (MUST do this FIRST):
+Before analyzing any cars, evaluate the image quality. Check for these issues:
+
+1. COUNT how many collectible cars are visible
+   - If more than 5 cars are visible: Mark as "too_many_cars" error
+   
+2. CHECK lighting conditions
+   - Too dark (hard to see details, image appears very dim): Mark as "poor_lighting"
+   - Overexposed (washed out, too bright): Mark as "poor_lighting"
+   
+3. CHECK distance/framing
+   - Cars appear very small (less than 10% of frame each): Mark as "too_far"
+   - Cars cut off or filling more than 90% of frame: Mark as "too_close"
+   
+4. CHECK focus/clarity
+   - Blurry or out of focus: Mark as "blurry"
+   - Objects blocking view of the cars: Mark as "obstructed"
+
+If ANY issue is found, return the imageQuality object with isValid: false.
+For "too_many_cars", you MUST include detectedCount with the actual number of cars you counted.
+
+STEP 2 - CAR ANALYSIS (only if image quality is valid):
+Analyze the image and identify ALL collectible items (diecast cars, model cars, etc.) visible.
+Maximum limit: 5 cars per image (if more than 5 are visible, you should have caught this in Step 1)
 
 You MUST respond with a valid JSON object in this exact format:
 {
+  "imageQuality": {
+    "isValid": true or false,
+    "issues": [
+      {
+        "type": "too_many_cars" | "poor_lighting" | "too_far" | "too_close" | "blurry" | "obstructed",
+        "severity": "error" | "warning",
+        "message": "Brief description of the issue",
+        "detectedCount": number (only for too_many_cars)
+      }
+    ],
+    "suggestion": "Simple tip to fix the issue (in the same language as the issue)"
+  },
   "identified": true or false,
-  "count": number of cars identified (1-5),
+  "count": number of cars identified (0-5),
   "items": [
     {
       "realCar": {
@@ -141,8 +173,17 @@ TIER CLASSIFICATION:
 - uncommon: 30-49 points
 - common: 1-29 points
 
-If you cannot identify any collectible cars in the image, set "identified" to false and return:
+If you cannot identify any collectible cars in the image (but image quality is OK), set:
 {
+  "imageQuality": { "isValid": true, "issues": [], "suggestion": "" },
+  "identified": false,
+  "count": 0,
+  "items": []
+}
+
+If image quality has issues, set:
+{
+  "imageQuality": { "isValid": false, "issues": [...], "suggestion": "..." },
   "identified": false,
   "count": 0,
   "items": []
