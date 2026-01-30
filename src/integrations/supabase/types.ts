@@ -207,6 +207,7 @@ export type Database = {
           id: string
           image_url: string | null
           is_featured: boolean | null
+          is_launch: boolean | null
           language: string | null
           published_at: string | null
           source_logo: string | null
@@ -225,6 +226,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           is_featured?: boolean | null
+          is_launch?: boolean | null
           language?: string | null
           published_at?: string | null
           source_logo?: string | null
@@ -243,6 +245,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           is_featured?: boolean | null
+          is_launch?: boolean | null
           language?: string | null
           published_at?: string | null
           source_logo?: string | null
@@ -372,6 +375,39 @@ export type Database = {
         }
         Relationships: []
       }
+      push_subscriptions: {
+        Row: {
+          auth: string
+          created_at: string | null
+          endpoint: string
+          id: string
+          p256dh: string
+          topics: string[] | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          auth: string
+          created_at?: string | null
+          endpoint: string
+          id?: string
+          p256dh: string
+          topics?: string[] | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          auth?: string
+          created_at?: string | null
+          endpoint?: string
+          id?: string
+          p256dh?: string
+          topics?: string[] | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       user_collection: {
         Row: {
           acquired_at: string | null
@@ -417,6 +453,7 @@ export type Database = {
           id: string
           language: string | null
           notifications_enabled: boolean | null
+          push_enabled: boolean | null
           sources: string[] | null
           subcategories: string[] | null
           updated_at: string | null
@@ -428,6 +465,7 @@ export type Database = {
           id?: string
           language?: string | null
           notifications_enabled?: boolean | null
+          push_enabled?: boolean | null
           sources?: string[] | null
           subcategories?: string[] | null
           updated_at?: string | null
@@ -439,6 +477,7 @@ export type Database = {
           id?: string
           language?: string | null
           notifications_enabled?: boolean | null
+          push_enabled?: boolean | null
           sources?: string[] | null
           subcategories?: string[] | null
           updated_at?: string | null
