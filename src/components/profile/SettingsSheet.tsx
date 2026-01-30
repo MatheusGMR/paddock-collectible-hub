@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
+import { useNavigate } from "react-router-dom";
 import { 
   Settings, 
   Globe, 
@@ -9,8 +10,10 @@ import {
   CreditCard, 
   ChevronRight,
   Check,
-  Smartphone
+  Smartphone,
+  Shield
 } from "lucide-react";
+import { useAdmin } from "@/hooks/useAdmin";
 import {
   Sheet,
   SheetContent,
@@ -41,6 +44,8 @@ export const SettingsSheet = ({ open, onOpenChange, onSignOut }: SettingsSheetPr
   const { t } = useLanguage();
   const { user } = useAuth();
   const { status, daysLeft } = useSubscription();
+  const { isAdmin } = useAdmin();
+  const navigate = useNavigate();
   
   const [pushEnabled, setPushEnabled] = useState(false);
   const [pushLoading, setPushLoading] = useState(false);
@@ -240,6 +245,30 @@ export const SettingsSheet = ({ open, onOpenChange, onSignOut }: SettingsSheetPr
                 </div>
                 <ChevronRight className="h-5 w-5 text-muted-foreground" />
               </button>
+
+              {/* Admin Panel - Only for admins */}
+              {isAdmin && (
+                <button 
+                  onClick={() => {
+                    onOpenChange(false);
+                    navigate("/admin");
+                  }}
+                  className="w-full flex items-center justify-between p-4 hover:bg-muted/50 transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-full bg-amber-500/10 flex items-center justify-center">
+                      <Shield className="h-5 w-5 text-amber-500" />
+                    </div>
+                    <div className="text-left">
+                      <p className="text-foreground font-medium">Painel Admin</p>
+                      <p className="text-xs text-muted-foreground">
+                        Métricas e gerenciamento
+                      </p>
+                    </div>
+                  </div>
+                  <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                </button>
+              )}
               
               {/* Sign Out */}
               <button 

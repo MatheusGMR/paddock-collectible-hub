@@ -17,6 +17,7 @@ import Scanner from "./pages/Scanner";
 import Notifications from "./pages/Notifications";
 import Profile from "./pages/Profile";
 import UserProfile from "./pages/UserProfile";
+import Admin from "./pages/Admin";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 import ListingDetails from "./pages/ListingDetails";
@@ -154,6 +155,7 @@ const AppContent = () => {
         <Routes>
           <Route path="/auth" element={<Auth />} />
           <Route path="/scanner" element={<Scanner />} />
+          <Route path="/admin" element={<Admin />} />
           <Route path="/listing/:id" element={<ListingDetails />} />
           <Route path="/user/:userId" element={<UserProfile />} />
           <Route path="/payment-success" element={<PaymentSuccess />} />

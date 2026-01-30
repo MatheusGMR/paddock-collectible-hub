@@ -550,36 +550,13 @@ export type Database = {
       }
     }
     Views: {
-      admin_stats: {
-        Row: {
-          active_listings: number | null
-          total_collection_items: number | null
-          total_follows: number | null
-          total_items: number | null
-          total_likes: number | null
-          total_posts: number | null
-          total_profiles: number | null
-          total_users: number | null
-        }
-        Relationships: []
-      }
-      admin_subscription_stats: {
-        Row: {
-          count: number | null
-          date: string | null
-          status: string | null
-        }
-        Relationships: []
-      }
-      admin_user_growth: {
-        Row: {
-          date: string | null
-          new_users: number | null
-        }
-        Relationships: []
-      }
+      [_ in never]: never
     }
     Functions: {
+      get_admin_stats: { Args: never; Returns: Json }
+      get_admin_subscription_stats: { Args: never; Returns: Json }
+      get_admin_user_growth: { Args: never; Returns: Json }
+      get_admin_users: { Args: never; Returns: Json }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -587,6 +564,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_admin: { Args: never; Returns: boolean }
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"
