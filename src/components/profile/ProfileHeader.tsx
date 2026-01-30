@@ -1,4 +1,4 @@
-import { Settings } from "lucide-react";
+import { LogOut } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -28,9 +28,10 @@ export const ProfileHeader = ({ user, onEditProfile, onSettings }: ProfileHeader
         <h1 className="text-lg font-semibold">{user.username}</h1>
         <button 
           onClick={onSettings}
-          className="p-2 text-foreground hover:text-primary transition-colors"
+          className="p-2 text-foreground-secondary hover:text-destructive transition-colors"
+          title="Sair"
         >
-          <Settings className="h-5 w-5" />
+          <LogOut className="h-5 w-5" />
         </button>
       </div>
 
