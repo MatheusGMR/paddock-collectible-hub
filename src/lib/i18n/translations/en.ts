@@ -144,6 +144,19 @@ export const en: Translations = {
     addAnyway: "Add Anyway",
     discard: "Discard",
     color: "Color",
+    // Real car mode
+    modeCollectible: "Toy Car",
+    modeRealCar: "Real Car",
+    identifyingCar: "Identifying vehicle...",
+    searchingMiniatures: "Searching miniatures...",
+    realCarIdentified: "Car Identified",
+    foundMiniatures: "Miniatures Found",
+    noMiniaturesFound: "No miniatures found",
+    trySearchInMarket: "Try searching manually in the Market",
+    viewInMarket: "View in Market",
+    scanAnother: "Scan Another",
+    couldNotIdentify: "Could not identify the vehicle",
+    tryDifferentAngle: "Try capturing from a different angle",
   },
 
   // Mercado (Marketplace)
