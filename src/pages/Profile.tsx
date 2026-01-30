@@ -10,7 +10,7 @@ import { PhotoUploadSheet } from "@/components/profile/PhotoUploadSheet";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { getProfile, getCollectionWithIndex, getFollowCounts, getCollectionCount, updateProfile, Profile, CollectionItemWithIndex } from "@/lib/database";
-import { Loader2, Upload } from "lucide-react";
+import { Loader2, ImagePlus, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const ProfilePage = () => {
@@ -105,30 +105,24 @@ const ProfilePage = () => {
   }));
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen pb-20">
       <ProfileHeader 
         user={userData} 
         onEditProfile={() => setEditSheetOpen(true)}
+        onSettings={handleSignOut}
       />
       
-      <div className="px-4 pb-4 flex gap-2">
-        <Button
-          onClick={() => setUploadSheetOpen(true)}
-          className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90"
-        >
-          <Upload className="h-4 w-4 mr-2" />
-          {t.profile.uploadPhotos}
-        </Button>
-        <Button
-          variant="outline"
-          onClick={handleSignOut}
-          className="border-border text-foreground-secondary hover:bg-muted text-sm px-4"
-        >
-          {t.auth.signOut}
-        </Button>
-      </div>
-      
       <ProfileTabs activeTab={activeTab} onTabChange={setActiveTab} />
+
+      {/* Floating Upload Button */}
+      <button
+        onClick={() => setUploadSheetOpen(true)}
+        className="fixed bottom-24 right-4 z-40 flex items-center gap-2 px-4 py-3 bg-primary text-primary-foreground rounded-full font-medium text-sm transition-all active:scale-95 hover:bg-primary/90"
+        style={{ boxShadow: '0 4px 20px rgba(76, 195, 255, 0.3)' }}
+      >
+        <ImagePlus className="h-5 w-5" />
+        <span>{t.profile.uploadPhotos}</span>
+      </button>
 
       {activeTab === "posts" ? (
         gridPosts.length > 0 ? (
