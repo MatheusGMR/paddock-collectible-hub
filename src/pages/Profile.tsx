@@ -6,10 +6,11 @@ import { PostGrid } from "@/components/profile/PostGrid";
 import { CollectionList } from "@/components/profile/CollectionList";
 import { IndexRanking } from "@/components/index/IndexRanking";
 import { EditProfileSheet, ProfileData } from "@/components/profile/EditProfileSheet";
+import { PhotoUploadSheet } from "@/components/profile/PhotoUploadSheet";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { getProfile, getCollectionWithIndex, getFollowCounts, getCollectionCount, updateProfile, Profile, CollectionItemWithIndex } from "@/lib/database";
-import { Loader2 } from "lucide-react";
+import { Loader2, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const ProfilePage = () => {
@@ -19,6 +20,7 @@ const ProfilePage = () => {
   const [stats, setStats] = useState({ followers: 0, following: 0, collection: 0 });
   const [loading, setLoading] = useState(true);
   const [editSheetOpen, setEditSheetOpen] = useState(false);
+  const [uploadSheetOpen, setUploadSheetOpen] = useState(false);
   
   const { user, signOut } = useAuth();
   const { t } = useLanguage();
@@ -109,11 +111,18 @@ const ProfilePage = () => {
         onEditProfile={() => setEditSheetOpen(true)}
       />
       
-      <div className="px-4 pb-4">
+      <div className="px-4 pb-4 flex gap-2">
+        <Button
+          onClick={() => setUploadSheetOpen(true)}
+          className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90"
+        >
+          <Upload className="h-4 w-4 mr-2" />
+          {t.profile.uploadPhotos}
+        </Button>
         <Button
           variant="outline"
           onClick={handleSignOut}
-          className="w-full border-border text-foreground-secondary hover:bg-muted text-sm"
+          className="border-border text-foreground-secondary hover:bg-muted text-sm px-4"
         >
           {t.auth.signOut}
         </Button>
@@ -159,6 +168,13 @@ const ProfilePage = () => {
           onSave={handleSaveProfile}
         />
       )}
+
+      {/* Photo Upload Sheet */}
+      <PhotoUploadSheet
+        open={uploadSheetOpen}
+        onOpenChange={setUploadSheetOpen}
+        onCollectionUpdated={loadProfile}
+      />
     </div>
   );
 };
