@@ -298,8 +298,8 @@ export const ptBR = {
     // Pricing slide
     pricingTitle: "Comece Grátis!",
     freeTrial: "7 dias grátis para experimentar tudo",
-    originalPrice: "R$ 49,90/mês",
-    discountedPrice: "R$ 19,90/mês",
+    originalPrice: "R$ 9,90/mês",
+    discountedPrice: "R$ 3,90/mês",
     discountBadge: "60% OFF",
     limitedTime: "Oferta por tempo limitado",
     startTrial: "Começar Trial Grátis",
