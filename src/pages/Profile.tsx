@@ -8,11 +8,11 @@ import { CollectionList } from "@/components/profile/CollectionList";
 import { IndexRanking } from "@/components/index/IndexRanking";
 import { EditProfileSheet, ProfileData } from "@/components/profile/EditProfileSheet";
 import { PhotoUploadSheet } from "@/components/profile/PhotoUploadSheet";
+import { SettingsSheet } from "@/components/profile/SettingsSheet";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { getProfile, getCollectionWithIndex, getFollowCounts, getCollectionCount, updateProfile, Profile, CollectionItemWithIndex } from "@/lib/database";
-import { Loader2, ImagePlus, LogOut } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Loader2, ImagePlus } from "lucide-react";
 
 const ProfilePage = () => {
   const [activeTab, setActiveTab] = useState<"posts" | "collection" | "index">("posts");
@@ -22,6 +22,7 @@ const ProfilePage = () => {
   const [loading, setLoading] = useState(true);
   const [editSheetOpen, setEditSheetOpen] = useState(false);
   const [uploadSheetOpen, setUploadSheetOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   
   const { user, signOut } = useAuth();
   const { t } = useLanguage();
@@ -110,7 +111,7 @@ const ProfilePage = () => {
       <ProfileHeader 
         user={userData} 
         onEditProfile={() => setEditSheetOpen(true)}
-        onSettings={handleSignOut}
+        onSettings={() => setSettingsOpen(true)}
       />
       
       <ProfileTabs activeTab={activeTab} onTabChange={setActiveTab} />
@@ -179,6 +180,13 @@ const ProfilePage = () => {
         open={uploadSheetOpen}
         onOpenChange={setUploadSheetOpen}
         onCollectionUpdated={loadProfile}
+      />
+
+      {/* Settings Sheet */}
+      <SettingsSheet
+        open={settingsOpen}
+        onOpenChange={setSettingsOpen}
+        onSignOut={handleSignOut}
       />
     </div>
   );
