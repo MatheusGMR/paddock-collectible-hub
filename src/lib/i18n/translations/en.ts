@@ -226,6 +226,7 @@ export const en: Translations = {
     selectPhotos: "Select your photos",
     uploadDescription: "Upload photos of your collectibles for automatic analysis and add to your collection",
     chooseFile: "Choose file",
+    chooseFiles: "Choose files",
     useCamera: "Use camera",
   },
 
