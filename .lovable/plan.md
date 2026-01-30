@@ -1,44 +1,232 @@
 
+# Plano: Detecção de Duplicados e Correção de Imagem
 
-# Plano: Traduzir Toda a Plataforma para Português
-
-## Problema Identificado
-
-Diversos componentes e páginas da plataforma possuem textos hardcoded em inglês, mesmo com o sistema de i18n já implementado. O idioma padrão deveria ser português (PT-BR).
-
----
-
-## Arquivos com Textos Hardcoded em Inglês
-
-### Páginas Principais
-
-| Arquivo | Textos em Inglês |
-|---------|-----------------|
-| `src/pages/Auth.tsx` | "Welcome back", "Create account", "Sign in to your account", "Join the collector community", "Username", "Email", "Password", "Sign In", "Create Account", "or", "Continue with Google", "Continue with Apple", "Don't have an account?", "Already have an account?", "Sign up", "Sign in" |
-| `src/pages/NotFound.tsx` | "Oops! Page not found", "Return to Home" |
-| `src/pages/Notifications.tsx` | "Notifications" (header) |
-| `src/pages/Profile.tsx` | "Sign Out", "No posts yet", "Scan items to add to your collection", "Your collection is empty", "Use the scanner to add items", "User", "Collector at Paddock" |
-
-### Componentes
-
-| Arquivo | Textos em Inglês |
-|---------|-----------------|
-| `src/components/scanner/ScoreHero.tsx` | "Toque para ver detalhes do índice" (já em PT, ok) |
-| `src/components/scanner/ResultCarousel.tsx` | "Origem:", "Fato Histórico", "Notas" (já em PT, ok), "N/A" |
-| `src/components/scanner/MusicSuggestion.tsx` | "Música para Ouvir" (já em PT, ok) |
-| `src/components/collection/CollectibleDetailCard.tsx` | "Detalhes do Item", "Dados do Carro Real", "Dados do Colecionável", "Marca", "Modelo", "Ano", "Fabricante", "Escala", "Série", "Condição", "Origem", "Ano do Modelo", "Notas", "Fato Histórico", "Música para Ouvir", "Fotos do Veículo Real" (já em PT, ok) |
+## Contexto
+O plano anterior foi aprovado mas ainda não implementado. Preciso continuar com:
+1. **Detecção de Duplicados**: Verificar se o item escaneado já existe na coleção do usuário
+2. **Correção de Imagem**: Trocar `object-cover` por `object-contain` para mostrar o carrinho inteiro
 
 ---
 
-## Solução
+## Parte 1: Migração de Banco de Dados
 
-### 1. Atualizar Arquivos de Tradução
+Adicionar coluna `collectible_color` na tabela `items` para diferenciar carrinhos iguais com cores diferentes.
 
-Adicionar novas chaves ao arquivo `pt-BR.ts` e `en.ts` para cobrir todos os textos faltantes.
+```sql
+ALTER TABLE public.items ADD COLUMN collectible_color text;
+```
 
-### 2. Atualizar Componentes para Usar o Sistema i18n
+---
 
-Importar `useLanguage()` e substituir textos hardcoded pelas chaves de tradução.
+## Parte 2: Atualizar Edge Function (analyze-collectible)
+
+Adicionar campo `color` ao schema de resposta da IA:
+
+```json
+{
+  "collectible": {
+    "color": "Primary color of the diecast (e.g., Red, Blue, Metallic Silver)"
+  }
+}
+```
+
+---
+
+## Parte 3: Criar Função de Verificação de Duplicados
+
+**Arquivo:** `src/lib/database.ts`
+
+```typescript
+export interface DuplicateCheckResult {
+  isDuplicate: boolean;
+  existingItemId?: string;
+  existingItemImage?: string;
+}
+
+export const checkDuplicateInCollection = async (
+  userId: string,
+  brand: string,
+  model: string,
+  color?: string | null
+): Promise<DuplicateCheckResult> => {
+  const { data, error } = await supabase
+    .from("user_collection")
+    .select(`
+      id,
+      image_url,
+      item:items!inner(
+        real_car_brand,
+        real_car_model,
+        collectible_color
+      )
+    `)
+    .eq("user_id", userId);
+
+  if (error) throw error;
+  
+  const match = (data || []).find((c: any) => {
+    const brandMatch = c.item.real_car_brand.toLowerCase() === brand.toLowerCase();
+    const modelMatch = c.item.real_car_model.toLowerCase() === model.toLowerCase();
+    
+    // Se cor foi informada, verificar também
+    let colorMatch = true;
+    if (color && c.item.collectible_color) {
+      colorMatch = c.item.collectible_color.toLowerCase() === color.toLowerCase();
+    }
+    
+    return brandMatch && modelMatch && colorMatch;
+  });
+  
+  return {
+    isDuplicate: !!match,
+    existingItemId: match?.id,
+    existingItemImage: match?.image_url
+  };
+};
+```
+
+---
+
+## Parte 4: Atualizar Interface AnalysisResult
+
+**Arquivos:** `ScannerView.tsx` e `ResultCarousel.tsx`
+
+Adicionar campos:
+```typescript
+interface AnalysisResult {
+  // ... campos existentes
+  collectible: {
+    // ... campos existentes
+    color: string; // NOVO
+  };
+  isDuplicate?: boolean;      // NOVO
+  existingItemImage?: string; // NOVO
+}
+```
+
+---
+
+## Parte 5: Verificar Duplicados Após Análise
+
+**Arquivo:** `src/components/scanner/ScannerView.tsx`
+
+Após receber os resultados da análise, verificar cada item:
+
+```typescript
+// Após cropping, verificar duplicados
+const itemsWithDuplicateCheck = await Promise.all(
+  itemsWithCrops.map(async (item) => {
+    if (user) {
+      const duplicate = await checkDuplicateInCollection(
+        user.id,
+        item.realCar.brand,
+        item.realCar.model,
+        item.collectible.color
+      );
+      return {
+        ...item,
+        isDuplicate: duplicate.isDuplicate,
+        existingItemImage: duplicate.existingItemImage
+      };
+    }
+    return item;
+  })
+);
+```
+
+---
+
+## Parte 6: Atualizar UI do ResultCarousel
+
+**Arquivo:** `src/components/scanner/ResultCarousel.tsx`
+
+### 6.1 Correção da Imagem (object-contain)
+
+```tsx
+// ANTES
+<div className="relative w-full h-32 rounded-xl overflow-hidden bg-muted">
+  <img className="w-full h-full object-cover" />
+</div>
+
+// DEPOIS
+<div className="relative w-full aspect-[4/3] rounded-xl overflow-hidden bg-gradient-to-b from-muted to-muted/50 flex items-center justify-center">
+  <img className="max-w-full max-h-full object-contain" />
+</div>
+```
+
+### 6.2 Aviso de Duplicado
+
+```tsx
+{result.isDuplicate && (
+  <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3 flex items-center gap-3">
+    <AlertTriangle className="h-5 w-5 text-amber-500 shrink-0" />
+    <div>
+      <p className="text-sm font-medium text-amber-500">
+        {t.scanner.duplicateWarning}
+      </p>
+      <p className="text-xs text-foreground-secondary">
+        {t.scanner.duplicateDescription}
+      </p>
+    </div>
+  </div>
+)}
+```
+
+### 6.3 Botões Atualizados
+
+```tsx
+{result.isDuplicate ? (
+  <>
+    <Button variant="outline" onClick={() => handleSkip(index)}>
+      {t.scanner.discard}
+    </Button>
+    <Button onClick={() => handleAdd(index)}>
+      {t.scanner.addAnyway}
+    </Button>
+  </>
+) : (
+  <Button onClick={() => handleAdd(index)}>
+    {t.scanner.addToCollection}
+  </Button>
+)}
+```
+
+---
+
+## Parte 7: Atualizar CollectibleDetailCard
+
+**Arquivo:** `src/components/collection/CollectibleDetailCard.tsx`
+
+Corrigir imagem hero para usar `object-contain`:
+
+```tsx
+// ANTES
+<div className="relative aspect-square rounded-xl overflow-hidden bg-muted">
+  <img className="w-full h-full object-cover" />
+</div>
+
+// DEPOIS
+<div className="relative aspect-[4/3] rounded-xl overflow-hidden bg-gradient-to-b from-muted to-muted/50 flex items-center justify-center">
+  <img className="max-w-full max-h-full object-contain" />
+</div>
+```
+
+---
+
+## Parte 8: Adicionar Traduções
+
+**Arquivos:** `pt-BR.ts` e `en.ts`
+
+```typescript
+scanner: {
+  // ... existentes
+  duplicateWarning: "Você já tem este item",
+  duplicateDescription: "Este carrinho já existe na sua coleção",
+  addAnyway: "Adicionar Mesmo Assim",
+  discard: "Descartar",
+  color: "Cor",
+}
+```
 
 ---
 
@@ -46,139 +234,36 @@ Importar `useLanguage()` e substituir textos hardcoded pelas chaves de traduçã
 
 | Arquivo | Mudança |
 |---------|---------|
-| `src/lib/i18n/translations/pt-BR.ts` | Adicionar novas chaves de tradução |
-| `src/lib/i18n/translations/en.ts` | Adicionar mesmas chaves em inglês |
-| `src/pages/Auth.tsx` | Usar `useLanguage()` para todos os textos |
-| `src/pages/NotFound.tsx` | Usar `useLanguage()` para todos os textos |
-| `src/pages/Notifications.tsx` | Usar `useLanguage()` para header |
-| `src/pages/Profile.tsx` | Usar `useLanguage()` para todos os textos |
+| `supabase/functions/analyze-collectible/index.ts` | Adicionar `color` ao prompt da IA |
+| `src/lib/database.ts` | Adicionar `checkDuplicateInCollection` + atualizar `addToCollection` para salvar cor |
+| `src/components/scanner/ScannerView.tsx` | Verificar duplicados após análise |
+| `src/components/scanner/ResultCarousel.tsx` | Exibir aviso de duplicado + corrigir imagem |
+| `src/components/collection/CollectibleDetailCard.tsx` | Corrigir imagem hero |
+| `src/lib/i18n/translations/pt-BR.ts` | Adicionar chaves de tradução |
+| `src/lib/i18n/translations/en.ts` | Adicionar chaves de tradução em inglês |
 
 ---
 
-## Detalhes Técnicos
+## Migração de Banco Necessária
 
-### Novas Chaves de Tradução
-
-```typescript
-// Adicionar em auth:
-auth: {
-  // ... existentes
-  username: "Nome de usuário",
-  joinCommunity: "Junte-se à comunidade de colecionadores",
-  continueWithGoogle: "Continuar com Google",
-  continueWithApple: "Continuar com Apple",
-}
-
-// Adicionar em errors:
-errors: {
-  // ... existentes
-  pageNotFound: "Ops! Página não encontrada",
-  returnHome: "Voltar para o Início",
-  usernameRequired: "Nome de usuário é obrigatório",
-  errorOccurred: "Ocorreu um erro",
-  failedGoogleSignIn: "Falha ao entrar com Google",
-  failedAppleSignIn: "Falha ao entrar com Apple",
-}
-
-// Adicionar em profile:
-profile: {
-  // ... existentes
-  noPostsYet: "Nenhum post ainda",
-  scanItemsToAdd: "Escaneie itens para adicionar à sua coleção",
-  emptyCollection: "Sua coleção está vazia",
-  useScannerToAdd: "Use o scanner para adicionar itens",
-  defaultBio: "Colecionador no Paddock",
-}
-```
-
-### Exemplo de Atualização do Auth.tsx
-
-```tsx
-// Antes
-<h1 className="text-2xl font-semibold">
-  {isLogin ? "Welcome back" : "Create account"}
-</h1>
-
-// Depois
-const { t } = useLanguage();
-
-<h1 className="text-2xl font-semibold">
-  {isLogin ? t.auth.welcomeBack : t.auth.createAccount}
-</h1>
-```
-
-### Exemplo de Atualização do NotFound.tsx
-
-```tsx
-// Antes
-<p>Oops! Page not found</p>
-<a href="/">Return to Home</a>
-
-// Depois
-const { t } = useLanguage();
-
-<p>{t.errors.pageNotFound}</p>
-<a href="/">{t.errors.returnHome}</a>
+```sql
+ALTER TABLE public.items ADD COLUMN collectible_color text;
 ```
 
 ---
 
-## Lista Completa de Textos a Traduzir
+## Fluxo Completo
 
-### Auth.tsx
-| Inglês | Português |
-|--------|-----------|
-| Welcome back | Bem-vindo de volta |
-| Create account | Criar conta |
-| Sign in to your account | Entre na sua conta |
-| Join the collector community | Junte-se à comunidade de colecionadores |
-| Username | Nome de usuário |
-| Email | E-mail |
-| Password | Senha |
-| Sign In | Entrar |
-| Create Account | Criar Conta |
-| or | ou |
-| Continue with Google | Continuar com Google |
-| Continue with Apple | Continuar com Apple |
-| Don't have an account? | Não tem uma conta? |
-| Already have an account? | Já tem uma conta? |
-| Sign up | Cadastre-se |
-| Sign in | Entre |
-| Username is required | Nome de usuário é obrigatório |
-| An error occurred | Ocorreu um erro |
-| Failed to sign in with Google | Falha ao entrar com Google |
-| Failed to sign in with Apple | Falha ao entrar com Apple |
-| Welcome to Paddock | Bem-vindo ao Paddock |
-
-### NotFound.tsx
-| Inglês | Português |
-|--------|-----------|
-| Oops! Page not found | Ops! Página não encontrada |
-| Return to Home | Voltar para o Início |
-
-### Profile.tsx
-| Inglês | Português |
-|--------|-----------|
-| Sign Out | Sair |
-| No posts yet | Nenhum post ainda |
-| Scan items to add to your collection | Escaneie itens para adicionar à sua coleção |
-| Your collection is empty | Sua coleção está vazia |
-| Use the scanner to add items | Use o scanner para adicionar itens |
-| User | Usuário |
-| Collector at Paddock | Colecionador no Paddock |
-
-### Notifications.tsx
-| Inglês | Português |
-|--------|-----------|
-| Notifications | Notificações |
-
----
-
-## Resumo
-
-| Problema | Solução |
-|----------|---------|
-| Textos hardcoded em inglês | Usar sistema i18n existente |
-| Faltam chaves de tradução | Adicionar novas chaves em pt-BR.ts e en.ts |
-| Componentes não usam useLanguage() | Importar e utilizar o hook |
-
+```text
+1. Usuário captura foto
+2. AI analisa e retorna dados (incluindo COR)
+3. Para cada item:
+   a. Recortar imagem (bounding box)
+   b. Verificar se é duplicado na coleção (brand + model + color)
+   c. Marcar flag isDuplicate
+4. ResultCarousel exibe:
+   - Imagem centralizada (object-contain) ✨
+   - Aviso amarelo se for duplicado ⚠️
+   - Botões: "Descartar" ou "Adicionar Mesmo Assim"
+5. Usuário decide e item é adicionado ou descartado
+```
