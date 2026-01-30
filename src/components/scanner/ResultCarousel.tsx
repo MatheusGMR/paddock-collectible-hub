@@ -1,14 +1,16 @@
 import { useState, useCallback, useEffect } from "react";
 import useEmblaCarousel from "embla-carousel-react";
-import { Check, Plus, RotateCcw, ChevronLeft, ChevronRight, Loader2, CheckCircle2, SkipForward, AlertTriangle } from "lucide-react";
+import { Check, Plus, RotateCcw, ChevronLeft, ChevronRight, Loader2, CheckCircle2, SkipForward, AlertTriangle, Car } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { IndexBreakdown } from "@/components/index/IndexBreakdown";
 import { PriceIndex } from "@/lib/priceIndex";
 import { cn } from "@/lib/utils";
 import { ScoreHero } from "./ScoreHero";
-import { MusicSuggestion } from "./MusicSuggestion";
-import { RealCarPhotos } from "./RealCarPhotos";
+import { MusicPlayer } from "./MusicPlayer";
+import { RealCarGallery } from "./RealCarGallery";
+import { CollectibleSpecs } from "./CollectibleSpecs";
+import { HistoricalFact } from "./HistoricalFact";
 
 import { BoundingBox } from "@/lib/imageCrop";
 
@@ -214,27 +216,42 @@ export const ResultCarousel = ({
                   justAddedIndex === originalIndex && "opacity-0 scale-95 -translate-x-10"
                 )}
               >
-                <div className="space-y-4 max-h-[60vh] overflow-y-auto pb-2">
-                  {/* Cropped car image - using object-contain to show full car */}
+                <div className="space-y-4 max-h-[65vh] overflow-y-auto pb-2">
+                  {/* Hero image with gradient overlay */}
                   {result.croppedImage && (
-                    <div className="relative w-full aspect-[4/3] rounded-xl overflow-hidden bg-gradient-to-b from-muted to-muted/50 flex items-center justify-center">
+                    <div className="relative w-full aspect-[4/3] rounded-2xl overflow-hidden bg-gradient-to-b from-muted to-muted/50">
                       <img
                         src={result.croppedImage}
                         alt={`${result.realCar.brand} ${result.realCar.model}`}
-                        className="max-w-full max-h-full object-contain"
+                        className="w-full h-full object-contain"
                       />
+                      {/* Car badge */}
+                      <div className="absolute top-3 left-3 flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/60 backdrop-blur-sm">
+                        <Car className="h-3.5 w-3.5 text-primary" />
+                        <span className="text-xs font-medium text-white">{result.realCar.year}</span>
+                      </div>
                     </div>
                   )}
 
+                  {/* Car title */}
+                  <div className="text-center space-y-1">
+                    <h3 className="text-xl font-bold text-foreground">
+                      {result.realCar.brand} {result.realCar.model}
+                    </h3>
+                    <p className="text-sm text-muted-foreground">
+                      {result.collectible.manufacturer} • {result.collectible.scale} • {result.collectible.color || "Original"}
+                    </p>
+                  </div>
+
                   {/* Duplicate Warning */}
                   {result.isDuplicate && (
-                    <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3 flex items-center gap-3">
-                      <AlertTriangle className="h-5 w-5 text-amber-500 shrink-0" />
+                    <div className="bg-destructive/10 border border-destructive/30 rounded-xl p-3 flex items-center gap-3">
+                      <AlertTriangle className="h-5 w-5 text-destructive shrink-0" />
                       <div>
-                        <p className="text-sm font-medium text-amber-500">
+                        <p className="text-sm font-medium text-destructive">
                           {t.scanner.duplicateWarning}
                         </p>
-                        <p className="text-xs text-foreground-secondary">
+                        <p className="text-xs text-muted-foreground">
                           {t.scanner.duplicateDescription}
                         </p>
                       </div>
@@ -251,70 +268,46 @@ export const ResultCarousel = ({
                     />
                   )}
 
-                  {/* Car info */}
-                  <div className="text-center">
-                    <h3 className="text-lg font-semibold text-foreground">
-                      {result.realCar.brand} {result.realCar.model}
-                    </h3>
-                    <p className="text-sm text-foreground-secondary">
-                      {result.realCar.year} • {result.collectible.manufacturer} • {result.collectible.scale}
-                    </p>
-                  </div>
-
-                  {/* Collectible details */}
-                  <div className="grid grid-cols-2 gap-2 text-sm">
-                    <div>
-                      <span className="text-foreground-secondary">{t.scanner.manufacturer}:</span>
-                      <span className="ml-1 text-foreground">{result.collectible.manufacturer}</span>
-                    </div>
-                    <div>
-                      <span className="text-foreground-secondary">{t.scanner.scale}:</span>
-                      <span className="ml-1 text-foreground">{result.collectible.scale}</span>
-                    </div>
-                    <div>
-                      <span className="text-foreground-secondary">{t.scanner.series}:</span>
-                      <span className="ml-1 text-foreground">{result.collectible.series || "N/A"}</span>
-                    </div>
-                    <div>
-                      <span className="text-foreground-secondary">{t.scanner.condition}:</span>
-                      <span className="ml-1 text-foreground">{result.collectible.condition}</span>
-                    </div>
-                    {result.collectible.origin && (
-                      <div className="col-span-2">
-                        <span className="text-foreground-secondary">Origem:</span>
-                        <span className="ml-1 text-foreground">{result.collectible.origin}</span>
-                      </div>
-                    )}
-                  </div>
+                  {/* Collectible Specs Grid */}
+                  <CollectibleSpecs
+                    manufacturer={result.collectible.manufacturer}
+                    scale={result.collectible.scale}
+                    color={result.collectible.color}
+                    origin={result.collectible.origin}
+                    series={result.collectible.series}
+                    condition={result.collectible.condition}
+                    year={result.collectible.estimatedYear}
+                  />
 
                   {/* Historical Fact */}
                   {result.realCar.historicalFact && (
-                    <div className="pt-3 border-t border-border">
-                      <p className="text-xs text-primary font-semibold mb-1">Fato Histórico</p>
-                      <p className="text-sm text-foreground/90 italic leading-relaxed">
-                        "{result.realCar.historicalFact}"
-                      </p>
-                    </div>
+                    <HistoricalFact
+                      fact={result.realCar.historicalFact}
+                      carName={`${result.realCar.brand} ${result.realCar.model}`}
+                    />
                   )}
 
-                  {/* Music Suggestion */}
+                  {/* Music Player */}
                   {result.musicSuggestion && (
-                    <MusicSuggestion suggestion={result.musicSuggestion} />
+                    <MusicPlayer 
+                      suggestion={result.musicSuggestion} 
+                      carBrand={result.realCar.brand}
+                    />
                   )}
 
-                  {/* Real Car Photos */}
+                  {/* Real Car Photos Gallery */}
                   {result.realCarPhotos && result.realCarPhotos.length > 0 && (
-                    <RealCarPhotos 
+                    <RealCarGallery 
                       photos={result.realCarPhotos} 
                       carName={`${result.realCar.brand} ${result.realCar.model}`}
                     />
                   )}
 
-                  {/* Notes */}
+                  {/* Additional Notes */}
                   {result.collectible.notes && (
-                    <div className="pt-2">
-                      <p className="text-xs text-foreground-secondary mb-1">Notas</p>
-                      <p className="text-sm text-foreground/80">{result.collectible.notes}</p>
+                    <div className="p-3 rounded-xl bg-muted/30 border border-border">
+                      <p className="text-xs text-muted-foreground mb-1">Observações da IA</p>
+                      <p className="text-sm text-foreground/90">{result.collectible.notes}</p>
                     </div>
                   )}
 
