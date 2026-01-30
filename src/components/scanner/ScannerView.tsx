@@ -11,9 +11,14 @@ import { CreatePostDialog } from "@/components/posts/CreatePostDialog";
 import { CaptureButton } from "@/components/scanner/CaptureButton";
 import { ResultCarousel } from "@/components/scanner/ResultCarousel";
 import { ImageQualityError, ImageQualityIssue } from "@/components/scanner/ImageQualityError";
+import { RealCarResults } from "@/components/scanner/RealCarResults";
 import { PriceIndex } from "@/lib/priceIndex";
 import { cropImageByBoundingBox, BoundingBox } from "@/lib/imageCrop";
 import { PaddockLogo } from "@/components/icons/PaddockLogo";
+import { cn } from "@/lib/utils";
+
+type ScanMode = "collectible" | "real_car";
+
 interface AnalysisResult {
   boundingBox?: BoundingBox;
   realCar: {
@@ -54,6 +59,21 @@ interface MultiCarAnalysisResponse {
   warning?: string;
 }
 
+interface RealCarAnalysisResponse {
+  identified: boolean;
+  car: {
+    brand: string;
+    model: string;
+    year: string;
+    variant: string;
+    bodyStyle: string;
+    color: string;
+  } | null;
+  searchTerms: string[];
+  confidence: "high" | "medium" | "low";
+  error?: string;
+}
+
 const MAX_RECORDING_DURATION = 30; // seconds
 
 export const ScannerView = () => {
@@ -66,6 +86,12 @@ export const ScannerView = () => {
   const [facingMode, setFacingMode] = useState<"environment" | "user">("environment");
   const [showPostDialog, setShowPostDialog] = useState(false);
   const [warningMessage, setWarningMessage] = useState<string | null>(null);
+  
+  // Scan mode state
+  const [scanMode, setScanMode] = useState<ScanMode>("collectible");
+  
+  // Real car results state
+  const [realCarResult, setRealCarResult] = useState<RealCarAnalysisResponse | null>(null);
   
   // Image quality validation state
   const [imageQualityError, setImageQualityError] = useState<ImageQualityResponse | null>(null);
@@ -270,84 +296,107 @@ export const ScannerView = () => {
     setIsScanning(true);
 
     try {
-      const { data, error } = await supabase.functions.invoke("analyze-collectible", {
-        body: { imageBase64 },
-      });
-
-      if (error) throw error;
-
-      const response = data as MultiCarAnalysisResponse;
-
-      // Check image quality first
-      if (response.imageQuality && !response.imageQuality.isValid) {
-        setImageQualityError(response.imageQuality);
-        setAnalysisResults([]);
-        setIsScanning(false);
-        return;
-      }
-
-      // Clear any previous quality errors
-      setImageQualityError(null);
-
-      if (!response.identified || response.count === 0) {
-        toast({
-          title: t.scanner.itemNotIdentified,
-          description: t.scanner.itemNotIdentifiedDesc,
-          variant: "destructive",
+      if (scanMode === "collectible") {
+        // Original flow: analyze collectible
+        const { data, error } = await supabase.functions.invoke("analyze-collectible", {
+          body: { imageBase64 },
         });
-        setAnalysisResults([]);
-      } else {
-        // Crop individual car images from bounding boxes
-        const itemsWithCrops = await Promise.all(
-          response.items.map(async (item) => {
-            if (item.boundingBox && imageBase64) {
-              try {
-                const croppedImage = await cropImageByBoundingBox(imageBase64, item.boundingBox as BoundingBox);
-                return { ...item, croppedImage };
-              } catch (error) {
-                console.error("Failed to crop image:", error);
-                return { ...item, croppedImage: imageBase64 };
-              }
-            }
-            return { ...item, croppedImage: imageBase64 };
-          })
-        );
-        
-        // Check for duplicates in user's collection
-        const itemsWithDuplicateCheck = await Promise.all(
-          itemsWithCrops.map(async (item) => {
-            if (user) {
-              try {
-                const duplicate = await checkDuplicateInCollection(
-                  user.id,
-                  item.realCar.brand,
-                  item.realCar.model,
-                  item.collectible?.color
-                );
-                return {
-                  ...item,
-                  isDuplicate: duplicate.isDuplicate,
-                  existingItemImage: duplicate.existingItemImage
-                };
-              } catch (error) {
-                console.error("Failed to check duplicate:", error);
-                return item;
-              }
-            }
-            return item;
-          })
-        );
-        
-        setAnalysisResults(itemsWithDuplicateCheck);
-        setAddedIndices(new Set());
-        setSkippedIndices(new Set());
-        
-        if (response.warning) {
-          setWarningMessage(response.warning);
+
+        if (error) throw error;
+
+        const response = data as MultiCarAnalysisResponse;
+
+        // Check image quality first
+        if (response.imageQuality && !response.imageQuality.isValid) {
+          setImageQualityError(response.imageQuality);
+          setAnalysisResults([]);
+          setIsScanning(false);
+          return;
+        }
+
+        // Clear any previous quality errors
+        setImageQualityError(null);
+
+        if (!response.identified || response.count === 0) {
           toast({
-            title: t.scanner.maxCarsWarning,
-            description: response.warning,
+            title: t.scanner.itemNotIdentified,
+            description: t.scanner.itemNotIdentifiedDesc,
+            variant: "destructive",
           });
+          setAnalysisResults([]);
+        } else {
+          // Crop individual car images from bounding boxes
+          const itemsWithCrops = await Promise.all(
+            response.items.map(async (item) => {
+              if (item.boundingBox && imageBase64) {
+                try {
+                  const croppedImage = await cropImageByBoundingBox(imageBase64, item.boundingBox as BoundingBox);
+                  return { ...item, croppedImage };
+                } catch (error) {
+                  console.error("Failed to crop image:", error);
+                  return { ...item, croppedImage: imageBase64 };
+                }
+              }
+              return { ...item, croppedImage: imageBase64 };
+            })
+          );
+          
+          // Check for duplicates in user's collection
+          const itemsWithDuplicateCheck = await Promise.all(
+            itemsWithCrops.map(async (item) => {
+              if (user) {
+                try {
+                  const duplicate = await checkDuplicateInCollection(
+                    user.id,
+                    item.realCar.brand,
+                    item.realCar.model,
+                    item.collectible?.color
+                  );
+                  return {
+                    ...item,
+                    isDuplicate: duplicate.isDuplicate,
+                    existingItemImage: duplicate.existingItemImage
+                  };
+                } catch (error) {
+                  console.error("Failed to check duplicate:", error);
+                  return item;
+                }
+              }
+              return item;
+            })
+          );
+          
+          setAnalysisResults(itemsWithDuplicateCheck);
+          setAddedIndices(new Set());
+          setSkippedIndices(new Set());
+          
+          if (response.warning) {
+            setWarningMessage(response.warning);
+            toast({
+              title: t.scanner.maxCarsWarning,
+              description: response.warning,
+            });
+          }
+        }
+      } else {
+        // New flow: analyze real car
+        const { data, error } = await supabase.functions.invoke("analyze-real-car", {
+          body: { imageBase64 },
+        });
+
+        if (error) throw error;
+
+        const response = data as RealCarAnalysisResponse;
+
+        if (!response.identified || !response.car) {
+          toast({
+            title: t.scanner.couldNotIdentify,
+            description: response.error || t.scanner.tryDifferentAngle,
+            variant: "destructive",
+          });
+          setRealCarResult(null);
+        } else {
+          setRealCarResult(response);
         }
       }
     } catch (error) {
@@ -360,7 +409,7 @@ export const ScannerView = () => {
     } finally {
       setIsScanning(false);
     }
-  }, [stopCamera, toast, t]);
+  }, [stopCamera, toast, t, scanMode, user]);
 
   // Video recording functions
   const startRecording = useCallback(() => {
@@ -539,6 +588,7 @@ export const ScannerView = () => {
     setImageQualityError(null);
     setRecordedVideo(null);
     setRecordingDuration(0);
+    setRealCarResult(null);
     if (videoPreviewUrl) {
       URL.revokeObjectURL(videoPreviewUrl);
       setVideoPreviewUrl(null);
@@ -573,6 +623,19 @@ export const ScannerView = () => {
   };
 
   const hasResults = analysisResults.length > 0;
+
+  // Show real car results if available
+  if (realCarResult && realCarResult.car && capturedImage) {
+    return (
+      <RealCarResults
+        car={realCarResult.car}
+        searchTerms={realCarResult.searchTerms}
+        confidence={realCarResult.confidence}
+        capturedImage={capturedImage}
+        onScanAgain={resetScan}
+      />
+    );
+  }
 
   // Show image quality error screen if there are issues
   if (imageQualityError && capturedImage) {
@@ -642,6 +705,36 @@ export const ScannerView = () => {
           </div>
         )}
 
+        {/* Mode toggle - Carrinho vs Carro Real */}
+        {cameraActive && !isScanning && !capturedImage && (
+          <div className="absolute top-14 left-1/2 -translate-x-1/2 z-20">
+            <div className="bg-black/40 backdrop-blur-sm rounded-full p-1 flex gap-1">
+              <button
+                onClick={() => setScanMode("collectible")}
+                className={cn(
+                  "px-4 py-1.5 rounded-full text-xs font-medium transition-all",
+                  scanMode === "collectible" 
+                    ? "bg-white text-black" 
+                    : "text-white/70 hover:text-white"
+                )}
+              >
+                🚗 {t.scanner.modeCollectible}
+              </button>
+              <button
+                onClick={() => setScanMode("real_car")}
+                className={cn(
+                  "px-4 py-1.5 rounded-full text-xs font-medium transition-all",
+                  scanMode === "real_car" 
+                    ? "bg-white text-black" 
+                    : "text-white/70 hover:text-white"
+                )}
+              >
+                🚙 {t.scanner.modeRealCar}
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Minimal corner guides - subtle like Instagram/TikTok */}
         {cameraActive && !isScanning && (
           <div className="absolute inset-0 pointer-events-none">
@@ -696,7 +789,7 @@ export const ScannerView = () => {
             <div className="flex flex-col items-center gap-3">
               <Loader2 className="h-12 w-12 text-primary animate-spin" />
               <p className="text-sm font-medium text-primary">
-                {t.scanner.analyzing}
+                {scanMode === "collectible" ? t.scanner.analyzing : t.scanner.identifyingCar}
               </p>
             </div>
           </div>

@@ -142,6 +142,19 @@ export const ptBR = {
     addAnyway: "Adicionar Mesmo Assim",
     discard: "Descartar",
     color: "Cor",
+    // Real car mode
+    modeCollectible: "Carrinho",
+    modeRealCar: "Carro Real",
+    identifyingCar: "Identificando veículo...",
+    searchingMiniatures: "Buscando miniaturas...",
+    realCarIdentified: "Carro Identificado",
+    foundMiniatures: "Miniaturas Encontradas",
+    noMiniaturesFound: "Nenhuma miniatura encontrada",
+    trySearchInMarket: "Tente buscar manualmente no Mercado",
+    viewInMarket: "Ver no Mercado",
+    scanAnother: "Escanear Outro",
+    couldNotIdentify: "Não foi possível identificar o veículo",
+    tryDifferentAngle: "Tente capturar de outro ângulo",
   },
 
   // Mercado (Marketplace)
