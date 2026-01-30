@@ -1,0 +1,191 @@
+import { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { 
+  Users, 
+  Package, 
+  Car, 
+  Image, 
+  Heart, 
+  ShoppingBag, 
+  UserPlus,
+  Shield,
+  ArrowLeft,
+  RefreshCw
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { 
+  useAdmin, 
+  useAdminStats, 
+  useAdminSubscriptionStats, 
+  useAdminUserGrowth,
+  useAdminUsers
+} from "@/hooks/useAdmin";
+import { AdminStatCard } from "@/components/admin/AdminStatCard";
+import { AdminUsersTable } from "@/components/admin/AdminUsersTable";
+import { AdminSubscriptionChart } from "@/components/admin/AdminSubscriptionChart";
+import { AdminUserGrowthChart } from "@/components/admin/AdminUserGrowthChart";
+import { useAuth } from "@/contexts/AuthContext";
+
+const Admin = () => {
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const { isAdmin, isLoading: isCheckingAdmin } = useAdmin();
+  const { stats, isLoading: isLoadingStats, refetch: refetchStats } = useAdminStats();
+  const { stats: subscriptionStats, isLoading: isLoadingSubs } = useAdminSubscriptionStats();
+  const { growth, isLoading: isLoadingGrowth } = useAdminUserGrowth();
+  const { users, isLoading: isLoadingUsers, refetch: refetchUsers } = useAdminUsers();
+
+  // Redirect if not admin
+  useEffect(() => {
+    if (!isCheckingAdmin && !isAdmin) {
+      navigate("/");
+    }
+  }, [isCheckingAdmin, isAdmin, navigate]);
+
+  // Redirect if not logged in
+  useEffect(() => {
+    if (!user) {
+      navigate("/auth");
+    }
+  }, [user, navigate]);
+
+  const handleRefresh = () => {
+    refetchStats();
+    refetchUsers();
+  };
+
+  if (isCheckingAdmin) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <Shield className="h-12 w-12 text-primary animate-pulse" />
+          <p className="text-muted-foreground">Verificando permissões...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAdmin) {
+    return null;
+  }
+
+  return (
+    <div className="min-h-screen bg-background pb-8">
+      {/* Header */}
+      <header className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b border-border">
+        <div className="flex items-center justify-between p-4">
+          <div className="flex items-center gap-3">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => navigate(-1)}
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <div>
+              <h1 className="text-lg font-bold text-foreground flex items-center gap-2">
+                <Shield className="h-5 w-5 text-primary" />
+                Painel Admin
+              </h1>
+              <p className="text-xs text-muted-foreground">Visão geral da plataforma</p>
+            </div>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleRefresh}
+            className="gap-2"
+          >
+            <RefreshCw className="h-4 w-4" />
+            Atualizar
+          </Button>
+        </div>
+      </header>
+
+      <div className="p-4 space-y-6">
+        {/* Stats Grid */}
+        <section>
+          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+            Métricas Gerais
+          </h2>
+          <div className="grid grid-cols-2 gap-3">
+            <AdminStatCard
+              title="Usuários"
+              value={stats?.total_users || 0}
+              icon={Users}
+              isLoading={isLoadingStats}
+            />
+            <AdminStatCard
+              title="Carros Cadastrados"
+              value={stats?.total_items || 0}
+              icon={Car}
+              isLoading={isLoadingStats}
+            />
+            <AdminStatCard
+              title="Itens na Coleção"
+              value={stats?.total_collection_items || 0}
+              icon={Package}
+              isLoading={isLoadingStats}
+            />
+            <AdminStatCard
+              title="Posts"
+              value={stats?.total_posts || 0}
+              icon={Image}
+              isLoading={isLoadingStats}
+            />
+            <AdminStatCard
+              title="Curtidas"
+              value={stats?.total_likes || 0}
+              icon={Heart}
+              isLoading={isLoadingStats}
+            />
+            <AdminStatCard
+              title="Anúncios Ativos"
+              value={stats?.active_listings || 0}
+              icon={ShoppingBag}
+              isLoading={isLoadingStats}
+            />
+            <AdminStatCard
+              title="Conexões"
+              value={stats?.total_follows || 0}
+              icon={UserPlus}
+              className="col-span-2"
+              isLoading={isLoadingStats}
+            />
+          </div>
+        </section>
+
+        {/* Charts */}
+        <section className="grid gap-4">
+          <AdminSubscriptionChart 
+            stats={subscriptionStats} 
+            isLoading={isLoadingSubs} 
+          />
+          <AdminUserGrowthChart 
+            data={growth} 
+            isLoading={isLoadingGrowth} 
+          />
+        </section>
+
+        {/* Users Table */}
+        <section>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Users className="h-5 w-5 text-primary" />
+                Usuários Cadastrados
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <AdminUsersTable users={users} isLoading={isLoadingUsers} />
+            </CardContent>
+          </Card>
+        </section>
+      </div>
+    </div>
+  );
+};
+
+export default Admin;
