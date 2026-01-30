@@ -110,11 +110,27 @@ export const EditProfileSheet = ({
     }
   };
 
+  const validatePhone = (phone: string): boolean => {
+    if (!phone) return true; // Empty is valid (optional field)
+    // Accepts formats: +55 11 99999-9999, (11) 99999-9999, 11999999999, etc.
+    const phoneRegex = /^[\+]?[(]?[0-9]{1,3}[)]?[-\s\.]?[(]?[0-9]{1,3}[)]?[-\s\.]?[0-9]{3,5}[-\s\.]?[0-9]{4,6}$/;
+    return phoneRegex.test(phone.replace(/\s/g, ''));
+  };
+
   const handleSave = async () => {
     if (!formData.username.trim()) {
       toast({
         title: t.common.error,
         description: t.errors.usernameRequired,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (formData.phone && !validatePhone(formData.phone)) {
+      toast({
+        title: t.common.error,
+        description: t.profile.invalidPhone,
         variant: "destructive",
       });
       return;

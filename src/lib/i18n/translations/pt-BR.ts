@@ -204,6 +204,7 @@ export const ptBR = {
     uploadError: "Erro ao fazer upload da foto",
     invalidImageType: "Selecione uma imagem válida",
     imageTooLarge: "A imagem deve ter no máximo 5MB",
+    invalidPhone: "Formato de telefone inválido. Use: +55 11 99999-9999",
   },
 
   // Feed
