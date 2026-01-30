@@ -23,13 +23,13 @@ export function detectLanguage(): Language {
   // Use browser's language setting
   const browserLang = navigator.language || (navigator as any).userLanguage;
   
-  // If starts with "pt" (pt, pt-BR, pt-PT), use Portuguese
-  if (browserLang?.toLowerCase().startsWith("pt")) {
-    return "pt-BR";
+  // Only use English if explicitly set to English
+  if (browserLang?.toLowerCase().startsWith("en")) {
+    return "en";
   }
   
-  // Default to English
-  return "en";
+  // Default to Portuguese (main audience is Brazilian)
+  return "pt-BR";
 }
 
 /**
