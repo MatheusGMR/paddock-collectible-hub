@@ -1,207 +1,227 @@
 
+# Plano: Corrigir Dados Faltantes e Melhorar UX de Captura
 
-# Plano: Exibição Completa de Detalhes e Card Super Trunfo
+## Problemas Identificados
 
-## Problema Identificado
+### 1. Música e Fotos do Carro Real Não São Salvas
+O Edge Function `analyze-collectible` **já retorna** os campos `musicSuggestion` e `realCarPhotos`, porém:
+- A interface `AnalysisResult` em `ScannerView.tsx` não inclui esses campos
+- A função `handleAddToCollection` não envia esses dados para o banco
 
-### 1. Scanner (ResultCarousel)
-O resultado da análise não mostra todas as informações disponíveis:
-- **Faltando**: Fato histórico, origem, ano estimado, notas
-- **Atual**: Apenas mostra marca, modelo, fabricante, escala, série e condição
+**Fluxo atual quebrado:**
+```text
+AI retorna musicSuggestion + realCarPhotos
+       ↓
+ScannerView ignora (interface incompleta)
+       ↓
+addToCollection não recebe esses campos
+       ↓
+Banco salva SEM música e fotos
+       ↓
+CollectibleDetailCard não tem dados pra mostrar
+```
 
-### 2. Coleção (CollectionList)
-- Ao clicar num item, nada acontece
-- Não existe modal/drawer para ver detalhes completos
-- Usuário não consegue ver informações do item salvo
+### 2. Experiência de Captura Pouco Impactante
+- O índice de valor é exibido de forma simples
+- Não há destaque visual quando um item raro é capturado
+- A pontuação deveria ser o "momento wow" da experiência
 
 ---
 
-## Solução Proposta
+## Solução
 
-### Parte 1: Melhorar ResultCarousel (Scanner)
+### Parte 1: Corrigir Salvamento dos Novos Campos
 
-Adicionar seção expandível ou rolável mostrando:
-- Fato histórico do veículo
-- Origem do fabricante
-- Ano estimado de produção
-- Notas adicionais
+**Arquivo:** `src/components/scanner/ScannerView.tsx`
 
-### Parte 2: Criar Card "Super Trunfo"
+Atualizar a interface `AnalysisResult`:
+```typescript
+interface AnalysisResult {
+  realCar: {
+    brand: string;
+    model: string;
+    year: string;
+    historicalFact: string;
+  };
+  collectible: { ... };
+  priceIndex?: PriceIndex;
+  musicSuggestion?: string;      // ← ADICIONAR
+  realCarPhotos?: string[];      // ← ADICIONAR
+}
+```
 
-Novo componente `CollectibleDetailCard.tsx` que será exibido ao clicar em um item:
+Atualizar `handleAddToCollection` para incluir:
+```typescript
+await addToCollection(
+  user.id,
+  {
+    ...existingFields,
+    music_suggestion: result.musicSuggestion || null,
+    real_car_photos: result.realCarPhotos || null,
+  },
+  capturedImage
+);
+```
 
+### Parte 2: Atualizar Interface Item no database.ts
+
+**Arquivo:** `src/lib/database.ts`
+
+Adicionar campos à interface `Item`:
+```typescript
+export interface Item {
+  ...existingFields,
+  music_suggestion?: string | null;
+  real_car_photos?: string[] | null;
+}
+```
+
+Atualizar função `addToCollection` para aceitar e salvar os novos campos.
+
+### Parte 3: Melhorar UX do ResultCarousel (Scanner)
+
+**Arquivo:** `src/components/scanner/ResultCarousel.tsx`
+
+Criar uma experiência mais impactante:
+
+1. **Score Hero Section** - Pontuação em destaque com animação
+2. **Tier Badge com Cores Vibrantes** - Destacar se é raro/ultra raro
+3. **Confetti para itens raros** - Usar `canvas-confetti` (já instalado)
+4. **Layout redesenhado** - Priorizar a pontuação visualmente
+
+Nova estrutura visual:
 ```text
 +--------------------------------+
-|        [FOTO DO ITEM]          |
-|         (do scanner)           |
+|  🏆 ULTRA RARO                 |
+|  ████████████████████░░░       |
+|         85                     |
+|   Toque para ver critérios     |
 +--------------------------------+
-|  FERRARI 250 GTO               |
-|  1962 • 1:64                   |
+|  FERRARI 250 GTO • 1962        |
+|  Hot Wheels • 1:64             |
 +--------------------------------+
-|  ÍNDICE: 85    [ULTRA RARO]    |
-|  ████████████████░░░░          |
-+--------------------------------+
-|  ▼ DADOS DO CARRO REAL         |
-|  Marca: Ferrari                |
-|  Modelo: 250 GTO               |
-|  Ano: 1962                     |
-+--------------------------------+
-|  ▼ DADOS DO COLECIONÁVEL       |
 |  Fabricante: Hot Wheels        |
-|  Escala: 1:64                  |
 |  Série: RLC Exclusive          |
 |  Condição: Mint                |
 |  Origem: Thailand              |
-|  Notas: ...                    |
 +--------------------------------+
-|  ▼ FATO HISTÓRICO              |
-|  "A Ferrari 250 GTO é um dos   |
-|  carros mais valiosos do mundo"|
+|  📖 "A Ferrari 250 GTO..."     |
 +--------------------------------+
-|  ▼ MÚSICA PARA OUVIR           |
-|  🎵 "Highway Star" - Deep      |
-|  Purple (1972)                 |
-+--------------------------------+
-|  ▼ FOTOS DO VEÍCULO REAL       |
-|  [img1] [img2] [img3]          |
+|  [ADICIONAR À COLEÇÃO]  [→]    |
 +--------------------------------+
 ```
 
-### Parte 3: Atualizar IA para Novos Campos
+### Parte 4: Adicionar Música e Fotos ao ResultCarousel
 
-Adicionar ao prompt da Edge Function `analyze-collectible`:
-- `musicSuggestion`: Sugestão de música para ouvir ao dirigir/admirar o carro
-- `realCarPhotos`: Array com 3 URLs de fotos do veículo real (de bancos de imagens públicos)
+O scanner deve mostrar preview da música sugerida e miniaturas das fotos reais.
 
 ---
 
-## Arquivos a Criar
-
-| Arquivo | Propósito |
-|---------|-----------|
-| `src/components/collection/CollectibleDetailCard.tsx` | Card estilo Super Trunfo (Drawer fullscreen) |
-
 ## Arquivos a Modificar
 
-| Arquivo | Mudanças |
-|---------|----------|
-| `src/components/scanner/ResultCarousel.tsx` | Adicionar seção scrollable com historicalFact, origin, notes |
-| `src/components/profile/CollectionList.tsx` | Abrir CollectibleDetailCard ao clicar |
-| `src/pages/Profile.tsx` | Buscar dados completos (incluir campos faltantes) |
-| `src/lib/database.ts` | Expandir `getCollectionWithIndex` para trazer todos os campos |
-| `supabase/functions/analyze-collectible/index.ts` | Adicionar musicSuggestion e realCarPhotos ao prompt |
-
-## Migração de Banco (Opcional)
-
-Adicionar colunas à tabela `items`:
-- `music_suggestion` (text): Sugestão de música
-- `real_car_photos` (jsonb): Array de URLs de fotos
+| Arquivo | Mudança |
+|---------|---------|
+| `src/components/scanner/ScannerView.tsx` | Atualizar `AnalysisResult` + `handleAddToCollection` |
+| `src/components/scanner/ResultCarousel.tsx` | Redesenhar com Score Hero + adicionar música/fotos |
+| `src/lib/database.ts` | Atualizar interface `Item` + função `addToCollection` |
 
 ---
 
 ## Detalhes Técnicos
 
-### 1. Expandir ResultCarousel
+### Interface Atualizada (ResultCarousel)
 
-```tsx
-// Adicionar após "Collectible details" grid
-{result.realCar.historicalFact && (
-  <div className="pt-2 border-t border-border">
-    <p className="text-xs text-primary font-semibold mb-1">Fato Histórico</p>
-    <p className="text-sm text-foreground/90">{result.realCar.historicalFact}</p>
-  </div>
-)}
-
-{result.collectible.origin && (
-  <div>
-    <span className="text-foreground-secondary">Origem:</span>
-    <span className="ml-1 text-foreground">{result.collectible.origin}</span>
-  </div>
-)}
-
-{result.collectible.notes && (
-  <div className="pt-2">
-    <p className="text-xs text-foreground-secondary mb-1">Notas</p>
-    <p className="text-sm text-foreground/80">{result.collectible.notes}</p>
-  </div>
-)}
-```
-
-### 2. Interface CollectibleDetailCard
-
-```tsx
-interface CollectibleDetail {
-  id: string;
-  image_url: string;
-  item: {
-    real_car_brand: string;
-    real_car_model: string;
-    real_car_year: string;
-    historical_fact: string;
-    collectible_manufacturer: string;
-    collectible_scale: string;
-    collectible_series: string;
-    collectible_origin: string;
-    collectible_condition: string;
-    collectible_year: string;
-    collectible_notes: string;
-    price_index: number;
-    rarity_tier: string;
-    index_breakdown: PriceIndexBreakdown;
-    music_suggestion?: string;
-    real_car_photos?: string[];
+```typescript
+interface AnalysisResult {
+  realCar: {
+    brand: string;
+    model: string;
+    year: string;
+    historicalFact: string;
   };
+  collectible: {
+    manufacturer: string;
+    scale: string;
+    estimatedYear: string;
+    origin: string;
+    series: string;
+    condition: string;
+    notes: string;
+  };
+  priceIndex?: PriceIndex;
+  musicSuggestion?: string;
+  realCarPhotos?: string[];
 }
 ```
 
-### 3. Atualização do Prompt da IA
+### Confetti para Items Raros
 
-Adicionar ao JSON de resposta:
-```json
-{
-  "realCar": {
-    "musicSuggestion": "Nome da música e artista que combina com este carro (ex: 'Highway Star' - Deep Purple)",
-    "photos": [
-      "https://url-foto-1.jpg",
-      "https://url-foto-2.jpg", 
-      "https://url-foto-3.jpg"
-    ]
+```typescript
+import confetti from "canvas-confetti";
+
+// Quando o resultado chegar e for raro/super_raro/ultra_rare
+useEffect(() => {
+  if (result.priceIndex?.tier === "ultra_rare" || 
+      result.priceIndex?.tier === "super_rare") {
+    confetti({
+      particleCount: 100,
+      spread: 70,
+      origin: { y: 0.6 }
+    });
   }
-}
+}, [result]);
+```
+
+### Score Hero Component
+
+```typescript
+const ScoreHero = ({ score, tier }: { score: number; tier: string }) => (
+  <div className={`
+    p-6 rounded-2xl text-center 
+    ${getTierBgColor(tier)} 
+    animate-in fade-in zoom-in duration-500
+  `}>
+    <span className={`text-xs uppercase tracking-widest ${getTierColor(tier)}`}>
+      {getTierLabel(tier)}
+    </span>
+    <div className="text-5xl font-black text-foreground my-2">
+      {score}
+    </div>
+    <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
+      <div 
+        className={`h-full ${getTierColor(tier).replace('text-', 'bg-')} transition-all`}
+        style={{ width: `${score}%` }}
+      />
+    </div>
+    <p className="text-xs text-foreground-secondary mt-2">
+      Toque para ver detalhes do índice
+    </p>
+  </div>
+);
 ```
 
 ---
 
-## Fluxo do Usuário
+## Fluxo Corrigido
 
-### Scanner (Após scan):
 ```text
-1. Scan → Resultado aparece
-2. Card mostra: Nome, Ano, Índice (clicável)
-3. Rolar para baixo → Ver Fabricante, Escala, Série, Condição
-4. Continuar rolando → Ver Origem, Fato Histórico, Notas
-5. Clicar "Adicionar" → Salva na coleção
-```
-
-### Coleção (Ao ver item salvo):
-```text
-1. Ir ao Perfil → Aba "BOX" (Collection)
-2. Ver lista de carrinhos
-3. Clicar em um item → Abre Drawer/Sheet fullscreen
-4. Card Super Trunfo com todas as informações
-5. Seções colapsáveis: Carro Real, Colecionável, Histórico, Música, Fotos
+1. Usuário captura foto
+2. AI analisa e retorna TODOS os dados (incluindo música + fotos)
+3. ResultCarousel exibe com Score Hero animado
+4. Se raro → Confetti! 🎊
+5. Usuário clica "Adicionar"
+6. TODOS os campos são salvos no banco
+7. Na coleção, card mostra música + fotos corretamente
 ```
 
 ---
 
-## Resumo das Mudanças
+## Resumo das Correções
 
-| Componente | O que muda |
-|------------|------------|
-| `ResultCarousel` | Adiciona historicalFact, origin, notes em seção scrollable |
-| `CollectionList` | Cada item abre drawer com detalhes |
-| `CollectibleDetailCard` (novo) | Card Super Trunfo com todas as infos |
-| `database.ts` | Busca todos os campos do item |
-| `analyze-collectible` | IA sugere música e retorna 3 fotos do carro real |
-| `items` (tabela) | Novos campos: music_suggestion, real_car_photos |
-
+| O que estava errado | Correção |
+|---------------------|----------|
+| `musicSuggestion` não estava na interface | Adicionar ao `AnalysisResult` |
+| `realCarPhotos` não estava na interface | Adicionar ao `AnalysisResult` |
+| Campos não eram salvos no banco | Atualizar `handleAddToCollection` |
+| Pontuação sem destaque visual | Criar Score Hero com animações |
+| Sem celebração para itens raros | Adicionar confetti |
