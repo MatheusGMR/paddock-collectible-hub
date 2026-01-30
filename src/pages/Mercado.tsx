@@ -22,15 +22,17 @@ const Mercado = () => {
 
   // Load articles from database
   const loadArticles = useCallback(
-    async (reset = false) => {
+    async (reset = false, overrideCategory?: string | null) => {
       if (isLoading) return;
       
       setIsLoading(true);
       const currentOffset = reset ? 0 : page * ITEMS_PER_PAGE;
+      // Use override category if provided, otherwise use state
+      const categoryToUse = overrideCategory !== undefined ? overrideCategory : selectedCategory;
 
       try {
         const result = await getNewsArticles({
-          category: selectedCategory,
+          category: categoryToUse,
           search: searchQuery || undefined,
           limit: ITEMS_PER_PAGE,
           offset: currentOffset,
@@ -79,25 +81,20 @@ const Mercado = () => {
       setPage(0);
       setArticles([]);
       setHasMore(true);
-      loadArticles(true);
     }, 500);
 
     return () => clearTimeout(timeoutId);
   }, [searchQuery]);
 
   // Handle category filter change
-  const handleCategoryChange = useCallback(
-    (category: string | null) => {
-      setSelectedCategory(category);
-      setPage(0);
-      setArticles([]);
-      setHasMore(true);
-      
-      // Load with new category
-      setTimeout(() => loadArticles(true), 100);
-    },
-    [loadArticles]
-  );
+  const handleCategoryChange = useCallback((category: string | null) => {
+    setSelectedCategory(category);
+    setPage(0);
+    setArticles([]);
+    setHasMore(true);
+    // Pass category directly to avoid stale closure
+    loadArticles(true, category);
+  }, [loadArticles]);
 
   // Handle refresh
   const handleRefresh = useCallback(async () => {
