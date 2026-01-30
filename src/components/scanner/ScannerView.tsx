@@ -15,9 +15,6 @@ import { RealCarResults } from "@/components/scanner/RealCarResults";
 import { PriceIndex } from "@/lib/priceIndex";
 import { cropImageByBoundingBox, BoundingBox } from "@/lib/imageCrop";
 import { PaddockLogo } from "@/components/icons/PaddockLogo";
-import { cn } from "@/lib/utils";
-
-type ScanMode = "collectible" | "real_car";
 
 interface AnalysisResult {
   boundingBox?: BoundingBox;
@@ -52,11 +49,24 @@ interface ImageQualityResponse {
 }
 
 interface MultiCarAnalysisResponse {
+  detectedType?: "collectible" | "real_car";
   imageQuality?: ImageQualityResponse;
   identified: boolean;
   count: number;
   items: AnalysisResult[];
   warning?: string;
+  // Real car specific fields (when detectedType === "real_car")
+  car?: {
+    brand: string;
+    model: string;
+    year: string;
+    variant: string;
+    bodyStyle: string;
+    color: string;
+  };
+  searchTerms?: string[];
+  confidence?: "high" | "medium" | "low";
+  error?: string;
 }
 
 interface RealCarAnalysisResponse {
@@ -87,8 +97,8 @@ export const ScannerView = () => {
   const [showPostDialog, setShowPostDialog] = useState(false);
   const [warningMessage, setWarningMessage] = useState<string | null>(null);
   
-  // Scan mode state
-  const [scanMode, setScanMode] = useState<ScanMode>("collectible");
+  // Detected type from AI (auto-detected, not user selected)
+  const [detectedType, setDetectedType] = useState<"collectible" | "real_car" | null>(null);
   
   // Real car results state
   const [realCarResult, setRealCarResult] = useState<RealCarAnalysisResponse | null>(null);
@@ -296,16 +306,38 @@ export const ScannerView = () => {
     setIsScanning(true);
 
     try {
-      if (scanMode === "collectible") {
-        // Original flow: analyze collectible
-        const { data, error } = await supabase.functions.invoke("analyze-collectible", {
-          body: { imageBase64 },
-        });
+      // Single unified call - AI auto-detects if it's a toy or real car
+      const { data, error } = await supabase.functions.invoke("analyze-collectible", {
+        body: { imageBase64 },
+      });
 
-        if (error) throw error;
+      if (error) throw error;
 
-        const response = data as MultiCarAnalysisResponse;
+      const response = data as MultiCarAnalysisResponse;
+      const responseType = response.detectedType || "collectible";
+      setDetectedType(responseType);
 
+      console.log("[Scanner] Detected type:", responseType);
+
+      if (responseType === "real_car") {
+        // Handle real car detection
+        if (!response.identified || !response.car) {
+          toast({
+            title: t.scanner.couldNotIdentify,
+            description: response.error || t.scanner.tryDifferentAngle,
+            variant: "destructive",
+          });
+          setRealCarResult(null);
+        } else {
+          setRealCarResult({
+            identified: response.identified,
+            car: response.car,
+            searchTerms: response.searchTerms || [],
+            confidence: response.confidence || "medium",
+          });
+        }
+      } else {
+        // Handle collectible detection (original flow)
         // Check image quality first
         if (response.imageQuality && !response.imageQuality.isValid) {
           setImageQualityError(response.imageQuality);
@@ -378,26 +410,6 @@ export const ScannerView = () => {
             });
           }
         }
-      } else {
-        // New flow: analyze real car
-        const { data, error } = await supabase.functions.invoke("analyze-real-car", {
-          body: { imageBase64 },
-        });
-
-        if (error) throw error;
-
-        const response = data as RealCarAnalysisResponse;
-
-        if (!response.identified || !response.car) {
-          toast({
-            title: t.scanner.couldNotIdentify,
-            description: response.error || t.scanner.tryDifferentAngle,
-            variant: "destructive",
-          });
-          setRealCarResult(null);
-        } else {
-          setRealCarResult(response);
-        }
       }
     } catch (error) {
       console.error("Analysis error:", error);
@@ -409,7 +421,7 @@ export const ScannerView = () => {
     } finally {
       setIsScanning(false);
     }
-  }, [stopCamera, toast, t, scanMode, user]);
+  }, [stopCamera, toast, t, user]);
 
   // Video recording functions
   const startRecording = useCallback(() => {
@@ -589,6 +601,7 @@ export const ScannerView = () => {
     setRecordedVideo(null);
     setRecordingDuration(0);
     setRealCarResult(null);
+    setDetectedType(null);
     if (videoPreviewUrl) {
       URL.revokeObjectURL(videoPreviewUrl);
       setVideoPreviewUrl(null);
@@ -705,35 +718,7 @@ export const ScannerView = () => {
           </div>
         )}
 
-        {/* Mode toggle - Carrinho vs Carro Real */}
-        {cameraActive && !isScanning && !capturedImage && (
-          <div className="absolute top-14 left-1/2 -translate-x-1/2 z-20">
-            <div className="bg-black/40 backdrop-blur-sm rounded-full p-1 flex gap-1">
-              <button
-                onClick={() => setScanMode("collectible")}
-                className={cn(
-                  "px-4 py-1.5 rounded-full text-xs font-medium transition-all",
-                  scanMode === "collectible" 
-                    ? "bg-white text-black" 
-                    : "text-white/70 hover:text-white"
-                )}
-              >
-                🚗 {t.scanner.modeCollectible}
-              </button>
-              <button
-                onClick={() => setScanMode("real_car")}
-                className={cn(
-                  "px-4 py-1.5 rounded-full text-xs font-medium transition-all",
-                  scanMode === "real_car" 
-                    ? "bg-white text-black" 
-                    : "text-white/70 hover:text-white"
-                )}
-              >
-                🚙 {t.scanner.modeRealCar}
-              </button>
-            </div>
-          </div>
-        )}
+        {/* Auto-detect hint - no manual toggle needed */}
 
         {/* Minimal corner guides - subtle like Instagram/TikTok */}
         {cameraActive && !isScanning && (
@@ -789,7 +774,7 @@ export const ScannerView = () => {
             <div className="flex flex-col items-center gap-3">
               <Loader2 className="h-12 w-12 text-primary animate-spin" />
               <p className="text-sm font-medium text-primary">
-                {scanMode === "collectible" ? t.scanner.analyzing : t.scanner.identifyingCar}
+                {t.scanner.analyzing}
               </p>
             </div>
           </div>
