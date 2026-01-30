@@ -11,24 +11,9 @@ export const translations: Record<Language, Translations> = {
 export const STORAGE_KEY = "paddock-language";
 
 /**
- * Detect the user's preferred language based on browser settings
+ * Get the default language - always Portuguese
  */
 export function detectLanguage(): Language {
-  // Check localStorage first for saved preference
-  const saved = localStorage.getItem(STORAGE_KEY);
-  if (saved === "pt-BR" || saved === "en") {
-    return saved;
-  }
-
-  // Use browser's language setting
-  const browserLang = navigator.language || (navigator as any).userLanguage;
-  
-  // Only use English if explicitly set to English
-  if (browserLang?.toLowerCase().startsWith("en")) {
-    return "en";
-  }
-  
-  // Default to Portuguese (main audience is Brazilian)
   return "pt-BR";
 }
 
