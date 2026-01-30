@@ -192,6 +192,20 @@ export const en: Translations = {
     useScannerToAdd: "Use the scanner to add items",
     defaultBio: "Collector at Paddock",
     defaultUser: "User",
+    // Edit profile
+    bio: "Bio",
+    bioPlaceholder: "Tell us about yourself...",
+    city: "City",
+    cityPlaceholder: "e.g. New York, NY",
+    phone: "Contact phone",
+    phonePlaceholder: "+1 555 123-4567",
+    changePhoto: "Change photo",
+    profileUpdated: "Profile updated!",
+    updateError: "Error updating profile",
+    photoUploaded: "Photo updated!",
+    uploadError: "Error uploading photo",
+    invalidImageType: "Select a valid image",
+    imageTooLarge: "Image must be less than 5MB",
   },
 
   // Feed

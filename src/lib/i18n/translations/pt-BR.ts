@@ -190,6 +190,20 @@ export const ptBR = {
     useScannerToAdd: "Use o scanner para adicionar itens",
     defaultBio: "Colecionador no Paddock",
     defaultUser: "Usuário",
+    // Edit profile
+    bio: "Bio",
+    bioPlaceholder: "Conte um pouco sobre você...",
+    city: "Cidade",
+    cityPlaceholder: "Ex: São Paulo, SP",
+    phone: "Telefone para contato",
+    phonePlaceholder: "+55 11 99999-9999",
+    changePhoto: "Alterar foto",
+    profileUpdated: "Perfil atualizado!",
+    updateError: "Erro ao atualizar perfil",
+    photoUploaded: "Foto atualizada!",
+    uploadError: "Erro ao fazer upload da foto",
+    invalidImageType: "Selecione uma imagem válida",
+    imageTooLarge: "A imagem deve ter no máximo 5MB",
   },
 
   // Feed

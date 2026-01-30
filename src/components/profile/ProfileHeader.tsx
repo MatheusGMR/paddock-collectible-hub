@@ -1,25 +1,35 @@
 import { Settings } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface ProfileHeaderProps {
   user: {
     username: string;
     avatar: string;
     bio: string;
+    city?: string | null;
+    phone?: string | null;
     followers: number;
     following: number;
     collection: number;
   };
+  onEditProfile?: () => void;
+  onSettings?: () => void;
 }
 
-export const ProfileHeader = ({ user }: ProfileHeaderProps) => {
+export const ProfileHeader = ({ user, onEditProfile, onSettings }: ProfileHeaderProps) => {
+  const { t } = useLanguage();
+  
   return (
     <div className="border-b border-border">
       {/* Top Bar */}
       <div className="flex items-center justify-between px-4 py-3">
         <h1 className="text-lg font-semibold">{user.username}</h1>
-        <button className="p-2 text-foreground hover:text-primary transition-colors">
+        <button 
+          onClick={onSettings}
+          className="p-2 text-foreground hover:text-primary transition-colors"
+        >
           <Settings className="h-5 w-5" />
         </button>
       </div>
@@ -37,25 +47,29 @@ export const ProfileHeader = ({ user }: ProfileHeaderProps) => {
 
           {/* Stats */}
           <div className="flex flex-1 justify-around pt-2">
-            <StatItem value={user.collection} label="Items" />
-            <StatItem value={user.followers} label="Followers" />
-            <StatItem value={user.following} label="Following" />
+            <StatItem value={user.collection} label={t.profile.items} />
+            <StatItem value={user.followers} label={t.profile.followers} />
+            <StatItem value={user.following} label={t.profile.following} />
           </div>
         </div>
 
-        {/* Bio */}
-        <div className="mt-4">
+        {/* Bio & Location */}
+        <div className="mt-4 space-y-1">
           <p className="text-sm text-foreground/90 leading-relaxed">
             {user.bio}
           </p>
+          {user.city && (
+            <p className="text-xs text-muted-foreground">📍 {user.city}</p>
+          )}
         </div>
 
         {/* Edit Profile Button */}
         <Button 
           variant="outline" 
+          onClick={onEditProfile}
           className="w-full mt-4 border-border text-foreground hover:bg-muted"
         >
-          Edit Profile
+          {t.profile.editProfile}
         </Button>
       </div>
     </div>
