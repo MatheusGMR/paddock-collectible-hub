@@ -29,6 +29,7 @@ IMPORTANTE:
 - Você está analisando fotos de CARROS REAIS (em tamanho real), não miniaturas
 - Se a foto mostrar um carro de brinquedo/miniatura em vez de um carro real, ainda assim identifique o veículo que ele representa
 - Foque em identificar marca, modelo e ano do veículo
+- Para carros brasileiros (Fiat, Volkswagen, Chevrolet, etc), considere versões nacionais
 
 Responda APENAS com um objeto JSON válido (sem markdown, sem código):
 
@@ -36,20 +37,28 @@ Se conseguir identificar o carro:
 {
   "identified": true,
   "car": {
-    "brand": "Marca (ex: Ferrari, Porsche, Toyota, Volkswagen)",
-    "model": "Modelo (ex: 250 GTO, 911 Turbo, Supra, Fusca)",
+    "brand": "Marca (ex: Ferrari, Porsche, Toyota, Volkswagen, Fiat)",
+    "model": "Modelo (ex: 250 GTO, 911 Turbo, Supra, Fusca, Argo, Uno)",
     "year": "Ano ou década aproximada (ex: 1962, Anos 90, 2020)",
-    "variant": "Variante se aplicável (ex: GT3 RS, Type R, GTI) ou string vazia",
+    "variant": "Variante se aplicável (ex: GT3 RS, Type R, GTI, Trekking, HGT) ou string vazia",
     "bodyStyle": "Tipo de carroceria (Sedan, Coupe, SUV, Hatchback, Conversível, Pickup, etc)",
     "color": "Cor do veículo na foto"
   },
   "searchTerms": [
-    "termo de busca principal para encontrar miniatura desse carro (ex: Ferrari F40 diecast)",
-    "termo alternativo com fabricante de miniatura (ex: Hot Wheels Ferrari F40)",
-    "termo genérico (ex: Ferrari F40 miniatura colecionável)"
+    "MARCA MODELO miniatura" (ex: "Fiat Argo miniatura"),
+    "MARCA MODELO diecast" (ex: "Fiat Argo diecast"),  
+    "MARCA MODELO hot wheels" (ex: "Fiat Argo hot wheels"),
+    "MARCA miniatura escala" (ex: "Fiat miniatura escala"),
+    "MODELO miniatura colecionável" (ex: "Argo miniatura colecionável")
   ],
   "confidence": "high" | "medium" | "low"
 }
+
+IMPORTANTE para searchTerms:
+- Gere 5 termos de busca variados para maximizar chances de encontrar miniaturas
+- Inclua variações com "miniatura", "diecast", "hot wheels", "escala 1:64", "colecionável"
+- Use português brasileiro
+- Para marcas populares no Brasil, inclua termos específicos
 
 Se NÃO conseguir identificar:
 {

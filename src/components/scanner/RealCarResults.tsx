@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Car, ExternalLink, RotateCcw, Loader2, ShoppingCart, Search } from "lucide-react";
+import { Car, ExternalLink, RotateCcw, Loader2, ShoppingCart, Search, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -27,6 +27,36 @@ interface RealCarResultsProps {
   onScanAgain: () => void;
 }
 
+// Generate multiple search query variations for better results
+const generateSearchQueries = (car: RealCarData, originalTerms: string[]): string[] => {
+  const queries: string[] = [];
+  
+  // Original AI-suggested terms first
+  queries.push(...originalTerms);
+  
+  // Brand + Model combinations
+  queries.push(`${car.brand} ${car.model} miniatura`);
+  queries.push(`${car.brand} ${car.model} diecast`);
+  queries.push(`${car.brand} ${car.model} hot wheels`);
+  queries.push(`${car.brand} ${car.model} escala`);
+  
+  // Just model (some models are unique enough)
+  queries.push(`${car.model} miniatura`);
+  queries.push(`${car.model} diecast`);
+  
+  // Brand only (for broader results)
+  queries.push(`${car.brand} miniatura colecionável`);
+  queries.push(`${car.brand} diecast hot wheels`);
+  
+  // Generic with year if available
+  if (car.year && !car.year.includes("Anos")) {
+    queries.push(`${car.brand} ${car.model} ${car.year} miniatura`);
+  }
+  
+  // Remove duplicates and empty strings
+  return [...new Set(queries.filter(q => q.trim()))];
+};
+
 export const RealCarResults = ({
   car,
   searchTerms,
@@ -37,40 +67,68 @@ export const RealCarResults = ({
   const [listings, setListings] = useState<Listing[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchStatus, setSearchStatus] = useState<"searching" | "found" | "empty">("searching");
+  const [currentQueryIndex, setCurrentQueryIndex] = useState(0);
+  const [allQueries, setAllQueries] = useState<string[]>([]);
+  const [triedQueries, setTriedQueries] = useState<string[]>([]);
   const { t } = useLanguage();
   const navigate = useNavigate();
 
-  // Fetch listings when component mounts
+  // Generate all possible search queries on mount
   useEffect(() => {
+    const queries = generateSearchQueries(car, searchTerms);
+    setAllQueries(queries);
+    console.log("[RealCarResults] Generated search queries:", queries);
+  }, [car, searchTerms]);
+
+  // Fetch listings with progressive search
+  useEffect(() => {
+    if (allQueries.length === 0) return;
+
     const fetchListings = async () => {
       setIsLoading(true);
       setSearchStatus("searching");
 
-      try {
-        // Use the first search term for the query
-        const query = searchTerms[0] || `${car.brand} ${car.model} diecast`;
-        console.log("[RealCarResults] Searching for:", query);
+      // Try each query until we find results
+      for (let i = currentQueryIndex; i < allQueries.length; i++) {
+        const query = allQueries[i];
+        console.log(`[RealCarResults] Trying query ${i + 1}/${allQueries.length}: "${query}"`);
+        
+        setTriedQueries(prev => [...prev, query]);
 
-        const result = await fetchExternalListings({ query, limit: 12 });
+        try {
+          const result = await fetchExternalListings({ query, limit: 12 });
 
-        if (result.success && result.listings.length > 0) {
-          setListings(result.listings);
-          setSearchStatus("found");
-        } else {
-          setListings([]);
-          setSearchStatus("empty");
+          if (result.success && result.listings.length > 0) {
+            console.log(`[RealCarResults] Found ${result.listings.length} listings with query: "${query}"`);
+            setListings(result.listings);
+            setSearchStatus("found");
+            setCurrentQueryIndex(i);
+            setIsLoading(false);
+            return;
+          }
+        } catch (error) {
+          console.error(`[RealCarResults] Error with query "${query}":`, error);
         }
-      } catch (error) {
-        console.error("[RealCarResults] Error fetching listings:", error);
-        setListings([]);
-        setSearchStatus("empty");
-      } finally {
-        setIsLoading(false);
+
+        // Only try first 3 queries automatically, then stop
+        if (i >= currentQueryIndex + 2) {
+          break;
+        }
       }
+
+      // No results found
+      setListings([]);
+      setSearchStatus("empty");
+      setIsLoading(false);
     };
 
     fetchListings();
-  }, [car.brand, car.model, searchTerms]);
+  }, [allQueries, currentQueryIndex]);
+
+  const handleTryMoreQueries = () => {
+    // Move to next batch of queries
+    setCurrentQueryIndex(prev => Math.min(prev + 3, allQueries.length - 1));
+  };
 
   const confidenceColors = {
     high: "bg-green-500/20 text-green-400 border-green-500/30",
@@ -173,12 +231,39 @@ export const RealCarResults = ({
 
           {/* Empty state */}
           {!isLoading && searchStatus === "empty" && (
-            <div className="flex flex-col items-center justify-center py-12 text-center">
-              <Search className="h-12 w-12 text-foreground-secondary/50 mb-4" />
+            <div className="flex flex-col items-center justify-center py-8 text-center">
+              <Search className="h-12 w-12 text-muted-foreground/50 mb-4" />
               <h3 className="font-semibold text-foreground mb-2">{t.scanner.noMiniaturesFound}</h3>
-              <p className="text-sm text-foreground-secondary max-w-xs">
+              <p className="text-sm text-muted-foreground max-w-xs mb-4">
                 {t.scanner.trySearchInMarket}
               </p>
+              
+              {/* Show tried queries */}
+              {triedQueries.length > 0 && (
+                <div className="w-full max-w-xs mb-4">
+                  <p className="text-xs text-muted-foreground mb-2">Buscas tentadas:</p>
+                  <div className="flex flex-wrap gap-1 justify-center">
+                    {triedQueries.slice(-3).map((q, i) => (
+                      <Badge key={i} variant="outline" className="text-[10px] bg-muted/50">
+                        {q.slice(0, 25)}{q.length > 25 ? "..." : ""}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {/* Try more queries button */}
+              {currentQueryIndex + 3 < allQueries.length && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleTryMoreQueries}
+                  className="mb-2"
+                >
+                  <RefreshCw className="h-3 w-3 mr-2" />
+                  Tentar outras buscas
+                </Button>
+              )}
             </div>
           )}
         </div>
