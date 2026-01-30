@@ -206,6 +206,7 @@ export const en: Translations = {
     uploadError: "Error uploading photo",
     invalidImageType: "Select a valid image",
     imageTooLarge: "Image must be less than 5MB",
+    invalidPhone: "Invalid phone format. Use: +1 555 123-4567",
   },
 
   // Feed
