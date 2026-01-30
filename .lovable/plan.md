@@ -1,119 +1,44 @@
 
-# Plano: Corrigir Dados Faltantes e Melhorar UX de Captura
 
-## Problemas Identificados
+# Plano: Traduzir Toda a Plataforma para Português
 
-### 1. Música e Fotos do Carro Real Não São Salvas
-O Edge Function `analyze-collectible` **já retorna** os campos `musicSuggestion` e `realCarPhotos`, porém:
-- A interface `AnalysisResult` em `ScannerView.tsx` não inclui esses campos
-- A função `handleAddToCollection` não envia esses dados para o banco
+## Problema Identificado
 
-**Fluxo atual quebrado:**
-```text
-AI retorna musicSuggestion + realCarPhotos
-       ↓
-ScannerView ignora (interface incompleta)
-       ↓
-addToCollection não recebe esses campos
-       ↓
-Banco salva SEM música e fotos
-       ↓
-CollectibleDetailCard não tem dados pra mostrar
-```
+Diversos componentes e páginas da plataforma possuem textos hardcoded em inglês, mesmo com o sistema de i18n já implementado. O idioma padrão deveria ser português (PT-BR).
 
-### 2. Experiência de Captura Pouco Impactante
-- O índice de valor é exibido de forma simples
-- Não há destaque visual quando um item raro é capturado
-- A pontuação deveria ser o "momento wow" da experiência
+---
+
+## Arquivos com Textos Hardcoded em Inglês
+
+### Páginas Principais
+
+| Arquivo | Textos em Inglês |
+|---------|-----------------|
+| `src/pages/Auth.tsx` | "Welcome back", "Create account", "Sign in to your account", "Join the collector community", "Username", "Email", "Password", "Sign In", "Create Account", "or", "Continue with Google", "Continue with Apple", "Don't have an account?", "Already have an account?", "Sign up", "Sign in" |
+| `src/pages/NotFound.tsx` | "Oops! Page not found", "Return to Home" |
+| `src/pages/Notifications.tsx` | "Notifications" (header) |
+| `src/pages/Profile.tsx` | "Sign Out", "No posts yet", "Scan items to add to your collection", "Your collection is empty", "Use the scanner to add items", "User", "Collector at Paddock" |
+
+### Componentes
+
+| Arquivo | Textos em Inglês |
+|---------|-----------------|
+| `src/components/scanner/ScoreHero.tsx` | "Toque para ver detalhes do índice" (já em PT, ok) |
+| `src/components/scanner/ResultCarousel.tsx` | "Origem:", "Fato Histórico", "Notas" (já em PT, ok), "N/A" |
+| `src/components/scanner/MusicSuggestion.tsx` | "Música para Ouvir" (já em PT, ok) |
+| `src/components/collection/CollectibleDetailCard.tsx` | "Detalhes do Item", "Dados do Carro Real", "Dados do Colecionável", "Marca", "Modelo", "Ano", "Fabricante", "Escala", "Série", "Condição", "Origem", "Ano do Modelo", "Notas", "Fato Histórico", "Música para Ouvir", "Fotos do Veículo Real" (já em PT, ok) |
 
 ---
 
 ## Solução
 
-### Parte 1: Corrigir Salvamento dos Novos Campos
+### 1. Atualizar Arquivos de Tradução
 
-**Arquivo:** `src/components/scanner/ScannerView.tsx`
+Adicionar novas chaves ao arquivo `pt-BR.ts` e `en.ts` para cobrir todos os textos faltantes.
 
-Atualizar a interface `AnalysisResult`:
-```typescript
-interface AnalysisResult {
-  realCar: {
-    brand: string;
-    model: string;
-    year: string;
-    historicalFact: string;
-  };
-  collectible: { ... };
-  priceIndex?: PriceIndex;
-  musicSuggestion?: string;      // ← ADICIONAR
-  realCarPhotos?: string[];      // ← ADICIONAR
-}
-```
+### 2. Atualizar Componentes para Usar o Sistema i18n
 
-Atualizar `handleAddToCollection` para incluir:
-```typescript
-await addToCollection(
-  user.id,
-  {
-    ...existingFields,
-    music_suggestion: result.musicSuggestion || null,
-    real_car_photos: result.realCarPhotos || null,
-  },
-  capturedImage
-);
-```
-
-### Parte 2: Atualizar Interface Item no database.ts
-
-**Arquivo:** `src/lib/database.ts`
-
-Adicionar campos à interface `Item`:
-```typescript
-export interface Item {
-  ...existingFields,
-  music_suggestion?: string | null;
-  real_car_photos?: string[] | null;
-}
-```
-
-Atualizar função `addToCollection` para aceitar e salvar os novos campos.
-
-### Parte 3: Melhorar UX do ResultCarousel (Scanner)
-
-**Arquivo:** `src/components/scanner/ResultCarousel.tsx`
-
-Criar uma experiência mais impactante:
-
-1. **Score Hero Section** - Pontuação em destaque com animação
-2. **Tier Badge com Cores Vibrantes** - Destacar se é raro/ultra raro
-3. **Confetti para itens raros** - Usar `canvas-confetti` (já instalado)
-4. **Layout redesenhado** - Priorizar a pontuação visualmente
-
-Nova estrutura visual:
-```text
-+--------------------------------+
-|  🏆 ULTRA RARO                 |
-|  ████████████████████░░░       |
-|         85                     |
-|   Toque para ver critérios     |
-+--------------------------------+
-|  FERRARI 250 GTO • 1962        |
-|  Hot Wheels • 1:64             |
-+--------------------------------+
-|  Fabricante: Hot Wheels        |
-|  Série: RLC Exclusive          |
-|  Condição: Mint                |
-|  Origem: Thailand              |
-+--------------------------------+
-|  📖 "A Ferrari 250 GTO..."     |
-+--------------------------------+
-|  [ADICIONAR À COLEÇÃO]  [→]    |
-+--------------------------------+
-```
-
-### Parte 4: Adicionar Música e Fotos ao ResultCarousel
-
-O scanner deve mostrar preview da música sugerida e miniaturas das fotos reais.
+Importar `useLanguage()` e substituir textos hardcoded pelas chaves de tradução.
 
 ---
 
@@ -121,107 +46,139 @@ O scanner deve mostrar preview da música sugerida e miniaturas das fotos reais.
 
 | Arquivo | Mudança |
 |---------|---------|
-| `src/components/scanner/ScannerView.tsx` | Atualizar `AnalysisResult` + `handleAddToCollection` |
-| `src/components/scanner/ResultCarousel.tsx` | Redesenhar com Score Hero + adicionar música/fotos |
-| `src/lib/database.ts` | Atualizar interface `Item` + função `addToCollection` |
+| `src/lib/i18n/translations/pt-BR.ts` | Adicionar novas chaves de tradução |
+| `src/lib/i18n/translations/en.ts` | Adicionar mesmas chaves em inglês |
+| `src/pages/Auth.tsx` | Usar `useLanguage()` para todos os textos |
+| `src/pages/NotFound.tsx` | Usar `useLanguage()` para todos os textos |
+| `src/pages/Notifications.tsx` | Usar `useLanguage()` para header |
+| `src/pages/Profile.tsx` | Usar `useLanguage()` para todos os textos |
 
 ---
 
 ## Detalhes Técnicos
 
-### Interface Atualizada (ResultCarousel)
+### Novas Chaves de Tradução
 
 ```typescript
-interface AnalysisResult {
-  realCar: {
-    brand: string;
-    model: string;
-    year: string;
-    historicalFact: string;
-  };
-  collectible: {
-    manufacturer: string;
-    scale: string;
-    estimatedYear: string;
-    origin: string;
-    series: string;
-    condition: string;
-    notes: string;
-  };
-  priceIndex?: PriceIndex;
-  musicSuggestion?: string;
-  realCarPhotos?: string[];
+// Adicionar em auth:
+auth: {
+  // ... existentes
+  username: "Nome de usuário",
+  joinCommunity: "Junte-se à comunidade de colecionadores",
+  continueWithGoogle: "Continuar com Google",
+  continueWithApple: "Continuar com Apple",
+}
+
+// Adicionar em errors:
+errors: {
+  // ... existentes
+  pageNotFound: "Ops! Página não encontrada",
+  returnHome: "Voltar para o Início",
+  usernameRequired: "Nome de usuário é obrigatório",
+  errorOccurred: "Ocorreu um erro",
+  failedGoogleSignIn: "Falha ao entrar com Google",
+  failedAppleSignIn: "Falha ao entrar com Apple",
+}
+
+// Adicionar em profile:
+profile: {
+  // ... existentes
+  noPostsYet: "Nenhum post ainda",
+  scanItemsToAdd: "Escaneie itens para adicionar à sua coleção",
+  emptyCollection: "Sua coleção está vazia",
+  useScannerToAdd: "Use o scanner para adicionar itens",
+  defaultBio: "Colecionador no Paddock",
 }
 ```
 
-### Confetti para Items Raros
+### Exemplo de Atualização do Auth.tsx
 
-```typescript
-import confetti from "canvas-confetti";
+```tsx
+// Antes
+<h1 className="text-2xl font-semibold">
+  {isLogin ? "Welcome back" : "Create account"}
+</h1>
 
-// Quando o resultado chegar e for raro/super_raro/ultra_rare
-useEffect(() => {
-  if (result.priceIndex?.tier === "ultra_rare" || 
-      result.priceIndex?.tier === "super_rare") {
-    confetti({
-      particleCount: 100,
-      spread: 70,
-      origin: { y: 0.6 }
-    });
-  }
-}, [result]);
+// Depois
+const { t } = useLanguage();
+
+<h1 className="text-2xl font-semibold">
+  {isLogin ? t.auth.welcomeBack : t.auth.createAccount}
+</h1>
 ```
 
-### Score Hero Component
+### Exemplo de Atualização do NotFound.tsx
 
-```typescript
-const ScoreHero = ({ score, tier }: { score: number; tier: string }) => (
-  <div className={`
-    p-6 rounded-2xl text-center 
-    ${getTierBgColor(tier)} 
-    animate-in fade-in zoom-in duration-500
-  `}>
-    <span className={`text-xs uppercase tracking-widest ${getTierColor(tier)}`}>
-      {getTierLabel(tier)}
-    </span>
-    <div className="text-5xl font-black text-foreground my-2">
-      {score}
-    </div>
-    <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
-      <div 
-        className={`h-full ${getTierColor(tier).replace('text-', 'bg-')} transition-all`}
-        style={{ width: `${score}%` }}
-      />
-    </div>
-    <p className="text-xs text-foreground-secondary mt-2">
-      Toque para ver detalhes do índice
-    </p>
-  </div>
-);
+```tsx
+// Antes
+<p>Oops! Page not found</p>
+<a href="/">Return to Home</a>
+
+// Depois
+const { t } = useLanguage();
+
+<p>{t.errors.pageNotFound}</p>
+<a href="/">{t.errors.returnHome}</a>
 ```
 
 ---
 
-## Fluxo Corrigido
+## Lista Completa de Textos a Traduzir
 
-```text
-1. Usuário captura foto
-2. AI analisa e retorna TODOS os dados (incluindo música + fotos)
-3. ResultCarousel exibe com Score Hero animado
-4. Se raro → Confetti! 🎊
-5. Usuário clica "Adicionar"
-6. TODOS os campos são salvos no banco
-7. Na coleção, card mostra música + fotos corretamente
-```
+### Auth.tsx
+| Inglês | Português |
+|--------|-----------|
+| Welcome back | Bem-vindo de volta |
+| Create account | Criar conta |
+| Sign in to your account | Entre na sua conta |
+| Join the collector community | Junte-se à comunidade de colecionadores |
+| Username | Nome de usuário |
+| Email | E-mail |
+| Password | Senha |
+| Sign In | Entrar |
+| Create Account | Criar Conta |
+| or | ou |
+| Continue with Google | Continuar com Google |
+| Continue with Apple | Continuar com Apple |
+| Don't have an account? | Não tem uma conta? |
+| Already have an account? | Já tem uma conta? |
+| Sign up | Cadastre-se |
+| Sign in | Entre |
+| Username is required | Nome de usuário é obrigatório |
+| An error occurred | Ocorreu um erro |
+| Failed to sign in with Google | Falha ao entrar com Google |
+| Failed to sign in with Apple | Falha ao entrar com Apple |
+| Welcome to Paddock | Bem-vindo ao Paddock |
+
+### NotFound.tsx
+| Inglês | Português |
+|--------|-----------|
+| Oops! Page not found | Ops! Página não encontrada |
+| Return to Home | Voltar para o Início |
+
+### Profile.tsx
+| Inglês | Português |
+|--------|-----------|
+| Sign Out | Sair |
+| No posts yet | Nenhum post ainda |
+| Scan items to add to your collection | Escaneie itens para adicionar à sua coleção |
+| Your collection is empty | Sua coleção está vazia |
+| Use the scanner to add items | Use o scanner para adicionar itens |
+| User | Usuário |
+| Collector at Paddock | Colecionador no Paddock |
+
+### Notifications.tsx
+| Inglês | Português |
+|--------|-----------|
+| Notifications | Notificações |
 
 ---
 
-## Resumo das Correções
+## Resumo
 
-| O que estava errado | Correção |
-|---------------------|----------|
-| `musicSuggestion` não estava na interface | Adicionar ao `AnalysisResult` |
-| `realCarPhotos` não estava na interface | Adicionar ao `AnalysisResult` |
-| Campos não eram salvos no banco | Atualizar `handleAddToCollection` |
-| Pontuação sem destaque visual | Criar Score Hero com animações |
-| Sem celebração para itens raros | Adicionar confetti |
+| Problema | Solução |
+|----------|---------|
+| Textos hardcoded em inglês | Usar sistema i18n existente |
+| Faltam chaves de tradução | Adicionar novas chaves em pt-BR.ts e en.ts |
+| Componentes não usam useLanguage() | Importar e utilizar o hook |
+
