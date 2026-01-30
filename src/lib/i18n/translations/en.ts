@@ -47,6 +47,13 @@ export const en: Translations = {
     signUpError: "Sign up error",
     signUpSuccess: "Account created successfully!",
     checkEmail: "Check your email to confirm your account",
+    username: "Username",
+    joinCommunity: "Join the collector community",
+    continueWithGoogle: "Continue with Google",
+    continueWithApple: "Continue with Apple",
+    welcomeToPaddock: "Welcome to Paddock",
+    successfullySignedIn: "Successfully signed in.",
+    accountCreated: "Account created!",
   },
 
   // Navigation
@@ -173,6 +180,12 @@ export const en: Translations = {
     portuguese: "Portuguese",
     english: "English",
     items: "items",
+    noPostsYet: "No posts yet",
+    scanItemsToAdd: "Scan items to add to your collection",
+    emptyCollection: "Your collection is empty",
+    useScannerToAdd: "Use the scanner to add items",
+    defaultBio: "Collector at Paddock",
+    defaultUser: "User",
   },
 
   // Feed
@@ -236,6 +249,12 @@ export const en: Translations = {
     notFound: "Not found",
     unauthorized: "Unauthorized",
     networkError: "Connection error",
+    pageNotFound: "Oops! Page not found",
+    returnHome: "Return to Home",
+    usernameRequired: "Username is required",
+    errorOccurred: "An error occurred",
+    failedGoogleSignIn: "Failed to sign in with Google",
+    failedAppleSignIn: "Failed to sign in with Apple",
   },
 
   // Onboarding

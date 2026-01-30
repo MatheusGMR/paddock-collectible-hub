@@ -6,6 +6,7 @@ import { PostGrid } from "@/components/profile/PostGrid";
 import { CollectionList } from "@/components/profile/CollectionList";
 import { IndexRanking } from "@/components/index/IndexRanking";
 import { useAuth } from "@/contexts/AuthContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { getProfile, getCollectionWithIndex, getFollowCounts, getCollectionCount, Profile, CollectionItemWithIndex } from "@/lib/database";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -18,6 +19,7 @@ const ProfilePage = () => {
   const [loading, setLoading] = useState(true);
   
   const { user, signOut } = useAuth();
+  const { t } = useLanguage();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -70,9 +72,9 @@ const ProfilePage = () => {
   }
 
   const userData = {
-    username: profile?.username || "User",
+    username: profile?.username || t.profile.defaultUser,
     avatar: profile?.avatar_url || "",
-    bio: profile?.bio || "Collector at Paddock",
+    bio: profile?.bio || t.profile.defaultBio,
     followers: stats.followers,
     following: stats.following,
     collection: stats.collection,
@@ -94,7 +96,7 @@ const ProfilePage = () => {
           onClick={handleSignOut}
           className="w-full border-border text-foreground-secondary hover:bg-muted text-sm"
         >
-          Sign Out
+          {t.auth.signOut}
         </Button>
       </div>
       
@@ -105,8 +107,8 @@ const ProfilePage = () => {
           <PostGrid posts={gridPosts} />
         ) : (
           <div className="p-8 text-center text-foreground-secondary">
-            <p>No posts yet</p>
-            <p className="text-sm mt-1">Scan items to add to your collection</p>
+            <p>{t.profile.noPostsYet}</p>
+            <p className="text-sm mt-1">{t.profile.scanItemsToAdd}</p>
           </div>
         )
       ) : activeTab === "collection" ? (
@@ -114,8 +116,8 @@ const ProfilePage = () => {
           <CollectionList items={collection} />
         ) : (
           <div className="p-8 text-center text-foreground-secondary">
-            <p>Your collection is empty</p>
-            <p className="text-sm mt-1">Use the scanner to add items</p>
+            <p>{t.profile.emptyCollection}</p>
+            <p className="text-sm mt-1">{t.profile.useScannerToAdd}</p>
           </div>
         )
       ) : (
