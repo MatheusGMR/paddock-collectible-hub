@@ -10,6 +10,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Separator } from "@/components/ui/separator";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/contexts/AuthContext";
 import {
@@ -18,6 +19,7 @@ import {
   NewsPreferences,
 } from "@/lib/api/news";
 import { useToast } from "@/hooks/use-toast";
+import { PushNotificationToggle } from "./PushNotificationToggle";
 
 interface NewsPreferencesModalProps {
   open: boolean;
@@ -230,7 +232,12 @@ export const NewsPreferencesModal = ({
               </RadioGroup>
             </div>
 
-            {/* Notifications */}
+            {/* Push Notifications */}
+            <Separator />
+            <PushNotificationToggle />
+            <Separator />
+
+            {/* Legacy Notifications (in-app) */}
             <div className="flex items-center justify-between">
               <Label className="text-sm font-medium">
                 {t.news?.preferences?.notifications || "Notificações de Novidades"}
