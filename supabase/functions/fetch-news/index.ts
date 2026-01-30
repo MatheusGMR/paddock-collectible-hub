@@ -282,8 +282,18 @@ Deno.serve(async (req) => {
 
     console.log(`Fetched ${allArticles.length} articles total`);
 
+    // Remove duplicates by source_url before upserting
+    const uniqueArticlesMap = new Map<string, NewsArticle>();
+    for (const article of allArticles) {
+      if (article.source_url && !uniqueArticlesMap.has(article.source_url)) {
+        uniqueArticlesMap.set(article.source_url, article);
+      }
+    }
+    const uniqueArticles = Array.from(uniqueArticlesMap.values());
+    console.log(`Unique articles after deduplication: ${uniqueArticles.length}`);
+
     // Upsert articles to database
-    if (allArticles.length > 0) {
+    if (uniqueArticles.length > 0) {
       const upsertRes = await fetch(
         `${supabaseUrl}/rest/v1/news_articles?on_conflict=source_url`,
         {
@@ -294,7 +304,7 @@ Deno.serve(async (req) => {
             'Content-Type': 'application/json',
             'Prefer': 'resolution=merge-duplicates',
           },
-          body: JSON.stringify(allArticles.map(a => ({
+          body: JSON.stringify(uniqueArticles.map(a => ({
             ...a,
             fetched_at: new Date().toISOString(),
           }))),
@@ -303,6 +313,8 @@ Deno.serve(async (req) => {
       
       if (!upsertRes.ok) {
         console.error('Failed to upsert articles:', await upsertRes.text());
+      } else {
+        console.log('Articles upserted successfully');
       }
     }
 
