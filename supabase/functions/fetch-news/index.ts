@@ -267,15 +267,26 @@ Deno.serve(async (req) => {
     for (const source of firecrawlSources) {
       if (category && source.category !== category) continue;
       
-      const searchQueries: Record<string, string> = {
+      // Custom queries per source for better results
+      const sourceQueries: Record<string, string> = {
+        'autoesporte': 'site:autoesporte.globo.com carros lançamentos 2025',
+        'quatrorodas': 'site:quatrorodas.abril.com.br novos carros testes',
+        'flatout': 'site:flatout.com.br carros clássicos esportivos',
+        'ge-motor': 'site:ge.globo.com/motor F1 automobilismo 2025',
+        'hotwheels-br': 'hot wheels brasil novidades lançamentos 2025',
+        'lamley': 'site:lamleygroup.com hot wheels diecast news',
+        'thunted': 'T-Hunted hot wheels brasil colecionáveis',
+      };
+      
+      const categoryQueries: Record<string, string> = {
         collectibles: 'hot wheels diecast news 2024 2025',
-        motorsport: 'formula 1 racing news',
-        cars: 'new car releases automotive news',
+        motorsport: 'formula 1 racing news 2025',
+        cars: 'novos carros lançamentos brasil 2025',
         aeromodeling: 'RC airplane drone model news',
         planes: 'aviation aircraft news',
       };
       
-      const query = searchQueries[source.category] || `${source.category} news`;
+      const query = sourceQueries[source.code] || categoryQueries[source.category] || `${source.category} news`;
       const articles = await fetchFirecrawlNews(query, source.category, source.language);
       allArticles.push(...articles);
     }
