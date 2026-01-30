@@ -56,10 +56,10 @@ export const ptBR = {
 
   // Navigation
   nav: {
-    home: "Início",
+    home: "Home",
     market: "Mercado",
     scanner: "Scanner",
-    notifications: "Notificações",
+    notifications: "Alertas",
     profile: "Perfil",
   },
 
