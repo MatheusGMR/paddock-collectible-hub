@@ -224,6 +224,7 @@ export const ptBR = {
     selectPhotos: "Selecione suas fotos",
     uploadDescription: "Carregue fotos dos seus carrinhos para análise automática e adicionar à coleção",
     chooseFile: "Escolher arquivo",
+    chooseFiles: "Escolher arquivos",
     useCamera: "Usar câmera",
   },
 
