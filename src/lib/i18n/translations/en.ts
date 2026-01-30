@@ -158,6 +158,9 @@ export const en: Translations = {
     scanAnother: "Scan Another",
     couldNotIdentify: "Could not identify the vehicle",
     tryDifferentAngle: "Try capturing from a different angle",
+    notInCollection: "You don't have this car",
+    findMiniatureBelow: "Find a miniature below!",
+    checkingYourCollection: "Checking your collection...",
   },
 
   // Mercado (Marketplace)

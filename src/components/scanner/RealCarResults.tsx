@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Car, ExternalLink, RotateCcw, Loader2, ShoppingCart, Search, RefreshCw } from "lucide-react";
+import { Car, ExternalLink, RotateCcw, Loader2, ShoppingCart, Search, RefreshCw, Check, Package } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -8,7 +8,13 @@ import { ListingCard, Listing } from "@/components/mercado/ListingCard";
 import { fetchExternalListings } from "@/lib/api/listings";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
+import { CollectionItemWithIndex } from "@/lib/database";
+import { CollectibleDetailCard } from "@/components/collection/CollectibleDetailCard";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
+import { PriceIndexBreakdown } from "@/lib/priceIndex";
+import { Json } from "@/integrations/supabase/types";
 
 interface RealCarData {
   brand: string;
@@ -57,6 +63,11 @@ const generateSearchQueries = (car: RealCarData, originalTerms: string[]): strin
   return [...new Set(queries.filter(q => q.trim()))];
 };
 
+interface CollectionMatch {
+  found: boolean;
+  item?: CollectionItemWithIndex;
+}
+
 export const RealCarResults = ({
   car,
   searchTerms,
@@ -70,8 +81,106 @@ export const RealCarResults = ({
   const [currentQueryIndex, setCurrentQueryIndex] = useState(0);
   const [allQueries, setAllQueries] = useState<string[]>([]);
   const [triedQueries, setTriedQueries] = useState<string[]>([]);
+  const [collectionMatch, setCollectionMatch] = useState<CollectionMatch | null>(null);
+  const [checkingCollection, setCheckingCollection] = useState(true);
+  const [showDetail, setShowDetail] = useState(false);
+  
   const { t } = useLanguage();
+  const { user } = useAuth();
   const navigate = useNavigate();
+
+  // Check if user has this car in their collection
+  useEffect(() => {
+    const parseIndexBreakdown = (json: Json | null): PriceIndexBreakdown | null => {
+      if (!json || typeof json !== 'object' || Array.isArray(json)) return null;
+      return json as unknown as PriceIndexBreakdown;
+    };
+
+    const checkCollection = async () => {
+      if (!user) {
+        setCollectionMatch({ found: false });
+        setCheckingCollection(false);
+        return;
+      }
+
+      try {
+        // Search for any collectible matching this real car's brand and model
+        const { data, error } = await supabase
+          .from("user_collection")
+          .select(`
+            id,
+            image_url,
+            item:items!inner(
+              real_car_brand,
+              real_car_model,
+              real_car_year,
+              collectible_scale,
+              collectible_manufacturer,
+              collectible_series,
+              collectible_origin,
+              collectible_condition,
+              collectible_year,
+              collectible_notes,
+              historical_fact,
+              price_index,
+              rarity_tier,
+              index_breakdown,
+              music_suggestion,
+              real_car_photos
+            )
+          `)
+          .eq("user_id", user.id);
+
+        if (error) throw error;
+
+        // Find a match by brand and model (case insensitive)
+        const match = (data || []).find((c: any) => {
+          const brandMatch = c.item.real_car_brand.toLowerCase().includes(car.brand.toLowerCase()) ||
+                            car.brand.toLowerCase().includes(c.item.real_car_brand.toLowerCase());
+          const modelMatch = c.item.real_car_model.toLowerCase().includes(car.model.toLowerCase()) ||
+                            car.model.toLowerCase().includes(c.item.real_car_model.toLowerCase());
+          return brandMatch && modelMatch;
+        });
+
+        if (match) {
+          setCollectionMatch({
+            found: true,
+            item: {
+              id: match.id,
+              image_url: match.image_url,
+              item: match.item ? {
+                real_car_brand: match.item.real_car_brand,
+                real_car_model: match.item.real_car_model,
+                real_car_year: match.item.real_car_year,
+                collectible_scale: match.item.collectible_scale,
+                collectible_manufacturer: match.item.collectible_manufacturer,
+                collectible_series: match.item.collectible_series,
+                collectible_origin: match.item.collectible_origin,
+                collectible_condition: match.item.collectible_condition,
+                collectible_year: match.item.collectible_year,
+                collectible_notes: match.item.collectible_notes,
+                historical_fact: match.item.historical_fact,
+                price_index: match.item.price_index,
+                rarity_tier: match.item.rarity_tier,
+                index_breakdown: parseIndexBreakdown(match.item.index_breakdown),
+                music_suggestion: match.item.music_suggestion,
+                real_car_photos: match.item.real_car_photos as string[] | null
+              } : null
+            }
+          });
+        } else {
+          setCollectionMatch({ found: false });
+        }
+      } catch (error) {
+        console.error("Error checking collection:", error);
+        setCollectionMatch({ found: false });
+      } finally {
+        setCheckingCollection(false);
+      }
+    };
+
+    checkCollection();
+  }, [user, car]);
 
   // Generate all possible search queries on mount
   useEffect(() => {
@@ -131,9 +240,9 @@ export const RealCarResults = ({
   };
 
   const confidenceColors = {
-    high: "bg-green-500/20 text-green-400 border-green-500/30",
-    medium: "bg-yellow-500/20 text-yellow-400 border-yellow-500/30",
-    low: "bg-red-500/20 text-red-400 border-red-500/30",
+    high: "bg-primary/20 text-primary border-primary/30",
+    medium: "bg-amber-500/20 text-amber-500 border-amber-500/30",
+    low: "bg-destructive/20 text-destructive border-destructive/30",
   };
 
   const confidenceLabels = {
@@ -183,6 +292,74 @@ export const RealCarResults = ({
       {/* Content */}
       <div className="flex-1 overflow-y-auto">
         <div className="p-4 space-y-4">
+          {/* Collection check banner */}
+          {!checkingCollection && collectionMatch && (
+            <Card 
+              className={cn(
+                "border overflow-hidden",
+                collectionMatch.found 
+                  ? "border-primary/30 bg-primary/5" 
+                  : "border-muted bg-muted/30"
+              )}
+            >
+              <CardContent className="p-3">
+                {collectionMatch.found && collectionMatch.item ? (
+                  <button
+                    onClick={() => setShowDetail(true)}
+                    className="w-full flex items-center gap-3 text-left"
+                  >
+                    <div className="h-10 w-10 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
+                      <Check className="h-5 w-5 text-primary" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-primary text-sm">
+                        {t.scanner.alreadyInCollection}
+                      </p>
+                      <p className="text-xs text-muted-foreground truncate">
+                        {collectionMatch.item.item?.collectible_manufacturer || "Hot Wheels"} • {collectionMatch.item.item?.collectible_scale || "1:64"}
+                      </p>
+                    </div>
+                    {collectionMatch.item.image_url && (
+                      <img
+                        src={collectionMatch.item.image_url}
+                        alt=""
+                        className="h-12 w-12 rounded-lg object-cover"
+                      />
+                    )}
+                  </button>
+                ) : (
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
+                      <Package className="h-5 w-5 text-muted-foreground" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-medium text-sm">
+                        {t.scanner.notInCollection || "Você não tem este carro"}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {t.scanner.findMiniatureBelow || "Encontre uma miniatura abaixo!"}
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Checking collection state */}
+          {checkingCollection && (
+            <Card className="border-muted bg-muted/30">
+              <CardContent className="p-3">
+                <div className="flex items-center gap-3">
+                  <Loader2 className="h-5 w-5 text-primary animate-spin" />
+                  <p className="text-sm text-muted-foreground">
+                    {t.scanner.checkingYourCollection || "Verificando sua coleção..."}
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Section title */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -289,6 +466,15 @@ export const RealCarResults = ({
           </Button>
         </div>
       </div>
+
+      {/* Collection item detail */}
+      {collectionMatch?.item && (
+        <CollectibleDetailCard
+          item={collectionMatch.item}
+          open={showDetail}
+          onOpenChange={setShowDetail}
+        />
+      )}
     </div>
   );
 };

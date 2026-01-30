@@ -156,6 +156,9 @@ export const ptBR = {
     scanAnother: "Escanear Outro",
     couldNotIdentify: "Não foi possível identificar o veículo",
     tryDifferentAngle: "Tente capturar de outro ângulo",
+    notInCollection: "Você não tem este carro",
+    findMiniatureBelow: "Encontre uma miniatura abaixo!",
+    checkingYourCollection: "Verificando sua coleção...",
   },
 
   // Mercado (Marketplace)
