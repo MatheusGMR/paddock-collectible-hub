@@ -1,4 +1,3 @@
-import { Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface CaptureButtonProps {
@@ -23,7 +22,7 @@ export function CaptureButton({
   };
 
   return (
-    <div className="flex flex-col items-center gap-3">
+    <div className="flex flex-col items-center gap-2">
       {/* Recording duration indicator */}
       {isRecording && (
         <div className="flex items-center gap-2 px-3 py-1 bg-destructive/90 rounded-full animate-pulse">
@@ -34,7 +33,7 @@ export function CaptureButton({
         </div>
       )}
 
-      {/* Main capture button */}
+      {/* Main capture button - minimal social media style */}
       <button
         disabled={disabled}
         onMouseDown={onPressStart}
@@ -50,37 +49,36 @@ export function CaptureButton({
         }}
         onTouchCancel={onPressEnd}
         className={cn(
-          "relative w-20 h-20 rounded-full transition-all duration-150",
-          "bg-white/90 backdrop-blur-sm",
-          "border-4 border-white",
-          "shadow-lg shadow-black/20",
-          "active:scale-95 hover:scale-105",
+          "relative transition-all duration-200",
+          "active:scale-90",
           "disabled:opacity-50 disabled:pointer-events-none",
-          "flex items-center justify-center",
-          isRecording && "ring-4 ring-destructive animate-pulse"
+          "flex items-center justify-center"
         )}
       >
-        {/* Inner circle with AI icon */}
+        {/* Outer ring */}
         <div
           className={cn(
-            "w-14 h-14 rounded-full flex items-center justify-center transition-all",
-            isRecording
-              ? "bg-destructive"
-              : "bg-gradient-to-br from-primary/10 to-primary/5"
+            "w-[72px] h-[72px] rounded-full flex items-center justify-center",
+            "border-[3px] transition-colors duration-200",
+            isRecording 
+              ? "border-destructive" 
+              : "border-white/80"
           )}
         >
-          <Zap
+          {/* Inner circle */}
+          <div
             className={cn(
-              "h-7 w-7 transition-colors",
-              isRecording ? "text-white" : "text-primary/40"
+              "rounded-full transition-all duration-200",
+              isRecording
+                ? "w-7 h-7 bg-destructive rounded-lg"
+                : "w-[58px] h-[58px] bg-white/90"
             )}
-            strokeWidth={2.5}
           />
         </div>
 
-        {/* Outer ring for recording */}
+        {/* Recording pulse effect */}
         {isRecording && (
-          <div className="absolute inset-0 rounded-full border-4 border-destructive animate-ping opacity-75" />
+          <div className="absolute inset-0 rounded-full border-[3px] border-destructive animate-ping opacity-50" />
         )}
       </button>
     </div>

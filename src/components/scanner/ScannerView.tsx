@@ -619,17 +619,38 @@ export const ScannerView = () => {
 
         <canvas ref={canvasRef} className="hidden" />
 
-        {/* Scanner Frame */}
-        <div className="absolute inset-8 border-2 border-primary/50 rounded-2xl pointer-events-none">
-          <div className="absolute -top-px -left-px w-8 h-8 border-t-2 border-l-2 border-primary rounded-tl-2xl" />
-          <div className="absolute -top-px -right-px w-8 h-8 border-t-2 border-r-2 border-primary rounded-tr-2xl" />
-          <div className="absolute -bottom-px -left-px w-8 h-8 border-b-2 border-l-2 border-primary rounded-bl-2xl" />
-          <div className="absolute -bottom-px -right-px w-8 h-8 border-b-2 border-r-2 border-primary rounded-br-2xl" />
+        {/* Minimal corner guides - subtle like Instagram/TikTok */}
+        {cameraActive && !isScanning && (
+          <div className="absolute inset-0 pointer-events-none">
+            {/* Top left corner */}
+            <div className="absolute top-16 left-6 w-10 h-10">
+              <div className="absolute top-0 left-0 w-full h-[2px] bg-white/40 rounded-full" />
+              <div className="absolute top-0 left-0 h-full w-[2px] bg-white/40 rounded-full" />
+            </div>
+            {/* Top right corner */}
+            <div className="absolute top-16 right-6 w-10 h-10">
+              <div className="absolute top-0 right-0 w-full h-[2px] bg-white/40 rounded-full" />
+              <div className="absolute top-0 right-0 h-full w-[2px] bg-white/40 rounded-full" />
+            </div>
+            {/* Bottom left corner */}
+            <div className="absolute bottom-32 left-6 w-10 h-10">
+              <div className="absolute bottom-0 left-0 w-full h-[2px] bg-white/40 rounded-full" />
+              <div className="absolute bottom-0 left-0 h-full w-[2px] bg-white/40 rounded-full" />
+            </div>
+            {/* Bottom right corner */}
+            <div className="absolute bottom-32 right-6 w-10 h-10">
+              <div className="absolute bottom-0 right-0 w-full h-[2px] bg-white/40 rounded-full" />
+              <div className="absolute bottom-0 right-0 h-full w-[2px] bg-white/40 rounded-full" />
+            </div>
+          </div>
+        )}
 
-          {isScanning && (
-            <div className="absolute left-4 right-4 h-0.5 bg-gradient-to-r from-transparent via-primary to-transparent animate-scanner-line" />
-          )}
-        </div>
+        {/* Scanning animation overlay */}
+        {isScanning && (
+          <div className="absolute inset-x-6 top-16 bottom-32 pointer-events-none overflow-hidden">
+            <div className="absolute left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-primary to-transparent animate-scanner-line" />
+          </div>
+        )}
 
         <button
           onClick={handleClose}
@@ -702,31 +723,32 @@ export const ScannerView = () => {
           warning={warningMessage || undefined}
         />
       ) : !videoPreviewUrl && (
-        <div className="bg-card border-t border-border p-6 safe-bottom">
-          <div className="flex flex-col items-center gap-4">
+        /* Floating controls overlay - no bottom panel */
+        <div className="absolute bottom-0 left-0 right-0 pb-8 safe-bottom">
+          <div className="flex flex-col items-center gap-3">
             {isInitializing ? (
               <>
-                <Loader2 className="h-8 w-8 text-primary animate-spin" />
-                <p className="text-sm text-foreground-secondary text-center">
+                <Loader2 className="h-8 w-8 text-white animate-spin" />
+                <p className="text-sm text-white/70 text-center">
                   {t.scanner.openingCamera}
                 </p>
               </>
             ) : cameraError ? (
-              <>
-                <p className="text-sm text-foreground-secondary text-center">
+              <div className="bg-black/40 backdrop-blur-sm rounded-2xl p-4 mx-6">
+                <p className="text-sm text-white/70 text-center mb-3">
                   {t.scanner.cameraError}
                 </p>
                 <Button
                   onClick={startCamera}
-                  className="w-full bg-primary text-primary-foreground hover:bg-primary/90 h-12"
+                  className="w-full bg-white/20 backdrop-blur-sm text-white hover:bg-white/30 h-11 border-0"
                 >
                   <Camera className="h-5 w-5 mr-2" />
                   {t.scanner.tryAgain}
                 </Button>
-              </>
+              </div>
             ) : cameraActive ? (
               <>
-                <p className="text-xs text-foreground-secondary text-center mb-2">
+                <p className="text-[11px] text-white/50 text-center tracking-wide">
                   {t.scanner.tapToCapture} • {t.scanner.holdToRecord}
                 </p>
                 <CaptureButton
@@ -738,18 +760,18 @@ export const ScannerView = () => {
                 />
               </>
             ) : (
-              <>
-                <p className="text-sm text-foreground-secondary text-center">
+              <div className="bg-black/40 backdrop-blur-sm rounded-2xl p-4 mx-6">
+                <p className="text-sm text-white/70 text-center mb-3">
                   {t.scanner.cameraError}
                 </p>
                 <Button
                   onClick={startCamera}
-                  className="w-full bg-primary text-primary-foreground hover:bg-primary/90 h-12"
+                  className="w-full bg-white/20 backdrop-blur-sm text-white hover:bg-white/30 h-11 border-0"
                 >
                   <Camera className="h-5 w-5 mr-2" />
                   {t.scanner.tryAgain}
                 </Button>
-              </>
+              </div>
             )}
           </div>
         </div>
