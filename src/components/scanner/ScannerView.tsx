@@ -30,6 +30,8 @@ interface AnalysisResult {
     notes: string;
   };
   priceIndex?: PriceIndex;
+  musicSuggestion?: string;
+  realCarPhotos?: string[];
 }
 
 interface ImageQualityResponse {
@@ -440,6 +442,8 @@ export const ScannerView = () => {
           price_index: result.priceIndex?.score || null,
           rarity_tier: result.priceIndex?.tier || null,
           index_breakdown: result.priceIndex?.breakdown || null,
+          music_suggestion: result.musicSuggestion || null,
+          real_car_photos: result.realCarPhotos || null,
         },
         capturedImage || undefined
       );
