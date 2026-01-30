@@ -332,6 +332,12 @@ export const ptBR = {
     feature3: "Índice de preços em tempo real",
     feature4: "Acesso ao Mercado integrado",
     
+    // Permissions
+    permissionsTitle: "Permissões necessárias",
+    cameraPermission: "Câmera para scanner",
+    notificationPermission: "Notificações de alertas",
+    acceptAndContinue: "Aceitar e Continuar",
+    
     // Subscription gate
     trialExpired: "Seu período de teste acabou",
     trialExpiredDesc: "Você aproveitou 7 dias grátis. Para continuar usando o Paddock, assine agora.",
