@@ -92,6 +92,7 @@ export const ptBR = {
     analysisFailedDesc: "Não foi possível analisar a imagem. Tente novamente.",
     addError: "Erro ao adicionar",
     addErrorDesc: "Não foi possível adicionar o item à coleção. Tente novamente.",
+    failedToAdd: "Não foi possível adicionar à coleção",
     postToFeed: "Postar na Rede",
     shareSuccess: "Deseja compartilhar?",
     laterOption: "Depois",
@@ -218,6 +219,12 @@ export const ptBR = {
     invalidImageType: "Selecione uma imagem válida",
     imageTooLarge: "A imagem deve ter no máximo 5MB",
     invalidPhone: "Formato de telefone inválido. Use: +55 11 99999-9999",
+    // Photo upload
+    uploadPhotos: "Carregar Fotos",
+    selectPhotos: "Selecione suas fotos",
+    uploadDescription: "Carregue fotos dos seus carrinhos para análise automática e adicionar à coleção",
+    chooseFile: "Escolher arquivo",
+    useCamera: "Usar câmera",
   },
 
   // Feed

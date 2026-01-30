@@ -94,6 +94,7 @@ export const en: Translations = {
     analysisFailedDesc: "Failed to analyze the image. Please try again.",
     addError: "Error",
     addErrorDesc: "Failed to add item to collection. Please try again.",
+    failedToAdd: "Failed to add to collection",
     postToFeed: "Post to Feed",
     shareSuccess: "Share this item?",
     laterOption: "Later",
@@ -220,6 +221,12 @@ export const en: Translations = {
     invalidImageType: "Select a valid image",
     imageTooLarge: "Image must be less than 5MB",
     invalidPhone: "Invalid phone format. Use: +1 555 123-4567",
+    // Photo upload
+    uploadPhotos: "Upload Photos",
+    selectPhotos: "Select your photos",
+    uploadDescription: "Upload photos of your collectibles for automatic analysis and add to your collection",
+    chooseFile: "Choose file",
+    useCamera: "Use camera",
   },
 
   // Feed
