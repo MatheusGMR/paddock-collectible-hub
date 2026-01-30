@@ -12,8 +12,10 @@ import { CaptureButton } from "@/components/scanner/CaptureButton";
 import { ResultCarousel } from "@/components/scanner/ResultCarousel";
 import { ImageQualityError, ImageQualityIssue } from "@/components/scanner/ImageQualityError";
 import { PriceIndex } from "@/lib/priceIndex";
+import { cropImageByBoundingBox, BoundingBox } from "@/lib/imageCrop";
 
 interface AnalysisResult {
+  boundingBox?: BoundingBox;
   realCar: {
     brand: string;
     model: string;
@@ -32,6 +34,7 @@ interface AnalysisResult {
   priceIndex?: PriceIndex;
   musicSuggestion?: string;
   realCarPhotos?: string[];
+  croppedImage?: string; // Will be populated after cropping
 }
 
 interface ImageQualityResponse {
@@ -284,7 +287,23 @@ export const ScannerView = () => {
         });
         setAnalysisResults([]);
       } else {
-        setAnalysisResults(response.items);
+        // Crop individual car images from bounding boxes
+        const itemsWithCrops = await Promise.all(
+          response.items.map(async (item) => {
+            if (item.boundingBox && imageBase64) {
+              try {
+                const croppedImage = await cropImageByBoundingBox(imageBase64, item.boundingBox as BoundingBox);
+                return { ...item, croppedImage };
+              } catch (error) {
+                console.error("Failed to crop image:", error);
+                return { ...item, croppedImage: imageBase64 };
+              }
+            }
+            return { ...item, croppedImage: imageBase64 };
+          })
+        );
+        
+        setAnalysisResults(itemsWithCrops);
         setAddedIndices(new Set());
         setSkippedIndices(new Set());
         
@@ -445,7 +464,8 @@ export const ScannerView = () => {
           music_suggestion: result.musicSuggestion || null,
           real_car_photos: result.realCarPhotos || null,
         },
-        capturedImage || undefined
+        // Use cropped image if available, otherwise fall back to full image
+        result.croppedImage || capturedImage || undefined
       );
 
       toast({

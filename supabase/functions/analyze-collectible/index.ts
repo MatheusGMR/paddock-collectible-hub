@@ -71,6 +71,12 @@ You MUST respond with a valid JSON object in this exact format:
   "count": number of cars identified (0-5),
   "items": [
     {
+      "boundingBox": {
+        "x": percentage from left (0-100),
+        "y": percentage from top (0-100),
+        "width": percentage of image width (5-100),
+        "height": percentage of image height (5-100)
+      },
       "realCar": {
         "brand": "Brand of the real car (e.g., Ferrari, Porsche, Toyota)",
         "model": "Model name (e.g., 250 GTO, 911 Turbo)",
@@ -132,6 +138,12 @@ You MUST respond with a valid JSON object in this exact format:
   ],
   "warning": "Optional: message if more than 5 cars were detected but only 5 are shown"
 }
+
+BOUNDING BOX INSTRUCTIONS:
+- For each car, provide a bounding box with x, y, width, height as percentages (0-100)
+- x and y are the top-left corner of the box
+- Make the box tight around each car with a small margin (5-10% padding)
+- If only one car is detected, the bounding box can cover most of the image (e.g., x:10, y:10, width:80, height:80)
 
 PRICE INDEX SCORING GUIDELINES (Total: 100 points):
 
