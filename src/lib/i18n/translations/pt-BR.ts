@@ -382,6 +382,22 @@ export const ptBR = {
       copied: "Copiado!",
       copyLink: "Copiar",
     },
+    push: {
+      title: "Alertas de Lançamentos",
+      loginRequired: "Login necessário",
+      loginRequiredDesc: "Faça login para receber notificações",
+      permissionDenied: "Permissão negada",
+      permissionDeniedDesc: "Habilite as notificações nas configurações do navegador",
+      enabled: "Notificações ativadas!",
+      enabledDesc: "Você receberá alertas de novos lançamentos",
+      disabled: "Notificações desativadas",
+      disabledDesc: "Você não receberá mais alertas",
+      error: "Erro",
+      errorDesc: "Não foi possível alterar as notificações",
+      notSupported: "Não suportado neste navegador",
+      activeDesc: "Receba alertas de novos lançamentos",
+      inactiveDesc: "Ative para receber alertas",
+    },
   },
 };
 
