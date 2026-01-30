@@ -13,7 +13,7 @@ import { ResultCarousel } from "@/components/scanner/ResultCarousel";
 import { ImageQualityError, ImageQualityIssue } from "@/components/scanner/ImageQualityError";
 import { PriceIndex } from "@/lib/priceIndex";
 import { cropImageByBoundingBox, BoundingBox } from "@/lib/imageCrop";
-
+import { PaddockLogo } from "@/components/icons/PaddockLogo";
 interface AnalysisResult {
   boundingBox?: BoundingBox;
   realCar: {
@@ -79,6 +79,9 @@ export const ScannerView = () => {
   const [recordedVideo, setRecordedVideo] = useState<Blob | null>(null);
   const [recordingDuration, setRecordingDuration] = useState(0);
   const [videoPreviewUrl, setVideoPreviewUrl] = useState<string | null>(null);
+  
+  // Flash effect state
+  const [showFlash, setShowFlash] = useState(false);
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -246,6 +249,10 @@ export const ScannerView = () => {
 
   const capturePhoto = useCallback(async () => {
     if (!videoRef.current || !canvasRef.current) return;
+
+    // Trigger flash effect
+    setShowFlash(true);
+    setTimeout(() => setShowFlash(false), 150);
 
     const video = videoRef.current;
     const canvas = canvasRef.current;
@@ -618,6 +625,22 @@ export const ScannerView = () => {
         )}
 
         <canvas ref={canvasRef} className="hidden" />
+
+        {/* Flash effect overlay */}
+        {showFlash && (
+          <div className="absolute inset-0 bg-white z-50 animate-fade-out-flash pointer-events-none" />
+        )}
+
+        {/* Paddock watermark */}
+        {cameraActive && !isScanning && !capturedImage && (
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 pointer-events-none">
+            <PaddockLogo 
+              variant="wordmark" 
+              size={24} 
+              className="opacity-30"
+            />
+          </div>
+        )}
 
         {/* Minimal corner guides - subtle like Instagram/TikTok */}
         {cameraActive && !isScanning && (
