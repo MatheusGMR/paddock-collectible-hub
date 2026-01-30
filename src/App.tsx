@@ -26,17 +26,29 @@ const queryClient = new QueryClient();
 
 // Component that handles subscription flow
 const SubscriptionFlow = ({ children }: { children: React.ReactNode }) => {
-  const { user } = useAuth();
-  const { status, isNewUser, isLoading, startTrial, createCheckout } = useSubscription();
+  const { user, loading: authLoading } = useAuth();
+  const { status, isNewUser, isLoading: subLoading, startTrial, createCheckout } = useSubscription();
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [hasCheckedOnboarding, setHasCheckedOnboarding] = useState(false);
 
-  // Show onboarding for new users
+  // Show onboarding for new users - only check once
   useEffect(() => {
-    if (!isLoading && user && isNewUser && status === "none") {
-      setShowOnboarding(true);
+    if (!authLoading && !subLoading && user && !hasCheckedOnboarding) {
+      setHasCheckedOnboarding(true);
+      if (isNewUser && status === "none") {
+        setShowOnboarding(true);
+      }
     }
-  }, [isLoading, user, isNewUser, status]);
+  }, [authLoading, subLoading, user, isNewUser, status, hasCheckedOnboarding]);
+
+  // Reset onboarding check when user changes
+  useEffect(() => {
+    if (!user) {
+      setHasCheckedOnboarding(false);
+      setShowOnboarding(false);
+    }
+  }, [user]);
 
   const handleStartTrial = useCallback(async () => {
     setCheckoutLoading(true);
@@ -73,9 +85,10 @@ const SubscriptionFlow = ({ children }: { children: React.ReactNode }) => {
     return <>{children}</>;
   }
 
-  // Loading state
-  if (isLoading) {
-    return null; // Splash screen handles this
+  // Wait for both auth and subscription loading to complete
+  // But render children to avoid layout shifts
+  if (authLoading || subLoading) {
+    return <>{children}</>;
   }
 
   // Show onboarding for new users
@@ -106,25 +119,32 @@ const SubscriptionFlow = ({ children }: { children: React.ReactNode }) => {
 // Component that handles splash → auth check → redirect
 const AppContent = () => {
   const [showSplash, setShowSplash] = useState(true);
+  const [initialAuthChecked, setInitialAuthChecked] = useState(false);
   const { user, loading } = useAuth();
   const navigate = useNavigate();
 
-  // After splash completes, redirect based on auth state
+  // After splash completes, mark it as done
   const handleSplashComplete = () => {
     setShowSplash(false);
-    
-    // If not loading and no user, redirect to auth
-    if (!loading && !user) {
-      navigate("/auth", { replace: true });
-    }
   };
 
-  // Also handle redirect when auth state changes after splash
+  // Only redirect to auth once after initial auth check
   useEffect(() => {
-    if (!showSplash && !loading && !user) {
+    // Wait for splash to finish and auth to complete initial check
+    if (!showSplash && !loading && !initialAuthChecked) {
+      setInitialAuthChecked(true);
+      if (!user) {
+        navigate("/auth", { replace: true });
+      }
+    }
+  }, [showSplash, loading, user, navigate, initialAuthChecked]);
+
+  // Handle sign out - redirect to auth when user becomes null AFTER initial check
+  useEffect(() => {
+    if (initialAuthChecked && !loading && !user) {
       navigate("/auth", { replace: true });
     }
-  }, [showSplash, loading, user, navigate]);
+  }, [user, loading, initialAuthChecked, navigate]);
 
   return (
     <>
