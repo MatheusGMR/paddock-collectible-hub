@@ -8,10 +8,10 @@ interface OnboardingSlideProps {
 
 export const OnboardingSlide = ({ title, description }: OnboardingSlideProps) => {
   return (
-    <div className="flex flex-col items-center justify-center h-full px-8 text-center">
-      {/* Animated Image Container */}
+    <div className="flex flex-col items-center justify-between h-full px-4 sm:px-8 py-4 text-center">
+      {/* Animated Image Container - Responsive sizing */}
       <motion.div
-        initial={{ scale: 0.8, opacity: 0 }}
+        initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         transition={{ 
           type: "spring", 
@@ -19,34 +19,37 @@ export const OnboardingSlide = ({ title, description }: OnboardingSlideProps) =>
           damping: 15,
           delay: 0.2 
         }}
-        className="w-full max-w-xs mb-8"
+        className="w-full flex-1 max-h-[55vh] sm:max-h-[50vh] flex items-center justify-center"
       >
         <img
           src={paddockBanner}
           alt="Paddock Collection"
-          className="w-full aspect-[4/3] object-cover rounded-2xl shadow-2xl"
+          className="w-full h-full max-w-lg object-cover rounded-2xl"
         />
       </motion.div>
 
-      {/* Title */}
-      <motion.h2
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.4 }}
-        className="text-3xl font-bold text-foreground mb-4"
-      >
-        {title}
-      </motion.h2>
+      {/* Text Content */}
+      <div className="flex flex-col items-center mt-6 mb-2">
+        {/* Title */}
+        <motion.h2
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+          className="text-2xl sm:text-3xl font-bold text-foreground mb-3"
+        >
+          {title}
+        </motion.h2>
 
-      {/* Description */}
-      <motion.p
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.5 }}
-        className="text-lg text-muted-foreground max-w-sm leading-relaxed"
-      >
-        {description}
-      </motion.p>
+        {/* Description */}
+        <motion.p
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5 }}
+          className="text-base sm:text-lg text-muted-foreground max-w-sm leading-relaxed"
+        >
+          {description}
+        </motion.p>
+      </div>
     </div>
   );
 };
