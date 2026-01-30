@@ -37,6 +37,7 @@ export type Database = {
       }
       items: {
         Row: {
+          collectible_color: string | null
           collectible_condition: string | null
           collectible_manufacturer: string | null
           collectible_notes: string | null
@@ -57,6 +58,7 @@ export type Database = {
           real_car_year: string | null
         }
         Insert: {
+          collectible_color?: string | null
           collectible_condition?: string | null
           collectible_manufacturer?: string | null
           collectible_notes?: string | null
@@ -77,6 +79,7 @@ export type Database = {
           real_car_year?: string | null
         }
         Update: {
+          collectible_color?: string | null
           collectible_condition?: string | null
           collectible_manufacturer?: string | null
           collectible_notes?: string | null

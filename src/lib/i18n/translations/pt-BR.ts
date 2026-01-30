@@ -136,6 +136,12 @@ export const ptBR = {
       obstructed_desc: "Algo está bloqueando a visão dos carrinhos.",
       obstructed_tip: "Remova objetos que estejam na frente.",
     },
+    // Duplicate detection
+    duplicateWarning: "Você já tem este item",
+    duplicateDescription: "Este carrinho já existe na sua coleção",
+    addAnyway: "Adicionar Mesmo Assim",
+    discard: "Descartar",
+    color: "Cor",
   },
 
   // Mercado (Marketplace)

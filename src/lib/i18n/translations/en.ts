@@ -138,6 +138,12 @@ export const en: Translations = {
       obstructed_desc: "Something is blocking the view of the cars.",
       obstructed_tip: "Remove objects that are in the way.",
     },
+    // Duplicate detection
+    duplicateWarning: "You already have this item",
+    duplicateDescription: "This car is already in your collection",
+    addAnyway: "Add Anyway",
+    discard: "Discard",
+    color: "Color",
   },
 
   // Mercado (Marketplace)

@@ -25,12 +25,19 @@ export interface Item {
   collectible_series: string | null;
   collectible_condition: string | null;
   collectible_notes: string | null;
+  collectible_color: string | null;
   price_index: number | null;
   rarity_tier: string | null;
   index_breakdown: PriceIndexBreakdown | null;
   music_suggestion: string | null;
   real_car_photos: string[] | null;
   created_at: string;
+}
+
+export interface DuplicateCheckResult {
+  isDuplicate: boolean;
+  existingItemId?: string;
+  existingItemImage?: string;
 }
 
 export interface CollectionItem {
@@ -283,6 +290,47 @@ export const checkItemInCollection = async (
       c.item.real_car_brand.toLowerCase() === brand.toLowerCase() &&
       c.item.real_car_model.toLowerCase() === model.toLowerCase()
   );
+};
+
+export const checkDuplicateInCollection = async (
+  userId: string,
+  brand: string,
+  model: string,
+  color?: string | null
+): Promise<DuplicateCheckResult> => {
+  const { data, error } = await supabase
+    .from("user_collection")
+    .select(`
+      id,
+      image_url,
+      item:items!inner(
+        real_car_brand,
+        real_car_model,
+        collectible_color
+      )
+    `)
+    .eq("user_id", userId);
+
+  if (error) throw error;
+  
+  const match = (data || []).find((c: any) => {
+    const brandMatch = c.item.real_car_brand.toLowerCase() === brand.toLowerCase();
+    const modelMatch = c.item.real_car_model.toLowerCase() === model.toLowerCase();
+    
+    // If color was provided, also check color match
+    let colorMatch = true;
+    if (color && c.item.collectible_color) {
+      colorMatch = c.item.collectible_color.toLowerCase() === color.toLowerCase();
+    }
+    
+    return brandMatch && modelMatch && colorMatch;
+  });
+  
+  return {
+    isDuplicate: !!match,
+    existingItemId: match?.id,
+    existingItemImage: match?.image_url
+  };
 };
 
 export const getFollowCounts = async (userId: string) => {
