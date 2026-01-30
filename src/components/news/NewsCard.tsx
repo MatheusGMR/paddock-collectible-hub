@@ -3,6 +3,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { NewsArticle, formatRelativeTime } from "@/lib/api/news";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { ShareMenu } from "./ShareMenu";
 
 interface NewsCardProps {
   article: NewsArticle;
@@ -29,7 +30,11 @@ export const NewsCard = ({ article, variant = "default" }: NewsCardProps) => {
   const { t } = useLanguage();
   const isFeatured = variant === "featured";
 
-  const handleClick = () => {
+  const handleClick = (e: React.MouseEvent) => {
+    // Don't open article if clicking on share button
+    if ((e.target as HTMLElement).closest('[data-share-button]')) {
+      return;
+    }
     window.open(article.source_url, "_blank", "noopener,noreferrer");
   };
 
@@ -72,9 +77,18 @@ export const NewsCard = ({ article, variant = "default" }: NewsCardProps) => {
           {categoryIcons[article.category]} {categoryLabel}
         </Badge>
         
+        {/* Share button */}
+        <div className="absolute top-2 right-2" data-share-button>
+          <ShareMenu 
+            url={article.source_url} 
+            title={article.title} 
+            summary={article.summary || undefined} 
+          />
+        </div>
+        
         {/* Featured badge */}
         {article.is_featured && (
-          <Badge className="absolute top-2 right-2 bg-primary text-primary-foreground">
+          <Badge className="absolute bottom-2 right-2 bg-primary text-primary-foreground">
             ⭐ {t.news?.featured || "Destaque"}
           </Badge>
         )}

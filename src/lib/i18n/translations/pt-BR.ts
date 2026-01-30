@@ -375,6 +375,13 @@ export const ptBR = {
     },
     sources: "Fontes",
     openOriginal: "Ver no site original",
+    share: {
+      title: "Compartilhar",
+      linkCopied: "Link copiado!",
+      linkCopiedDesc: "O link foi copiado para a área de transferência",
+      copied: "Copiado!",
+      copyLink: "Copiar",
+    },
   },
 };
 

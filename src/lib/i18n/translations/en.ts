@@ -377,5 +377,12 @@ export const en: Translations = {
     },
     sources: "Sources",
     openOriginal: "View original",
+    share: {
+      title: "Share",
+      linkCopied: "Link copied!",
+      linkCopiedDesc: "The link has been copied to your clipboard",
+      copied: "Copied!",
+      copyLink: "Copy",
+    },
   },
 };
