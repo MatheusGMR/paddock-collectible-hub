@@ -19,13 +19,15 @@ export const OnboardingSlide = ({ title, description }: OnboardingSlideProps) =>
           damping: 15,
           delay: 0.2 
         }}
-        className="w-full flex-1 max-h-[55vh] sm:max-h-[50vh] flex items-center justify-center"
+        className="w-full max-w-md px-2"
       >
-        <img
-          src={paddockBanner}
-          alt="Paddock Collection"
-          className="w-full h-full max-w-lg object-cover rounded-2xl"
-        />
+        <div className="relative w-full aspect-[4/3] rounded-2xl overflow-hidden">
+          <img
+            src={paddockBanner}
+            alt="Paddock Collection"
+            className="absolute inset-0 w-full h-full object-cover"
+          />
+        </div>
       </motion.div>
 
       {/* Text Content */}
