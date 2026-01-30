@@ -1,15 +1,17 @@
 import { Home, ShoppingBag, Camera, Bell, User } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
-
-const navItems = [
-  { icon: Home, label: "Home", path: "/" },
-  { icon: ShoppingBag, label: "Mercado", path: "/mercado" },
-  { icon: Camera, label: "Scan", path: "/scanner", isCenter: true },
-  { icon: Bell, label: "Alerts", path: "/notifications" },
-  { icon: User, label: "Profile", path: "/profile" },
-];
+import { useLanguage } from "@/contexts/LanguageContext";
 
 export const BottomNav = () => {
+  const { t } = useLanguage();
+
+  const navItems = [
+    { icon: Home, label: t.nav.home, path: "/" },
+    { icon: ShoppingBag, label: t.nav.market, path: "/mercado" },
+    { icon: Camera, label: t.nav.scanner, path: "/scanner", isCenter: true },
+    { icon: Bell, label: t.nav.notifications, path: "/notifications" },
+    { icon: User, label: t.nav.profile, path: "/profile" },
+  ];
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-background/95 backdrop-blur-lg safe-bottom">
       <div className="mx-auto flex h-16 max-w-md items-center justify-around px-4">
