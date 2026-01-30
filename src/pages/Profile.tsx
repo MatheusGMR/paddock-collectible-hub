@@ -1,13 +1,14 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { ProfileHeader } from "@/components/profile/ProfileHeader";
 import { ProfileTabs } from "@/components/profile/ProfileTabs";
 import { PostGrid } from "@/components/profile/PostGrid";
 import { CollectionList } from "@/components/profile/CollectionList";
 import { IndexRanking } from "@/components/index/IndexRanking";
+import { EditProfileSheet, ProfileData } from "@/components/profile/EditProfileSheet";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { getProfile, getCollectionWithIndex, getFollowCounts, getCollectionCount, Profile, CollectionItemWithIndex } from "@/lib/database";
+import { getProfile, getCollectionWithIndex, getFollowCounts, getCollectionCount, updateProfile, Profile, CollectionItemWithIndex } from "@/lib/database";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -17,10 +18,36 @@ const ProfilePage = () => {
   const [collection, setCollection] = useState<CollectionItemWithIndex[]>([]);
   const [stats, setStats] = useState({ followers: 0, following: 0, collection: 0 });
   const [loading, setLoading] = useState(true);
+  const [editSheetOpen, setEditSheetOpen] = useState(false);
   
   const { user, signOut } = useAuth();
   const { t } = useLanguage();
   const navigate = useNavigate();
+
+  const loadProfile = useCallback(async () => {
+    if (!user) return;
+    
+    try {
+      const [profileData, collectionData, followCounts, collectionCount] = await Promise.all([
+        getProfile(user.id),
+        getCollectionWithIndex(user.id),
+        getFollowCounts(user.id),
+        getCollectionCount(user.id),
+      ]);
+
+      setProfile(profileData);
+      setCollection(collectionData);
+      setStats({
+        followers: followCounts.followers,
+        following: followCounts.following,
+        collection: collectionCount,
+      });
+    } catch (error) {
+      console.error("Error loading profile:", error);
+    } finally {
+      setLoading(false);
+    }
+  }, [user]);
 
   useEffect(() => {
     if (!user) {
@@ -28,35 +55,22 @@ const ProfilePage = () => {
       return;
     }
 
-    const loadProfile = async () => {
-      try {
-        const [profileData, collectionData, followCounts, collectionCount] = await Promise.all([
-          getProfile(user.id),
-          getCollectionWithIndex(user.id),
-          getFollowCounts(user.id),
-          getCollectionCount(user.id),
-        ]);
-
-        setProfile(profileData);
-        setCollection(collectionData);
-        setStats({
-          followers: followCounts.followers,
-          following: followCounts.following,
-          collection: collectionCount,
-        });
-      } catch (error) {
-        console.error("Error loading profile:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     loadProfile();
-  }, [user, navigate]);
+  }, [user, navigate, loadProfile]);
 
   const handleSignOut = async () => {
     await signOut();
     navigate("/auth");
+  };
+
+  const handleSaveProfile = async (updates: Partial<ProfileData>) => {
+    if (!user) return;
+    
+    await updateProfile(user.id, updates);
+    
+    // Refresh profile data
+    const updatedProfile = await getProfile(user.id);
+    setProfile(updatedProfile);
   };
 
   if (!user) {
@@ -75,6 +89,8 @@ const ProfilePage = () => {
     username: profile?.username || t.profile.defaultUser,
     avatar: profile?.avatar_url || "",
     bio: profile?.bio || t.profile.defaultBio,
+    city: profile?.city,
+    phone: profile?.phone,
     followers: stats.followers,
     following: stats.following,
     collection: stats.collection,
@@ -88,7 +104,10 @@ const ProfilePage = () => {
 
   return (
     <div className="min-h-screen">
-      <ProfileHeader user={userData} />
+      <ProfileHeader 
+        user={userData} 
+        onEditProfile={() => setEditSheetOpen(true)}
+      />
       
       <div className="px-4 pb-4">
         <Button
@@ -122,6 +141,23 @@ const ProfilePage = () => {
         )
       ) : (
         <IndexRanking items={collection} loading={false} />
+      )}
+
+      {/* Edit Profile Sheet */}
+      {profile && (
+        <EditProfileSheet
+          open={editSheetOpen}
+          onOpenChange={setEditSheetOpen}
+          profile={{
+            username: profile.username,
+            bio: profile.bio,
+            avatar_url: profile.avatar_url,
+            city: profile.city,
+            phone: profile.phone,
+          }}
+          userId={user.id}
+          onSave={handleSaveProfile}
+        />
       )}
     </div>
   );

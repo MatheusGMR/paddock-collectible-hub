@@ -8,6 +8,8 @@ export interface Profile {
   username: string;
   avatar_url: string | null;
   bio: string | null;
+  city: string | null;
+  phone: string | null;
   created_at: string;
   updated_at: string;
 }
