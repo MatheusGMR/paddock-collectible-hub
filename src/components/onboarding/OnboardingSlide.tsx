@@ -1,12 +1,17 @@
 import { motion } from "framer-motion";
-import paddockBanner from "@/assets/paddock-collection-banner.jpeg";
+import paddockBanner1 from "@/assets/paddock-collection-banner.jpeg";
+import paddockBanner2 from "@/assets/paddock-collection-banner-2.jpeg";
 
 interface OnboardingSlideProps {
   title: string;
   description: string;
+  slideIndex?: number;
 }
 
-export const OnboardingSlide = ({ title, description }: OnboardingSlideProps) => {
+export const OnboardingSlide = ({ title, description, slideIndex = 0 }: OnboardingSlideProps) => {
+  // Select banner based on slide index
+  const bannerImage = slideIndex === 1 ? paddockBanner2 : paddockBanner1;
+
   return (
     <div className="flex flex-col items-center justify-between h-full px-4 sm:px-8 py-4 text-center">
       {/* Animated Image Container - Responsive sizing */}
@@ -23,7 +28,7 @@ export const OnboardingSlide = ({ title, description }: OnboardingSlideProps) =>
       >
         <div className="relative w-full aspect-[4/3] rounded-2xl overflow-hidden">
           <img
-            src={paddockBanner}
+            src={bannerImage}
             alt="Paddock Collection"
             className="absolute inset-0 w-full h-full object-cover"
           />

@@ -84,7 +84,7 @@ export const OnboardingCarousel = ({ onStartTrial, onSkip, isLoading }: Onboardi
                 isLoading={isLoading}
               />
             ) : (
-              <OnboardingSlide {...slides[currentSlide]} />
+              <OnboardingSlide {...slides[currentSlide]} slideIndex={currentSlide} />
             )}
           </motion.div>
         </AnimatePresence>
