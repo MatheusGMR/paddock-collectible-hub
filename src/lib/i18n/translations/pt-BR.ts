@@ -45,6 +45,13 @@ export const ptBR = {
     signUpError: "Erro ao cadastrar",
     signUpSuccess: "Conta criada com sucesso!",
     checkEmail: "Verifique seu e-mail para confirmar sua conta",
+    username: "Nome de usuário",
+    joinCommunity: "Junte-se à comunidade de colecionadores",
+    continueWithGoogle: "Continuar com Google",
+    continueWithApple: "Continuar com Apple",
+    welcomeToPaddock: "Bem-vindo ao Paddock",
+    successfullySignedIn: "Conectado com sucesso.",
+    accountCreated: "Conta criada!",
   },
 
   // Navigation
@@ -171,6 +178,12 @@ export const ptBR = {
     portuguese: "Português",
     english: "Inglês",
     items: "itens",
+    noPostsYet: "Nenhum post ainda",
+    scanItemsToAdd: "Escaneie itens para adicionar à sua coleção",
+    emptyCollection: "Sua coleção está vazia",
+    useScannerToAdd: "Use o scanner para adicionar itens",
+    defaultBio: "Colecionador no Paddock",
+    defaultUser: "Usuário",
   },
 
   // Feed
@@ -234,6 +247,12 @@ export const ptBR = {
     notFound: "Não encontrado",
     unauthorized: "Não autorizado",
     networkError: "Erro de conexão",
+    pageNotFound: "Ops! Página não encontrada",
+    returnHome: "Voltar para o Início",
+    usernameRequired: "Nome de usuário é obrigatório",
+    errorOccurred: "Ocorreu um erro",
+    failedGoogleSignIn: "Falha ao entrar com Google",
+    failedAppleSignIn: "Falha ao entrar com Apple",
   },
 
   // Onboarding

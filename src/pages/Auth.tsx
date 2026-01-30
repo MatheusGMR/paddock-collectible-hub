@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { lovable } from "@/integrations/lovable/index";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,6 +20,7 @@ const Auth = () => {
   const [googleLoading, setGoogleLoading] = useState(false);
   
   const { signIn, signUp, user, loading: authLoading } = useAuth();
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -37,21 +39,21 @@ const Auth = () => {
       if (isLogin) {
         const { error } = await signIn(email, password);
         if (error) throw error;
-        toast({ title: "Welcome back!", description: "Successfully signed in." });
+        toast({ title: t.auth.welcomeBack, description: t.auth.successfullySignedIn });
         navigate("/");
       } else {
         if (!username.trim()) {
-          throw new Error("Username is required");
+          throw new Error(t.errors.usernameRequired);
         }
         const { error } = await signUp(email, password, username);
         if (error) throw error;
-        toast({ title: "Account created!", description: "Welcome to Paddock." });
+        toast({ title: t.auth.accountCreated, description: t.auth.welcomeToPaddock });
         navigate("/");
       }
     } catch (error) {
       toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "An error occurred",
+        title: t.common.error,
+        description: error instanceof Error ? error.message : t.errors.errorOccurred,
         variant: "destructive"
       });
     } finally {
@@ -68,8 +70,8 @@ const Auth = () => {
       if (error) throw error;
     } catch (error) {
       toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to sign in with Apple",
+        title: t.common.error,
+        description: error instanceof Error ? error.message : t.errors.failedAppleSignIn,
         variant: "destructive"
       });
       setAppleLoading(false);
@@ -85,8 +87,8 @@ const Auth = () => {
       if (error) throw error;
     } catch (error) {
       toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to sign in with Google",
+        title: t.common.error,
+        description: error instanceof Error ? error.message : t.errors.failedGoogleSignIn,
         variant: "destructive"
       });
       setGoogleLoading(false);
@@ -104,10 +106,10 @@ const Auth = () => {
       <div className="w-full max-w-sm space-y-6 animate-fade-in">
         <div className="text-center">
           <h1 className="text-2xl font-semibold text-foreground">
-            {isLogin ? "Welcome back" : "Create account"}
+            {isLogin ? t.auth.welcomeBack : t.auth.createAccount}
           </h1>
           <p className="text-sm text-foreground-secondary mt-1">
-            {isLogin ? "Sign in to your account" : "Join the collector community"}
+            {isLogin ? t.auth.enterEmail : t.auth.joinCommunity}
           </p>
         </div>
 
@@ -116,7 +118,7 @@ const Auth = () => {
             <div>
               <Input
                 type="text"
-                placeholder="Username"
+                placeholder={t.auth.username}
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 className="h-12 bg-muted border-0 text-foreground placeholder:text-foreground-secondary focus-visible:ring-1 focus-visible:ring-primary"
@@ -128,7 +130,7 @@ const Auth = () => {
           <div>
             <Input
               type="email"
-              placeholder="Email"
+              placeholder={t.auth.email}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="h-12 bg-muted border-0 text-foreground placeholder:text-foreground-secondary focus-visible:ring-1 focus-visible:ring-primary"
@@ -139,7 +141,7 @@ const Auth = () => {
           <div className="relative">
             <Input
               type={showPassword ? "text" : "password"}
-              placeholder="Password"
+              placeholder={t.auth.password}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="h-12 bg-muted border-0 text-foreground placeholder:text-foreground-secondary focus-visible:ring-1 focus-visible:ring-primary pr-12"
@@ -163,9 +165,9 @@ const Auth = () => {
             {isSubmitting ? (
               <Loader2 className="h-5 w-5 animate-spin" />
             ) : isLogin ? (
-              "Sign In"
+              t.auth.signIn
             ) : (
-              "Create Account"
+              t.auth.createAccount
             )}
           </Button>
         </form>
@@ -176,7 +178,7 @@ const Auth = () => {
             <span className="w-full border-t border-border" />
           </div>
           <div className="relative flex justify-center text-xs">
-            <span className="bg-background px-2 text-muted-foreground">or</span>
+            <span className="bg-background px-2 text-muted-foreground">{t.common.or}</span>
           </div>
         </div>
 
@@ -198,7 +200,7 @@ const Auth = () => {
                 <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
                 <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
               </svg>
-              Continue with Google
+              {t.auth.continueWithGoogle}
             </>
           )}
         </Button>
@@ -218,7 +220,7 @@ const Auth = () => {
               <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09l.01-.01zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
               </svg>
-              Continue with Apple
+              {t.auth.continueWithApple}
             </>
           )}
         </Button>
@@ -231,9 +233,9 @@ const Auth = () => {
             className="text-sm text-foreground-secondary hover:text-primary transition-colors"
           >
             {isLogin ? (
-              <>Don't have an account? <span className="text-primary font-medium">Sign up</span></>
+              <>{t.auth.dontHaveAccount} <span className="text-primary font-medium">{t.auth.signUp}</span></>
             ) : (
-              <>Already have an account? <span className="text-primary font-medium">Sign in</span></>
+              <>{t.auth.alreadyHaveAccount} <span className="text-primary font-medium">{t.auth.signIn}</span></>
             )}
           </button>
         </div>
