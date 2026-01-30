@@ -10,7 +10,10 @@ import { ScoreHero } from "./ScoreHero";
 import { MusicSuggestion } from "./MusicSuggestion";
 import { RealCarPhotos } from "./RealCarPhotos";
 
+import { BoundingBox } from "@/lib/imageCrop";
+
 interface AnalysisResult {
+  boundingBox?: BoundingBox;
   realCar: {
     brand: string;
     model: string;
@@ -29,6 +32,7 @@ interface AnalysisResult {
   priceIndex?: PriceIndex;
   musicSuggestion?: string;
   realCarPhotos?: string[];
+  croppedImage?: string;
 }
 
 interface ResultCarouselProps {
@@ -208,6 +212,17 @@ export const ResultCarousel = ({
                 )}
               >
                 <div className="space-y-4 max-h-[60vh] overflow-y-auto pb-2">
+                  {/* Cropped car image */}
+                  {result.croppedImage && (
+                    <div className="relative w-full h-32 rounded-xl overflow-hidden bg-muted">
+                      <img
+                        src={result.croppedImage}
+                        alt={`${result.realCar.brand} ${result.realCar.model}`}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  )}
+
                   {/* Score Hero Section */}
                   {result.priceIndex && (
                     <ScoreHero
