@@ -199,6 +199,108 @@ export type Database = {
         }
         Relationships: []
       }
+      news_articles: {
+        Row: {
+          category: string
+          content: string | null
+          fetched_at: string | null
+          id: string
+          image_url: string | null
+          is_featured: boolean | null
+          language: string | null
+          published_at: string | null
+          source_logo: string | null
+          source_name: string
+          source_url: string
+          subcategory: string | null
+          summary: string | null
+          tags: string[] | null
+          title: string
+          view_count: number | null
+        }
+        Insert: {
+          category: string
+          content?: string | null
+          fetched_at?: string | null
+          id?: string
+          image_url?: string | null
+          is_featured?: boolean | null
+          language?: string | null
+          published_at?: string | null
+          source_logo?: string | null
+          source_name: string
+          source_url: string
+          subcategory?: string | null
+          summary?: string | null
+          tags?: string[] | null
+          title: string
+          view_count?: number | null
+        }
+        Update: {
+          category?: string
+          content?: string | null
+          fetched_at?: string | null
+          id?: string
+          image_url?: string | null
+          is_featured?: boolean | null
+          language?: string | null
+          published_at?: string | null
+          source_logo?: string | null
+          source_name?: string
+          source_url?: string
+          subcategory?: string | null
+          summary?: string | null
+          tags?: string[] | null
+          title?: string
+          view_count?: number | null
+        }
+        Relationships: []
+      }
+      news_sources: {
+        Row: {
+          category: string
+          code: string
+          created_at: string | null
+          fetch_method: string | null
+          id: string
+          is_active: boolean | null
+          language: string | null
+          last_fetched_at: string | null
+          logo_url: string | null
+          name: string
+          rss_url: string | null
+          url: string
+        }
+        Insert: {
+          category: string
+          code: string
+          created_at?: string | null
+          fetch_method?: string | null
+          id?: string
+          is_active?: boolean | null
+          language?: string | null
+          last_fetched_at?: string | null
+          logo_url?: string | null
+          name: string
+          rss_url?: string | null
+          url: string
+        }
+        Update: {
+          category?: string
+          code?: string
+          created_at?: string | null
+          fetch_method?: string | null
+          id?: string
+          is_active?: boolean | null
+          language?: string | null
+          last_fetched_at?: string | null
+          logo_url?: string | null
+          name?: string
+          rss_url?: string | null
+          url?: string
+        }
+        Relationships: []
+      }
       posts: {
         Row: {
           caption: string | null
@@ -307,6 +409,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      user_news_preferences: {
+        Row: {
+          categories: string[] | null
+          created_at: string | null
+          id: string
+          language: string | null
+          notifications_enabled: boolean | null
+          sources: string[] | null
+          subcategories: string[] | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          categories?: string[] | null
+          created_at?: string | null
+          id?: string
+          language?: string | null
+          notifications_enabled?: boolean | null
+          sources?: string[] | null
+          subcategories?: string[] | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          categories?: string[] | null
+          created_at?: string | null
+          id?: string
+          language?: string | null
+          notifications_enabled?: boolean | null
+          sources?: string[] | null
+          subcategories?: string[] | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
       }
       user_subscriptions: {
         Row: {
