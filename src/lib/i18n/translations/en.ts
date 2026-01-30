@@ -334,6 +334,12 @@ export const en: Translations = {
     feature3: "Real-time price index",
     feature4: "Integrated marketplace access",
     
+    // Permissions
+    permissionsTitle: "Required permissions",
+    cameraPermission: "Camera for scanner",
+    notificationPermission: "Alert notifications",
+    acceptAndContinue: "Accept and Continue",
+    
     // Subscription gate
     trialExpired: "Your trial has ended",
     trialExpiredDesc: "You enjoyed 7 free days. To continue using Paddock, subscribe now.",

@@ -1,7 +1,8 @@
 import { motion } from "framer-motion";
-import { Crown, Check, Sparkles } from "lucide-react";
+import { Crown, Check, Sparkles, Camera, Bell, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { usePermissions } from "@/hooks/usePermissions";
 
 interface PricingSlideProps {
   onStartTrial: () => void;
@@ -11,6 +12,7 @@ interface PricingSlideProps {
 
 export const PricingSlide = ({ onStartTrial, onSkip, isLoading }: PricingSlideProps) => {
   const { t } = useLanguage();
+  const { requestAllPermissions, isRequesting } = usePermissions();
 
   const features = [
     t.onboarding.feature1,
@@ -18,6 +20,24 @@ export const PricingSlide = ({ onStartTrial, onSkip, isLoading }: PricingSlidePr
     t.onboarding.feature3,
     t.onboarding.feature4,
   ];
+
+  const permissions = [
+    { icon: Camera, label: t.onboarding.cameraPermission || "Câmera para scanner" },
+    { icon: Bell, label: t.onboarding.notificationPermission || "Notificações de alertas" },
+  ];
+
+  const handleAcceptAndContinue = async () => {
+    // Request all permissions first
+    await requestAllPermissions();
+    // Then proceed with trial/subscription
+    onStartTrial();
+  };
+
+  const handleSkipWithPermissions = async () => {
+    // Still request permissions even on skip
+    await requestAllPermissions();
+    onSkip();
+  };
 
   return (
     <div className="flex flex-col items-center justify-center h-full px-6 text-center">
@@ -67,33 +87,62 @@ export const PricingSlide = ({ onStartTrial, onSkip, isLoading }: PricingSlidePr
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ delay: 0.4 }}
-        className="bg-card border border-border rounded-2xl p-6 mb-6 w-full max-w-xs shadow-lg"
+        className="bg-card border border-border rounded-2xl p-5 mb-4 w-full max-w-xs shadow-lg"
       >
-        <div className="flex items-center justify-center gap-3 mb-4">
-          <span className="text-xl text-muted-foreground line-through">
+        <div className="flex items-center justify-center gap-3 mb-3">
+          <span className="text-lg text-muted-foreground line-through">
             {t.onboarding.originalPrice}
           </span>
-          <span className="text-3xl font-bold text-foreground">
+          <span className="text-2xl font-bold text-foreground">
             {t.onboarding.discountedPrice}
           </span>
         </div>
 
-        <p className="text-sm text-muted-foreground mb-4">
+        <p className="text-xs text-muted-foreground mb-3">
           {t.onboarding.limitedTime}
         </p>
 
         {/* Features */}
-        <div className="space-y-2 text-left">
+        <div className="space-y-1.5 text-left">
           {features.map((feature, index) => (
             <motion.div
               key={index}
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.5 + index * 0.1 }}
+              transition={{ delay: 0.5 + index * 0.05 }}
               className="flex items-center gap-2"
             >
-              <Check className="w-4 h-4 text-primary flex-shrink-0" />
-              <span className="text-sm text-foreground">{feature}</span>
+              <Check className="w-3.5 h-3.5 text-primary flex-shrink-0" />
+              <span className="text-xs text-foreground">{feature}</span>
+            </motion.div>
+          ))}
+        </div>
+      </motion.div>
+
+      {/* Permissions Section */}
+      <motion.div
+        initial={{ opacity: 0, scale: 0.9 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ delay: 0.6 }}
+        className="bg-muted/50 border border-border rounded-xl p-4 mb-4 w-full max-w-xs"
+      >
+        <div className="flex items-center gap-2 mb-3">
+          <Shield className="w-4 h-4 text-primary" />
+          <span className="text-sm font-medium text-foreground">
+            {t.onboarding.permissionsTitle}
+          </span>
+        </div>
+        <div className="space-y-2">
+          {permissions.map((perm, index) => (
+            <motion.div
+              key={index}
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.7 + index * 0.1 }}
+              className="flex items-center gap-2"
+            >
+              <perm.icon className="w-4 h-4 text-muted-foreground" />
+              <span className="text-xs text-muted-foreground">{perm.label}</span>
             </motion.div>
           ))}
         </div>
@@ -103,20 +152,20 @@ export const PricingSlide = ({ onStartTrial, onSkip, isLoading }: PricingSlidePr
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.8 }}
+        transition={{ delay: 0.9 }}
         className="w-full max-w-xs space-y-3"
       >
         <Button
-          onClick={onStartTrial}
-          disabled={isLoading}
+          onClick={handleAcceptAndContinue}
+          disabled={isLoading || isRequesting}
           className="w-full h-14 text-lg font-semibold bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 shadow-lg"
         >
-          {isLoading ? t.common.loading : t.onboarding.startTrial}
+          {isLoading || isRequesting ? t.common.loading : t.onboarding.acceptAndContinue}
         </Button>
 
         <Button
-          onClick={onSkip}
-          disabled={isLoading}
+          onClick={handleSkipWithPermissions}
+          disabled={isLoading || isRequesting}
           variant="ghost"
           className="w-full text-muted-foreground hover:text-foreground"
         >

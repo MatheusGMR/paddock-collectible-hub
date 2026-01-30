@@ -160,7 +160,7 @@ export const ScannerView = () => {
     attachStreamToVideo();
   }, [cameraActive]);
 
-  // Auto-start camera on mount
+  // Auto-start camera on mount - permissions should already be granted from onboarding
   useEffect(() => {
     const initCamera = async () => {
       console.log("[Scanner] Initializing camera automatically...");
@@ -174,6 +174,8 @@ export const ScannerView = () => {
           streamRef.current = null;
         }
 
+        // Permissions should already be granted from onboarding
+        // This call will use the already-granted permission
         const stream = await navigator.mediaDevices.getUserMedia({
           video: {
             facingMode: "environment",
@@ -183,7 +185,7 @@ export const ScannerView = () => {
           audio: true // Enable audio for video recording
         });
 
-        console.log("[Scanner] Camera stream acquired");
+        console.log("[Scanner] Camera stream acquired (using pre-granted permission)");
         
         // Store stream immediately
         streamRef.current = stream;
