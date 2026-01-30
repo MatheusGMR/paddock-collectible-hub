@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { ProfileHeader } from "@/components/profile/ProfileHeader";
 import { ProfileTabs } from "@/components/profile/ProfileTabs";
@@ -115,14 +116,24 @@ const ProfilePage = () => {
       <ProfileTabs activeTab={activeTab} onTabChange={setActiveTab} />
 
       {/* Floating Upload Button */}
-      <button
+      <motion.button
+        initial={{ scale: 0, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{ 
+          type: "spring", 
+          stiffness: 260, 
+          damping: 20,
+          delay: 0.3 
+        }}
         onClick={() => setUploadSheetOpen(true)}
-        className="fixed bottom-24 right-4 z-40 flex items-center gap-2 px-4 py-3 bg-primary text-primary-foreground rounded-full font-medium text-sm transition-all active:scale-95 hover:bg-primary/90"
+        className="fixed bottom-24 right-4 z-40 flex items-center gap-2 px-4 py-3 bg-primary text-primary-foreground rounded-full font-medium text-sm active:scale-95 hover:bg-primary/90"
         style={{ boxShadow: '0 4px 20px rgba(76, 195, 255, 0.3)' }}
+        whileHover={{ scale: 1.05 }}
+        whileTap={{ scale: 0.95 }}
       >
         <ImagePlus className="h-5 w-5" />
         <span>{t.profile.uploadPhotos}</span>
-      </button>
+      </motion.button>
 
       {activeTab === "posts" ? (
         gridPosts.length > 0 ? (
