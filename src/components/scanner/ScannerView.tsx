@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { addToCollection } from "@/lib/database";
+import { addToCollection, checkDuplicateInCollection } from "@/lib/database";
 import { useNavigate } from "react-router-dom";
 import { CreatePostDialog } from "@/components/posts/CreatePostDialog";
 import { CaptureButton } from "@/components/scanner/CaptureButton";
@@ -29,12 +29,15 @@ interface AnalysisResult {
     origin: string;
     series: string;
     condition: string;
+    color: string;
     notes: string;
   };
   priceIndex?: PriceIndex;
   musicSuggestion?: string;
   realCarPhotos?: string[];
   croppedImage?: string; // Will be populated after cropping
+  isDuplicate?: boolean; // Duplicate detection flag
+  existingItemImage?: string; // Image of existing item if duplicate
 }
 
 interface ImageQualityResponse {
@@ -303,7 +306,32 @@ export const ScannerView = () => {
           })
         );
         
-        setAnalysisResults(itemsWithCrops);
+        // Check for duplicates in user's collection
+        const itemsWithDuplicateCheck = await Promise.all(
+          itemsWithCrops.map(async (item) => {
+            if (user) {
+              try {
+                const duplicate = await checkDuplicateInCollection(
+                  user.id,
+                  item.realCar.brand,
+                  item.realCar.model,
+                  item.collectible?.color
+                );
+                return {
+                  ...item,
+                  isDuplicate: duplicate.isDuplicate,
+                  existingItemImage: duplicate.existingItemImage
+                };
+              } catch (error) {
+                console.error("Failed to check duplicate:", error);
+                return item;
+              }
+            }
+            return item;
+          })
+        );
+        
+        setAnalysisResults(itemsWithDuplicateCheck);
         setAddedIndices(new Set());
         setSkippedIndices(new Set());
         
@@ -457,6 +485,7 @@ export const ScannerView = () => {
           collectible_origin: result.collectible.origin,
           collectible_series: result.collectible.series,
           collectible_condition: result.collectible.condition,
+          collectible_color: result.collectible.color || null,
           collectible_notes: result.collectible.notes,
           price_index: result.priceIndex?.score || null,
           rarity_tier: result.priceIndex?.tier || null,

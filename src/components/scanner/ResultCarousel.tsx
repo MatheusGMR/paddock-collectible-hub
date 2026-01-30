@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from "react";
 import useEmblaCarousel from "embla-carousel-react";
-import { Check, Plus, RotateCcw, ChevronLeft, ChevronRight, Loader2, CheckCircle2, SkipForward } from "lucide-react";
+import { Check, Plus, RotateCcw, ChevronLeft, ChevronRight, Loader2, CheckCircle2, SkipForward, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { IndexBreakdown } from "@/components/index/IndexBreakdown";
@@ -27,12 +27,15 @@ interface AnalysisResult {
     origin: string;
     series: string;
     condition: string;
+    color: string;
     notes: string;
   };
   priceIndex?: PriceIndex;
   musicSuggestion?: string;
   realCarPhotos?: string[];
   croppedImage?: string;
+  isDuplicate?: boolean;
+  existingItemImage?: string;
 }
 
 interface ResultCarouselProps {
@@ -212,14 +215,29 @@ export const ResultCarousel = ({
                 )}
               >
                 <div className="space-y-4 max-h-[60vh] overflow-y-auto pb-2">
-                  {/* Cropped car image */}
+                  {/* Cropped car image - using object-contain to show full car */}
                   {result.croppedImage && (
-                    <div className="relative w-full h-32 rounded-xl overflow-hidden bg-muted">
+                    <div className="relative w-full aspect-[4/3] rounded-xl overflow-hidden bg-gradient-to-b from-muted to-muted/50 flex items-center justify-center">
                       <img
                         src={result.croppedImage}
                         alt={`${result.realCar.brand} ${result.realCar.model}`}
-                        className="w-full h-full object-cover"
+                        className="max-w-full max-h-full object-contain"
                       />
+                    </div>
+                  )}
+
+                  {/* Duplicate Warning */}
+                  {result.isDuplicate && (
+                    <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3 flex items-center gap-3">
+                      <AlertTriangle className="h-5 w-5 text-amber-500 shrink-0" />
+                      <div>
+                        <p className="text-sm font-medium text-amber-500">
+                          {t.scanner.duplicateWarning}
+                        </p>
+                        <p className="text-xs text-foreground-secondary">
+                          {t.scanner.duplicateDescription}
+                        </p>
+                      </div>
                     </div>
                   )}
 
@@ -302,28 +320,56 @@ export const ResultCarousel = ({
 
                   {/* Action buttons */}
                   <div className="flex gap-3 pt-2 sticky bottom-0 bg-card">
-                    <Button
-                      onClick={() => handleAdd(originalIndex)}
-                      disabled={addingIndex === originalIndex}
-                      className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90"
-                    >
-                      {addingIndex === originalIndex ? (
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      ) : justAddedIndex === originalIndex ? (
-                        <Check className="h-4 w-4 mr-2" />
-                      ) : (
-                        <Plus className="h-4 w-4 mr-2" />
-                      )}
-                      {t.scanner.addToCollection}
-                    </Button>
-                    {remainingResults.length > 1 && (
-                      <Button
-                        variant="outline"
-                        onClick={() => handleSkip(originalIndex)}
-                        className="border-border text-foreground hover:bg-muted"
-                      >
-                        <SkipForward className="h-4 w-4" />
-                      </Button>
+                    {result.isDuplicate ? (
+                      <>
+                        <Button
+                          variant="outline"
+                          onClick={() => handleSkip(originalIndex)}
+                          className="flex-1 border-border text-foreground hover:bg-muted"
+                        >
+                          {t.scanner.discard}
+                        </Button>
+                        <Button
+                          onClick={() => handleAdd(originalIndex)}
+                          disabled={addingIndex === originalIndex}
+                          className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90"
+                        >
+                          {addingIndex === originalIndex ? (
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          ) : justAddedIndex === originalIndex ? (
+                            <Check className="h-4 w-4 mr-2" />
+                          ) : (
+                            <Plus className="h-4 w-4 mr-2" />
+                          )}
+                          {t.scanner.addAnyway}
+                        </Button>
+                      </>
+                    ) : (
+                      <>
+                        <Button
+                          onClick={() => handleAdd(originalIndex)}
+                          disabled={addingIndex === originalIndex}
+                          className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90"
+                        >
+                          {addingIndex === originalIndex ? (
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          ) : justAddedIndex === originalIndex ? (
+                            <Check className="h-4 w-4 mr-2" />
+                          ) : (
+                            <Plus className="h-4 w-4 mr-2" />
+                          )}
+                          {t.scanner.addToCollection}
+                        </Button>
+                        {remainingResults.length > 1 && (
+                          <Button
+                            variant="outline"
+                            onClick={() => handleSkip(originalIndex)}
+                            className="border-border text-foreground hover:bg-muted"
+                          >
+                            <SkipForward className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </>
                     )}
                   </div>
                 </div>

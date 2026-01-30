@@ -90,6 +90,7 @@ You MUST respond with a valid JSON object in this exact format:
         "origin": "Country of manufacture (e.g., Malaysia, Thailand, China, Japan)",
         "series": "Series or collection name if identifiable (e.g., Super Treasure Hunt, RLC, Premium, Mainline, Chase, Limited Edition)",
         "condition": "Condition assessment (Mint, Near Mint, Good, Fair)",
+        "color": "Primary color of the diecast (e.g., Red, Blue, Metallic Silver, Yellow, Green, Black, White)",
         "notes": "Any additional notes about the collectible"
       },
       "priceIndex": {
