@@ -1,40 +1,31 @@
 import { motion } from "framer-motion";
-import { LucideIcon } from "lucide-react";
+import paddockBanner from "@/assets/paddock-collection-banner.jpeg";
 
 interface OnboardingSlideProps {
-  icon: LucideIcon;
   title: string;
   description: string;
-  gradient: string;
 }
 
-export const OnboardingSlide = ({ icon: Icon, title, description, gradient }: OnboardingSlideProps) => {
+export const OnboardingSlide = ({ title, description }: OnboardingSlideProps) => {
   return (
     <div className="flex flex-col items-center justify-center h-full px-8 text-center">
-      {/* Animated Icon Container */}
+      {/* Animated Image Container */}
       <motion.div
-        initial={{ scale: 0, rotate: -180 }}
-        animate={{ scale: 1, rotate: 0 }}
+        initial={{ scale: 0.8, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
         transition={{ 
           type: "spring", 
           stiffness: 200, 
           damping: 15,
           delay: 0.2 
         }}
-        className={`w-32 h-32 rounded-3xl ${gradient} flex items-center justify-center mb-8 shadow-2xl`}
+        className="w-full max-w-xs mb-8"
       >
-        <motion.div
-          animate={{ 
-            y: [0, -8, 0],
-          }}
-          transition={{ 
-            duration: 2, 
-            repeat: Infinity,
-            ease: "easeInOut" 
-          }}
-        >
-          <Icon className="w-16 h-16 text-white" strokeWidth={1.5} />
-        </motion.div>
+        <img
+          src={paddockBanner}
+          alt="Paddock Collection"
+          className="w-full aspect-[4/3] object-cover rounded-2xl shadow-2xl"
+        />
       </motion.div>
 
       {/* Title */}

@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ScanLine, FolderHeart, TrendingUp, ShoppingBag, ChevronRight } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { OnboardingSlide } from "./OnboardingSlide";
@@ -19,28 +19,20 @@ export const OnboardingCarousel = ({ onStartTrial, onSkip, isLoading }: Onboardi
 
   const slides = [
     {
-      icon: ScanLine,
       title: t.onboarding.slide1Title,
       description: t.onboarding.slide1Text,
-      gradient: "bg-gradient-to-br from-blue-500 to-cyan-500",
     },
     {
-      icon: FolderHeart,
       title: t.onboarding.slide2Title,
       description: t.onboarding.slide2Text,
-      gradient: "bg-gradient-to-br from-purple-500 to-pink-500",
     },
     {
-      icon: TrendingUp,
       title: t.onboarding.slide3Title,
       description: t.onboarding.slide3Text,
-      gradient: "bg-gradient-to-br from-green-500 to-emerald-500",
     },
     {
-      icon: ShoppingBag,
       title: t.onboarding.slide4Title,
       description: t.onboarding.slide4Text,
-      gradient: "bg-gradient-to-br from-orange-500 to-red-500",
     },
   ];
 
