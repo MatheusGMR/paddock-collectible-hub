@@ -92,6 +92,28 @@ export const getProfile = async (userId: string): Promise<Profile | null> => {
   return data;
 };
 
+export const getProfileByUsername = async (username: string): Promise<Profile | null> => {
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("*")
+    .ilike("username", username)
+    .maybeSingle();
+  
+  if (error) throw error;
+  return data;
+};
+
+export const searchProfiles = async (query: string, limit: number = 20): Promise<Profile[]> => {
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("*")
+    .or(`username.ilike.%${query}%,city.ilike.%${query}%`)
+    .limit(limit);
+  
+  if (error) throw error;
+  return data || [];
+};
+
 export const updateProfile = async (userId: string, updates: Partial<Profile>) => {
   const { data, error } = await supabase
     .from("profiles")
@@ -127,6 +149,61 @@ export const getUserCollection = async (userId: string): Promise<CollectionItem[
 };
 
 export const getCollectionWithIndex = async (userId: string): Promise<CollectionItemWithIndex[]> => {
+  const { data, error } = await supabase
+    .from("user_collection")
+    .select(`
+      id,
+      image_url,
+      item:items(
+        real_car_brand,
+        real_car_model,
+        real_car_year,
+        collectible_scale,
+        collectible_manufacturer,
+        collectible_series,
+        collectible_origin,
+        collectible_condition,
+        collectible_year,
+        collectible_notes,
+        historical_fact,
+        price_index,
+        rarity_tier,
+        index_breakdown,
+        music_suggestion,
+        real_car_photos
+      )
+    `)
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false });
+  
+  if (error) throw error;
+  
+  return (data || []).map(item => ({
+    id: item.id,
+    image_url: item.image_url,
+    item: item.item ? {
+      real_car_brand: item.item.real_car_brand,
+      real_car_model: item.item.real_car_model,
+      real_car_year: item.item.real_car_year,
+      collectible_scale: item.item.collectible_scale,
+      collectible_manufacturer: item.item.collectible_manufacturer,
+      collectible_series: item.item.collectible_series,
+      collectible_origin: item.item.collectible_origin,
+      collectible_condition: item.item.collectible_condition,
+      collectible_year: item.item.collectible_year,
+      collectible_notes: item.item.collectible_notes,
+      historical_fact: item.item.historical_fact,
+      price_index: item.item.price_index,
+      rarity_tier: item.item.rarity_tier,
+      index_breakdown: parseIndexBreakdown(item.item.index_breakdown),
+      music_suggestion: item.item.music_suggestion,
+      real_car_photos: item.item.real_car_photos as string[] | null
+    } : null
+  }));
+};
+
+// Get public collection (for viewing other users' collections)
+export const getPublicCollection = async (userId: string): Promise<CollectionItemWithIndex[]> => {
   const { data, error } = await supabase
     .from("user_collection")
     .select(`
@@ -335,6 +412,86 @@ export const checkDuplicateInCollection = async (
   };
 };
 
+// Check if item exists in a specific user's collection
+export const checkItemInUserCollection = async (
+  userId: string,
+  brand: string,
+  model: string,
+  color?: string | null
+): Promise<{ found: boolean; item?: CollectionItemWithIndex }> => {
+  const { data, error } = await supabase
+    .from("user_collection")
+    .select(`
+      id,
+      image_url,
+      item:items!inner(
+        real_car_brand,
+        real_car_model,
+        real_car_year,
+        collectible_scale,
+        collectible_manufacturer,
+        collectible_series,
+        collectible_origin,
+        collectible_condition,
+        collectible_year,
+        collectible_notes,
+        historical_fact,
+        collectible_color,
+        price_index,
+        rarity_tier,
+        index_breakdown,
+        music_suggestion,
+        real_car_photos
+      )
+    `)
+    .eq("user_id", userId);
+
+  if (error) throw error;
+  
+  const match = (data || []).find((c: any) => {
+    const brandMatch = c.item.real_car_brand.toLowerCase() === brand.toLowerCase();
+    const modelMatch = c.item.real_car_model.toLowerCase() === model.toLowerCase();
+    
+    // If color was provided, also check color match
+    let colorMatch = true;
+    if (color && c.item.collectible_color) {
+      colorMatch = c.item.collectible_color.toLowerCase() === color.toLowerCase();
+    }
+    
+    return brandMatch && modelMatch && colorMatch;
+  });
+  
+  if (!match) {
+    return { found: false };
+  }
+  
+  return {
+    found: true,
+    item: {
+      id: match.id,
+      image_url: match.image_url,
+      item: match.item ? {
+        real_car_brand: match.item.real_car_brand,
+        real_car_model: match.item.real_car_model,
+        real_car_year: match.item.real_car_year,
+        collectible_scale: match.item.collectible_scale,
+        collectible_manufacturer: match.item.collectible_manufacturer,
+        collectible_series: match.item.collectible_series,
+        collectible_origin: match.item.collectible_origin,
+        collectible_condition: match.item.collectible_condition,
+        collectible_year: match.item.collectible_year,
+        collectible_notes: match.item.collectible_notes,
+        historical_fact: match.item.historical_fact,
+        price_index: match.item.price_index,
+        rarity_tier: match.item.rarity_tier,
+        index_breakdown: parseIndexBreakdown(match.item.index_breakdown),
+        music_suggestion: match.item.music_suggestion,
+        real_car_photos: match.item.real_car_photos as string[] | null
+      } : null
+    }
+  };
+};
+
 export const getFollowCounts = async (userId: string) => {
   const [followersResult, followingResult] = await Promise.all([
     supabase.from("follows").select("id", { count: "exact" }).eq("following_id", userId),
@@ -355,4 +512,38 @@ export const getCollectionCount = async (userId: string) => {
 
   if (error) throw error;
   return count || 0;
+};
+
+// Follow/Unfollow functions
+export const isFollowing = async (followerId: string, followingId: string): Promise<boolean> => {
+  const { data, error } = await supabase
+    .from("follows")
+    .select("id")
+    .eq("follower_id", followerId)
+    .eq("following_id", followingId)
+    .maybeSingle();
+
+  if (error) throw error;
+  return !!data;
+};
+
+export const followUser = async (followerId: string, followingId: string): Promise<void> => {
+  const { error } = await supabase
+    .from("follows")
+    .insert({
+      follower_id: followerId,
+      following_id: followingId,
+    });
+
+  if (error) throw error;
+};
+
+export const unfollowUser = async (followerId: string, followingId: string): Promise<void> => {
+  const { error } = await supabase
+    .from("follows")
+    .delete()
+    .eq("follower_id", followerId)
+    .eq("following_id", followingId);
+
+  if (error) throw error;
 };

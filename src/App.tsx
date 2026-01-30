@@ -16,6 +16,7 @@ import Mercado from "./pages/Mercado";
 import Scanner from "./pages/Scanner";
 import Notifications from "./pages/Notifications";
 import Profile from "./pages/Profile";
+import UserProfile from "./pages/UserProfile";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 import ListingDetails from "./pages/ListingDetails";
@@ -154,6 +155,7 @@ const AppContent = () => {
           <Route path="/auth" element={<Auth />} />
           <Route path="/scanner" element={<Scanner />} />
           <Route path="/listing/:id" element={<ListingDetails />} />
+          <Route path="/user/:userId" element={<UserProfile />} />
           <Route path="/payment-success" element={<PaymentSuccess />} />
           <Route path="/payment-canceled" element={<PaymentCanceled />} />
           <Route path="/subscription-success" element={<PaymentSuccess />} />
