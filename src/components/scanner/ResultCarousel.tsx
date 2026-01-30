@@ -1,12 +1,14 @@
 import { useState, useCallback, useEffect } from "react";
 import useEmblaCarousel from "embla-carousel-react";
-import { Check, Plus, RotateCcw, Share, ChevronLeft, ChevronRight, Loader2, CheckCircle2, SkipForward } from "lucide-react";
+import { Check, Plus, RotateCcw, ChevronLeft, ChevronRight, Loader2, CheckCircle2, SkipForward } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { IndexBadge } from "@/components/index/IndexBadge";
 import { IndexBreakdown } from "@/components/index/IndexBreakdown";
 import { PriceIndex } from "@/lib/priceIndex";
 import { cn } from "@/lib/utils";
+import { ScoreHero } from "./ScoreHero";
+import { MusicSuggestion } from "./MusicSuggestion";
+import { RealCarPhotos } from "./RealCarPhotos";
 
 interface AnalysisResult {
   realCar: {
@@ -25,6 +27,8 @@ interface AnalysisResult {
     notes: string;
   };
   priceIndex?: PriceIndex;
+  musicSuggestion?: string;
+  realCarPhotos?: string[];
 }
 
 interface ResultCarouselProps {
@@ -203,25 +207,26 @@ export const ResultCarousel = ({
                   justAddedIndex === originalIndex && "opacity-0 scale-95 -translate-x-10"
                 )}
               >
-                <div className="space-y-4">
+                <div className="space-y-4 max-h-[60vh] overflow-y-auto pb-2">
+                  {/* Score Hero Section */}
+                  {result.priceIndex && (
+                    <ScoreHero
+                      score={result.priceIndex.score}
+                      tier={result.priceIndex.tier}
+                      onClick={() => openBreakdown(result)}
+                      animated={selectedIndex === resultWithOriginalIndices.findIndex(r => r.originalIndex === originalIndex)}
+                    />
+                  )}
+
                   {/* Car info */}
-                  <div>
+                  <div className="text-center">
                     <h3 className="text-lg font-semibold text-foreground">
                       {result.realCar.brand} {result.realCar.model}
                     </h3>
                     <p className="text-sm text-foreground-secondary">
-                      {result.realCar.year}
+                      {result.realCar.year} • {result.collectible.manufacturer} • {result.collectible.scale}
                     </p>
                   </div>
-
-                  {/* Price Index */}
-                  {result.priceIndex && (
-                    <IndexBadge
-                      score={result.priceIndex.score}
-                      tier={result.priceIndex.tier}
-                      onClick={() => openBreakdown(result)}
-                    />
-                  )}
 
                   {/* Collectible details */}
                   <div className="grid grid-cols-2 gap-2 text-sm">
@@ -259,6 +264,19 @@ export const ResultCarousel = ({
                     </div>
                   )}
 
+                  {/* Music Suggestion */}
+                  {result.musicSuggestion && (
+                    <MusicSuggestion suggestion={result.musicSuggestion} />
+                  )}
+
+                  {/* Real Car Photos */}
+                  {result.realCarPhotos && result.realCarPhotos.length > 0 && (
+                    <RealCarPhotos 
+                      photos={result.realCarPhotos} 
+                      carName={`${result.realCar.brand} ${result.realCar.model}`}
+                    />
+                  )}
+
                   {/* Notes */}
                   {result.collectible.notes && (
                     <div className="pt-2">
@@ -268,7 +286,7 @@ export const ResultCarousel = ({
                   )}
 
                   {/* Action buttons */}
-                  <div className="flex gap-3 pt-2">
+                  <div className="flex gap-3 pt-2 sticky bottom-0 bg-card">
                     <Button
                       onClick={() => handleAdd(originalIndex)}
                       disabled={addingIndex === originalIndex}

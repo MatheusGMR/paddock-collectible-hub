@@ -28,6 +28,8 @@ export interface Item {
   price_index: number | null;
   rarity_tier: string | null;
   index_breakdown: PriceIndexBreakdown | null;
+  music_suggestion: string | null;
+  real_car_photos: string[] | null;
   created_at: string;
 }
 
@@ -109,7 +111,8 @@ export const getUserCollection = async (userId: string): Promise<CollectionItem[
     ...item,
     item: item.item ? {
       ...item.item,
-      index_breakdown: parseIndexBreakdown(item.item.index_breakdown)
+      index_breakdown: parseIndexBreakdown(item.item.index_breakdown),
+      real_car_photos: item.item.real_car_photos as string[] | null
     } : undefined
   }));
 };
@@ -229,6 +232,8 @@ export const addToCollection = async (
       price_index: itemData.price_index,
       rarity_tier: itemData.rarity_tier,
       index_breakdown: itemData.index_breakdown as unknown as Json,
+      music_suggestion: itemData.music_suggestion,
+      real_car_photos: itemData.real_car_photos as unknown as Json,
     })
     .select()
     .single();
@@ -252,7 +257,8 @@ export const addToCollection = async (
     ...collectionItem, 
     item: {
       ...item,
-      index_breakdown: parseIndexBreakdown(item.index_breakdown)
+      index_breakdown: parseIndexBreakdown(item.index_breakdown),
+      real_car_photos: item.real_car_photos as string[] | null
     }
   };
 };
