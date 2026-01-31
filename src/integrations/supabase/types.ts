@@ -14,6 +14,51 @@ export type Database = {
   }
   public: {
     Tables: {
+      analytics_events: {
+        Row: {
+          created_at: string
+          device_type: string | null
+          duration_ms: number | null
+          event_type: string
+          id: string
+          interaction_target: string | null
+          interaction_type: string | null
+          metadata: Json | null
+          page_path: string
+          page_title: string | null
+          session_id: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          device_type?: string | null
+          duration_ms?: number | null
+          event_type: string
+          id?: string
+          interaction_target?: string | null
+          interaction_type?: string | null
+          metadata?: Json | null
+          page_path: string
+          page_title?: string | null
+          session_id: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          device_type?: string | null
+          duration_ms?: number | null
+          event_type?: string
+          id?: string
+          interaction_target?: string | null
+          interaction_type?: string | null
+          metadata?: Json | null
+          page_path?: string
+          page_title?: string | null
+          session_id?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       follows: {
         Row: {
           created_at: string
@@ -553,6 +598,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_admin_page_analytics: { Args: { days_back?: number }; Returns: Json }
       get_admin_stats: { Args: never; Returns: Json }
       get_admin_subscription_stats: { Args: never; Returns: Json }
       get_admin_user_growth: { Args: never; Returns: Json }
