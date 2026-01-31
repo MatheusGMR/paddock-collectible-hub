@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { 
   Users, 
@@ -14,18 +14,20 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   useAdmin, 
   useAdminStats, 
   useAdminSubscriptionStats, 
   useAdminUserGrowth,
-  useAdminUsers
+  useAdminUsers,
+  useAdminPageAnalytics
 } from "@/hooks/useAdmin";
 import { AdminStatCard } from "@/components/admin/AdminStatCard";
 import { AdminUsersTable } from "@/components/admin/AdminUsersTable";
 import { AdminSubscriptionChart } from "@/components/admin/AdminSubscriptionChart";
 import { AdminUserGrowthChart } from "@/components/admin/AdminUserGrowthChart";
+import { AdminAnalyticsSection } from "@/components/admin/AdminAnalyticsSection";
 import { useAuth } from "@/contexts/AuthContext";
 
 const Admin = () => {
@@ -36,6 +38,8 @@ const Admin = () => {
   const { stats: subscriptionStats, isLoading: isLoadingSubs } = useAdminSubscriptionStats();
   const { growth, isLoading: isLoadingGrowth } = useAdminUserGrowth();
   const { users, isLoading: isLoadingUsers, refetch: refetchUsers } = useAdminUsers();
+  const [analyticsDays, setAnalyticsDays] = useState(7);
+  const { analytics, isLoading: isLoadingAnalytics, refetch: refetchAnalytics } = useAdminPageAnalytics(analyticsDays);
 
   // Redirect if not admin
   useEffect(() => {
@@ -54,6 +58,7 @@ const Admin = () => {
   const handleRefresh = () => {
     refetchStats();
     refetchUsers();
+    refetchAnalytics();
   };
 
   if (isCheckingAdmin) {
@@ -105,84 +110,117 @@ const Admin = () => {
       </header>
 
       <div className="p-4 space-y-6">
-        {/* Stats Grid */}
-        <section>
-          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
-            Métricas Gerais
-          </h2>
-          <div className="grid grid-cols-2 gap-3">
-            <AdminStatCard
-              title="Usuários"
-              value={stats?.total_users || 0}
-              icon={Users}
-              isLoading={isLoadingStats}
-            />
-            <AdminStatCard
-              title="Carros Cadastrados"
-              value={stats?.total_items || 0}
-              icon={Car}
-              isLoading={isLoadingStats}
-            />
-            <AdminStatCard
-              title="Itens na Coleção"
-              value={stats?.total_collection_items || 0}
-              icon={Package}
-              isLoading={isLoadingStats}
-            />
-            <AdminStatCard
-              title="Posts"
-              value={stats?.total_posts || 0}
-              icon={Image}
-              isLoading={isLoadingStats}
-            />
-            <AdminStatCard
-              title="Curtidas"
-              value={stats?.total_likes || 0}
-              icon={Heart}
-              isLoading={isLoadingStats}
-            />
-            <AdminStatCard
-              title="Anúncios Ativos"
-              value={stats?.active_listings || 0}
-              icon={ShoppingBag}
-              isLoading={isLoadingStats}
-            />
-            <AdminStatCard
-              title="Conexões"
-              value={stats?.total_follows || 0}
-              icon={UserPlus}
-              className="col-span-2"
-              isLoading={isLoadingStats}
-            />
-          </div>
-        </section>
+        {/* Tabs for different sections */}
+        <Tabs defaultValue="overview" className="w-full">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="overview">Visão Geral</TabsTrigger>
+            <TabsTrigger value="analytics">Analytics</TabsTrigger>
+            <TabsTrigger value="users">Usuários</TabsTrigger>
+          </TabsList>
 
-        {/* Charts */}
-        <section className="grid gap-4">
-          <AdminSubscriptionChart 
-            stats={subscriptionStats} 
-            isLoading={isLoadingSubs} 
-          />
-          <AdminUserGrowthChart 
-            data={growth} 
-            isLoading={isLoadingGrowth} 
-          />
-        </section>
+          <TabsContent value="overview" className="space-y-6 mt-4">
+            {/* Stats Grid */}
+            <section>
+              <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+                Métricas Gerais
+              </h2>
+              <div className="grid grid-cols-2 gap-3">
+                <AdminStatCard
+                  title="Usuários"
+                  value={stats?.total_users || 0}
+                  icon={Users}
+                  isLoading={isLoadingStats}
+                />
+                <AdminStatCard
+                  title="Carros Cadastrados"
+                  value={stats?.total_items || 0}
+                  icon={Car}
+                  isLoading={isLoadingStats}
+                />
+                <AdminStatCard
+                  title="Itens na Coleção"
+                  value={stats?.total_collection_items || 0}
+                  icon={Package}
+                  isLoading={isLoadingStats}
+                />
+                <AdminStatCard
+                  title="Posts"
+                  value={stats?.total_posts || 0}
+                  icon={Image}
+                  isLoading={isLoadingStats}
+                />
+                <AdminStatCard
+                  title="Curtidas"
+                  value={stats?.total_likes || 0}
+                  icon={Heart}
+                  isLoading={isLoadingStats}
+                />
+                <AdminStatCard
+                  title="Anúncios Ativos"
+                  value={stats?.active_listings || 0}
+                  icon={ShoppingBag}
+                  isLoading={isLoadingStats}
+                />
+                <AdminStatCard
+                  title="Conexões"
+                  value={stats?.total_follows || 0}
+                  icon={UserPlus}
+                  className="col-span-2"
+                  isLoading={isLoadingStats}
+                />
+              </div>
+            </section>
 
-        {/* Users Table */}
-        <section>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-lg flex items-center gap-2">
-                <Users className="h-5 w-5 text-primary" />
-                Usuários Cadastrados
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <AdminUsersTable users={users} isLoading={isLoadingUsers} />
-            </CardContent>
-          </Card>
-        </section>
+            {/* Charts */}
+            <section className="grid gap-4">
+              <AdminSubscriptionChart 
+                stats={subscriptionStats} 
+                isLoading={isLoadingSubs} 
+              />
+              <AdminUserGrowthChart 
+                data={growth} 
+                isLoading={isLoadingGrowth} 
+              />
+            </section>
+          </TabsContent>
+
+          <TabsContent value="analytics" className="mt-4">
+            {/* Period selector */}
+            <div className="flex items-center gap-2 mb-4">
+              <span className="text-sm text-muted-foreground">Período:</span>
+              <div className="flex gap-1">
+                {[7, 14, 30].map(days => (
+                  <Button
+                    key={days}
+                    variant={analyticsDays === days ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setAnalyticsDays(days)}
+                  >
+                    {days}d
+                  </Button>
+                ))}
+              </div>
+            </div>
+            <AdminAnalyticsSection 
+              analytics={analytics} 
+              isLoading={isLoadingAnalytics} 
+            />
+          </TabsContent>
+
+          <TabsContent value="users" className="mt-4">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Users className="h-5 w-5 text-primary" />
+                  Usuários Cadastrados
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <AdminUsersTable users={users} isLoading={isLoadingUsers} />
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );

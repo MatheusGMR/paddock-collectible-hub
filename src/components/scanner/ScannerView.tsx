@@ -15,6 +15,7 @@ import { RealCarResults } from "@/components/scanner/RealCarResults";
 import { PriceIndex } from "@/lib/priceIndex";
 import { cropImageByBoundingBox, BoundingBox } from "@/lib/imageCrop";
 import { PaddockLogo } from "@/components/icons/PaddockLogo";
+import { trackInteraction, trackEvent } from "@/lib/analytics";
 
 interface AnalysisResult {
   boundingBox?: BoundingBox;
@@ -306,6 +307,9 @@ export const ScannerView = () => {
     setCapturedImage(imageBase64);
     stopCamera();
     setIsScanning(true);
+    
+    // Track scan event
+    trackEvent("scan_initiated", { source: "camera" });
 
     try {
       // Single unified call - AI auto-detects if it's a toy or real car
@@ -318,6 +322,13 @@ export const ScannerView = () => {
       const response = data as MultiCarAnalysisResponse;
       const responseType = response.detectedType || "collectible";
       setDetectedType(responseType);
+
+      // Track detection result
+      trackEvent("scan_completed", { 
+        detected_type: responseType, 
+        identified: response.identified,
+        items_count: response.count || (response.identified ? 1 : 0)
+      });
 
       console.log("[Scanner] Detected type:", responseType);
 
@@ -570,6 +581,14 @@ export const ScannerView = () => {
       toast({
         title: t.scanner.addedToCollection,
         description: `${result.realCar.brand} ${result.realCar.model}`,
+      });
+      
+      // Track analytics
+      trackInteraction("add_to_collection_button", "add_collection", {
+        brand: result.realCar.brand,
+        model: result.realCar.model,
+        manufacturer: result.collectible.manufacturer,
+        rarity: result.priceIndex?.tier
       });
       
       setAddedIndices(prev => new Set(prev).add(index));

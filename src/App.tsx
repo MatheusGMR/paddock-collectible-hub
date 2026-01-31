@@ -11,6 +11,7 @@ import { LanguageProvider } from "@/contexts/LanguageContext";
 import { SubscriptionProvider, useSubscription } from "@/contexts/SubscriptionContext";
 import { OnboardingCarousel } from "@/components/onboarding/OnboardingCarousel";
 import { SubscriptionGate } from "@/components/onboarding/SubscriptionGate";
+import { usePageTracking } from "@/hooks/usePageTracking";
 import Index from "./pages/Index";
 import Mercado from "./pages/Mercado";
 import Scanner from "./pages/Scanner";
@@ -25,6 +26,12 @@ import PaymentSuccess from "./pages/PaymentSuccess";
 import PaymentCanceled from "./pages/PaymentCanceled";
 
 const queryClient = new QueryClient();
+
+// Analytics tracker component
+const AnalyticsTracker = () => {
+  usePageTracking();
+  return null;
+};
 
 // Component that handles subscription flow
 const SubscriptionFlow = ({ children }: { children: React.ReactNode }) => {
@@ -151,6 +158,7 @@ const AppContent = () => {
   return (
     <>
       {showSplash && <SplashScreen onComplete={handleSplashComplete} />}
+      <AnalyticsTracker />
       <SubscriptionFlow>
         <Routes>
           <Route path="/auth" element={<Auth />} />

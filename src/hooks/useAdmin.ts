@@ -170,3 +170,64 @@ export const useAdminUsers = () => {
 
   return { users, isLoading, refetch: fetchUsers };
 };
+
+// Analytics types
+export interface PageAnalytics {
+  page_views: Array<{
+    page_path: string;
+    views: number;
+    unique_sessions: number;
+    avg_duration_ms: number | null;
+  }> | null;
+  daily_stats: Array<{
+    date: string;
+    page_views: number;
+    interactions: number;
+    sessions: number;
+    unique_users: number;
+  }> | null;
+  top_interactions: Array<{
+    interaction_target: string;
+    interaction_type: string;
+    page_path: string;
+    count: number;
+  }> | null;
+  user_flow: Array<{
+    from_page: string;
+    to_page: string;
+    transitions: number;
+  }> | null;
+  avg_session_duration: number | null;
+  device_breakdown: Array<{
+    device: string;
+    sessions: number;
+  }> | null;
+  bounce_rate: number | null;
+}
+
+export const useAdminPageAnalytics = (daysBack: number = 7) => {
+  const [analytics, setAnalytics] = useState<PageAnalytics | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const fetchAnalytics = async () => {
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase.rpc("get_admin_page_analytics", {
+        days_back: daysBack
+      });
+      
+      if (error) throw error;
+      setAnalytics(data as unknown as PageAnalytics);
+    } catch (err) {
+      console.error("Error fetching page analytics:", err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchAnalytics();
+  }, [daysBack]);
+
+  return { analytics, isLoading, refetch: fetchAnalytics };
+};
