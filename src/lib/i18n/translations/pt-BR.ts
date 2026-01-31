@@ -346,6 +346,12 @@ export const ptBR = {
     trialExpiredDesc: "Você aproveitou 7 dias grátis. Para continuar usando o Paddock, assine agora.",
     subscribeNow: "Assinar Agora",
     restoreSubscription: "Já sou assinante",
+    
+    // Collection warning
+    collectionWarningTitle: "⚠️ Atenção: Sua coleção está em risco",
+    collectionWarningDesc: "Sem uma assinatura ativa, você perderá o acesso à sua coleção digital com todos os itens catalogados. Assine agora para manter seus dados seguros.",
+    itemsAtRisk: "itens em risco",
+    dontLoseCollection: "Não perca sua coleção!",
   },
 
   // Subscription
