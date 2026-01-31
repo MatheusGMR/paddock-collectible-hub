@@ -87,8 +87,8 @@ export const trackPageDuration = async (path: string, durationMs: number) => {
 
 // Track user interaction
 export const trackInteraction = async (
+  type: string,
   target: string,
-  type: "click" | "scroll" | "swipe" | "submit" | "toggle" | "scan" | "add_collection",
   metadata?: Record<string, unknown>
 ) => {
   const userId = await getUserId();

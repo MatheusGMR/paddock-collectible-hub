@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { trackInteraction } from "@/lib/analytics";
 
 interface CategoryFilterProps {
   selectedCategory: string | null;
@@ -12,6 +13,11 @@ export const CategoryFilter = ({
   onCategoryChange,
 }: CategoryFilterProps) => {
   const { t } = useLanguage();
+
+  const handleCategoryChange = (category: string | null) => {
+    onCategoryChange(category);
+    trackInteraction("filter_news_category", `news_category_${category || "all"}`, { category: category || "all" });
+  };
 
   const categories = [
     { code: null, label: t.news?.categories?.all || "Todos", icon: "🌐" },
@@ -30,7 +36,7 @@ export const CategoryFilter = ({
             key={category.code ?? "all"}
             variant="ghost"
             size="sm"
-            onClick={() => onCategoryChange(category.code)}
+            onClick={() => handleCategoryChange(category.code)}
             className={cn(
               "shrink-0 rounded-full px-3 h-8 text-xs",
               selectedCategory === category.code
