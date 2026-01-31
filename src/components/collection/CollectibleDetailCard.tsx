@@ -1,11 +1,13 @@
 import { useState } from "react";
-import { X, Car, Package, History, Music, Images, ChevronDown, ChevronUp } from "lucide-react";
+import { X, Car, Package, History, ChevronDown, ChevronUp } from "lucide-react";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerClose } from "@/components/ui/drawer";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { IndexBadge } from "@/components/index/IndexBadge";
 import { IndexBreakdown } from "@/components/index/IndexBreakdown";
 import { PriceIndexBreakdown, getRarityTier } from "@/lib/priceIndex";
+import { MusicPlayer } from "@/components/scanner/MusicPlayer";
+import { RealCarPhotoCarousel } from "@/components/collection/RealCarPhotoCarousel";
 import { cn } from "@/lib/utils";
 
 export interface CollectibleDetailItem {
@@ -178,47 +180,20 @@ export const CollectibleDetailCard = ({ item, open, onOpenChange }: CollectibleD
                   </CollapsibleSection>
                 )}
                 
-                {/* Music Suggestion */}
+                {/* Music Player - YouTube Embed */}
                 {data.music_suggestion && (
-                  <CollapsibleSection 
-                    title="Música para Ouvir" 
-                    icon={<Music className="h-4 w-4 text-primary" />}
-                  >
-                    <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
-                      <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
-                        <Music className="h-5 w-5 text-primary" />
-                      </div>
-                      <p className="text-sm text-foreground font-medium">
-                        {data.music_suggestion}
-                      </p>
-                    </div>
-                  </CollapsibleSection>
+                  <MusicPlayer 
+                    suggestion={data.music_suggestion} 
+                    carBrand={data.real_car_brand}
+                  />
                 )}
                 
-                {/* Real Car Photos */}
+                {/* Real Car Photos Carousel */}
                 {data.real_car_photos && data.real_car_photos.length > 0 && (
-                  <CollapsibleSection 
-                    title="Fotos do Veículo Real" 
-                    icon={<Images className="h-4 w-4 text-primary" />}
-                  >
-                    <div className="grid grid-cols-3 gap-2">
-                      {data.real_car_photos.map((photo, idx) => (
-                        <div 
-                          key={idx} 
-                          className="aspect-square rounded-lg overflow-hidden bg-muted"
-                        >
-                          <img
-                            src={photo}
-                            alt={`${data.real_car_brand} ${data.real_car_model} - Foto ${idx + 1}`}
-                            className="w-full h-full object-cover"
-                            onError={(e) => {
-                              (e.target as HTMLImageElement).src = "/placeholder.svg";
-                            }}
-                          />
-                        </div>
-                      ))}
-                    </div>
-                  </CollapsibleSection>
+                  <RealCarPhotoCarousel
+                    photos={data.real_car_photos}
+                    carName={`${data.real_car_brand} ${data.real_car_model}`}
+                  />
                 )}
               </div>
               
