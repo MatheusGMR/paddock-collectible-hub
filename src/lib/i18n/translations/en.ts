@@ -348,6 +348,12 @@ export const en: Translations = {
     trialExpiredDesc: "You enjoyed 7 free days. To continue using Paddock, subscribe now.",
     subscribeNow: "Subscribe Now",
     restoreSubscription: "Already subscribed",
+    
+    // Collection warning
+    collectionWarningTitle: "⚠️ Warning: Your collection is at risk",
+    collectionWarningDesc: "Without an active subscription, you will lose access to your digital collection with all catalogued items. Subscribe now to keep your data safe.",
+    itemsAtRisk: "items at risk",
+    dontLoseCollection: "Don't lose your collection!",
   },
 
   // Subscription
