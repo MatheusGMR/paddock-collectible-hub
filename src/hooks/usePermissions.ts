@@ -60,44 +60,56 @@ export const usePermissions = () => {
 
   // Request all permissions at once
   const requestAllPermissions = useCallback(async (): Promise<boolean> => {
-    setState(prev => ({ ...prev, isRequesting: true }));
-
-    let cameraGranted = false;
-    let notificationsGranted = false;
-
-    try {
-      // Request camera permission by getting a stream briefly
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "environment" },
-        audio: true,
-      });
-      
-      // Immediately stop the stream - we just needed permission
-      stream.getTracks().forEach(track => track.stop());
-      cameraGranted = true;
-      
-      console.log("[Permissions] Camera permission granted");
-    } catch (error) {
-      console.log("[Permissions] Camera permission denied:", error);
-      cameraGranted = false;
+    // Check if permissions are already granted
+    const alreadyGranted = state.camera === "granted" && state.notifications === "granted";
+    if (alreadyGranted) {
+      console.log("[Permissions] All permissions already granted, skipping request");
+      return true;
     }
 
-    try {
-      // Request notification permission
-      if ("Notification" in window) {
-        const permission = await Notification.requestPermission();
-        notificationsGranted = permission === "granted";
+    setState(prev => ({ ...prev, isRequesting: true }));
+
+    let cameraGranted = state.camera === "granted";
+    let notificationsGranted = state.notifications === "granted";
+
+    // Only request camera if not already granted
+    if (!cameraGranted) {
+      try {
+        // Request camera permission by getting a stream briefly
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: "environment" },
+          audio: true,
+        });
         
-        if (notificationsGranted && user?.id) {
-          // Also subscribe to push notifications
-          await subscribeToPush(user.id);
-        }
+        // Immediately stop the stream - we just needed permission
+        stream.getTracks().forEach(track => track.stop());
+        cameraGranted = true;
         
-        console.log("[Permissions] Notification permission:", permission);
+        console.log("[Permissions] Camera permission granted");
+      } catch (error) {
+        console.log("[Permissions] Camera permission denied:", error);
+        cameraGranted = false;
       }
-    } catch (error) {
-      console.log("[Permissions] Notification permission error:", error);
-      notificationsGranted = false;
+    }
+
+    // Only request notifications if not already granted
+    if (!notificationsGranted) {
+      try {
+        if ("Notification" in window) {
+          const permission = await Notification.requestPermission();
+          notificationsGranted = permission === "granted";
+          
+          if (notificationsGranted && user?.id) {
+            // Also subscribe to push notifications
+            await subscribeToPush(user.id);
+          }
+          
+          console.log("[Permissions] Notification permission:", permission);
+        }
+      } catch (error) {
+        console.log("[Permissions] Notification permission error:", error);
+        notificationsGranted = false;
+      }
     }
 
     // Mark that we've requested permissions
@@ -113,7 +125,7 @@ export const usePermissions = () => {
     });
 
     return allGranted;
-  }, []);
+  }, [state.camera, state.notifications, user?.id]);
 
   // Check if permissions were already requested during onboarding
   const hasRequestedPermissions = useCallback((): boolean => {
