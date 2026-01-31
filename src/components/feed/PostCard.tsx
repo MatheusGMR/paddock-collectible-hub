@@ -2,6 +2,7 @@ import { Heart, MessageCircle, Send, Bookmark, MoreHorizontal } from "lucide-rea
 import { useState } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ItemBadge } from "./ItemBadge";
+import { trackInteraction } from "@/lib/analytics";
 
 interface PostCardProps {
   post: {
@@ -27,6 +28,32 @@ interface PostCardProps {
 export const PostCard = ({ post }: PostCardProps) => {
   const [liked, setLiked] = useState(false);
   const [saved, setSaved] = useState(false);
+
+  const handleLike = () => {
+    const newLiked = !liked;
+    setLiked(newLiked);
+    trackInteraction("like_post", `post_${post.id}`, { 
+      action: newLiked ? "like" : "unlike",
+      post_id: post.id 
+    });
+  };
+
+  const handleSave = () => {
+    const newSaved = !saved;
+    setSaved(newSaved);
+    trackInteraction("save_post", `post_${post.id}`, { 
+      action: newSaved ? "save" : "unsave",
+      post_id: post.id 
+    });
+  };
+
+  const handleShare = () => {
+    trackInteraction("share_post", `post_${post.id}`, { post_id: post.id });
+  };
+
+  const handleComment = () => {
+    trackInteraction("open_comments", `post_${post.id}`, { post_id: post.id });
+  };
 
   return (
     <article className="border-b border-border animate-fade-in">
@@ -60,22 +87,28 @@ export const PostCard = ({ post }: PostCardProps) => {
       <div className="flex items-center justify-between px-4 py-3">
         <div className="flex items-center gap-4">
           <button 
-            onClick={() => setLiked(!liked)}
+            onClick={handleLike}
             className="transition-transform active:scale-90"
           >
             <Heart 
               className={`h-6 w-6 ${liked ? "fill-red-500 text-red-500" : "text-foreground"}`} 
             />
           </button>
-          <button className="transition-transform active:scale-90">
+          <button 
+            onClick={handleComment}
+            className="transition-transform active:scale-90"
+          >
             <MessageCircle className="h-6 w-6" />
           </button>
-          <button className="transition-transform active:scale-90">
+          <button 
+            onClick={handleShare}
+            className="transition-transform active:scale-90"
+          >
             <Send className="h-6 w-6" />
           </button>
         </div>
         <button 
-          onClick={() => setSaved(!saved)}
+          onClick={handleSave}
           className="transition-transform active:scale-90"
         >
           <Bookmark 

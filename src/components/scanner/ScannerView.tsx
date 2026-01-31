@@ -591,7 +591,7 @@ export const ScannerView = () => {
       });
       
       // Track analytics
-      trackInteraction("add_to_collection_button", "add_collection", {
+      trackInteraction("add_collection", "add_to_collection_button", {
         brand: result.realCar.brand,
         model: result.realCar.model,
         manufacturer: result.collectible.manufacturer,

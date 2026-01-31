@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { trackInteraction } from "@/lib/analytics";
 
 interface SourceFilterProps {
   selectedCountry: string | null;
@@ -16,6 +17,16 @@ export const SourceFilter = ({
   onCategoryChange,
 }: SourceFilterProps) => {
   const { t } = useLanguage();
+
+  const handleCountryChange = (country: string | null) => {
+    onCountryChange(country);
+    trackInteraction("filter_country", `country_${country || "all"}`, { country: country || "all" });
+  };
+
+  const handleCategoryChange = (category: string | null) => {
+    onCategoryChange(category);
+    trackInteraction("filter_category", `category_${category || "all"}`, { category: category || "all" });
+  };
 
   const countries = [
     { code: null, label: t.mercado.countries.all, flag: "🌎" },
@@ -44,7 +55,7 @@ export const SourceFilter = ({
               key={country.code ?? "all"}
               variant="ghost"
               size="sm"
-              onClick={() => onCountryChange(country.code)}
+              onClick={() => handleCountryChange(country.code)}
               className={cn(
                 "shrink-0 rounded-full px-3 h-8 text-xs",
                 selectedCountry === country.code
@@ -68,7 +79,7 @@ export const SourceFilter = ({
               key={category.code ?? "all"}
               variant="ghost"
               size="sm"
-              onClick={() => onCategoryChange(category.code)}
+              onClick={() => handleCategoryChange(category.code)}
               className={cn(
                 "shrink-0 rounded-full px-3 h-8 text-xs",
                 selectedCategory === category.code

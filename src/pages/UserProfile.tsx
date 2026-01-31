@@ -23,6 +23,7 @@ import {
 } from "@/lib/database";
 import { useToast } from "@/hooks/use-toast";
 import { CollectionScannerSheet } from "@/components/social/CollectionScannerSheet";
+import { trackInteraction } from "@/lib/analytics";
 
 const UserProfilePage = () => {
   const { userId } = useParams<{ userId: string }>();
@@ -105,11 +106,13 @@ const UserProfilePage = () => {
         setFollowing(false);
         setStats((prev) => ({ ...prev, followers: prev.followers - 1 }));
         toast({ title: t.social?.unfollowed || "Deixou de seguir" });
+        trackInteraction("unfollow_user", `user_${userId}`, { target_user_id: userId });
       } else {
         await followUser(user.id, userId);
         setFollowing(true);
         setStats((prev) => ({ ...prev, followers: prev.followers + 1 }));
         toast({ title: t.social?.following || "Seguindo!" });
+        trackInteraction("follow_user", `user_${userId}`, { target_user_id: userId });
       }
     } catch (error) {
       console.error("Follow error:", error);
