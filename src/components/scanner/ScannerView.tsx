@@ -16,7 +16,7 @@ import { PriceIndex } from "@/lib/priceIndex";
 import { cropImageByBoundingBox, BoundingBox } from "@/lib/imageCrop";
 import { PaddockLogo } from "@/components/icons/PaddockLogo";
 import { trackInteraction, trackEvent } from "@/lib/analytics";
-
+import { usePermissions } from "@/hooks/usePermissions";
 interface AnalysisResult {
   boundingBox?: BoundingBox;
   realCar: {
@@ -133,6 +133,7 @@ export const ScannerView = () => {
   const { user } = useAuth();
   const { t } = useLanguage();
   const navigate = useNavigate();
+  const { hasRequestedPermissions, requestAllPermissions, camera: cameraPermission } = usePermissions();
 
   // Cleanup video preview URL when component unmounts
   useEffect(() => {
@@ -161,7 +162,7 @@ export const ScannerView = () => {
     attachStreamToVideo();
   }, [cameraActive]);
 
-  // Auto-start camera on mount - permissions should already be granted from onboarding
+  // Auto-start camera on mount - request permissions if not yet granted
   useEffect(() => {
     const initCamera = async () => {
       console.log("[Scanner] Initializing camera automatically...");
@@ -175,8 +176,14 @@ export const ScannerView = () => {
           streamRef.current = null;
         }
 
-        // Permissions should already be granted from onboarding
-        // This call will use the already-granted permission
+        // If permissions weren't requested during onboarding, request them now (silently)
+        // This ensures users who skipped onboarding still get camera access
+        if (!hasRequestedPermissions() && cameraPermission !== "granted") {
+          console.log("[Scanner] Permissions not yet granted, requesting now...");
+          await requestAllPermissions();
+        }
+
+        // Now get the camera stream - permission should be granted
         const stream = await navigator.mediaDevices.getUserMedia({
           video: {
             facingMode: "environment",
@@ -226,7 +233,7 @@ export const ScannerView = () => {
         clearInterval(recordingTimerRef.current);
       }
     };
-  }, [toast, t]);
+  }, [toast, t, hasRequestedPermissions, requestAllPermissions, cameraPermission]);
 
   const startCamera = useCallback(async () => {
     console.log("[Scanner] Manual startCamera called");
