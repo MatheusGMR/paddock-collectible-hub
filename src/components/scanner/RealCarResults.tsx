@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
-import { Car, ExternalLink, RotateCcw, Loader2, ShoppingCart, Search, RefreshCw, Check, Package } from "lucide-react";
+import { Car, ExternalLink, RotateCcw, Loader2, ShoppingCart, Search, RefreshCw, Check, Package, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ListingCard, Listing } from "@/components/mercado/ListingCard";
 import { fetchExternalListings } from "@/lib/api/listings";
+import { validateListings } from "@/lib/api/validateListings";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -33,34 +34,136 @@ interface RealCarResultsProps {
   onScanAgain: () => void;
 }
 
+// Brand name variations for better search matching
+const BRAND_ALIASES: Record<string, string[]> = {
+  volkswagen: ["vw", "volkswagen"],
+  chevrolet: ["chevy", "chevrolet", "gm"],
+  mercedes: ["mercedes", "mercedes-benz", "mb"],
+  bmw: ["bmw"],
+  porsche: ["porsche"],
+  ferrari: ["ferrari"],
+  lamborghini: ["lamborghini", "lambo"],
+  ford: ["ford"],
+  toyota: ["toyota"],
+  honda: ["honda"],
+  nissan: ["nissan", "datsun"],
+  mazda: ["mazda"],
+  subaru: ["subaru"],
+  mitsubishi: ["mitsubishi"],
+  fiat: ["fiat"],
+  alfa: ["alfa romeo", "alfa"],
+  audi: ["audi"],
+  dodge: ["dodge"],
+  jeep: ["jeep"],
+  land: ["land rover", "range rover"],
+};
+
+// Model name variations (Portuguese/English)
+const MODEL_ALIASES: Record<string, string[]> = {
+  fusca: ["fusca", "beetle", "bug", "kafer"],
+  gol: ["gol", "voyage"],
+  uno: ["uno"],
+  palio: ["palio"],
+  civic: ["civic"],
+  corolla: ["corolla"],
+  mustang: ["mustang"],
+  camaro: ["camaro"],
+  challenger: ["challenger"],
+  charger: ["charger"],
+  supra: ["supra"],
+  skyline: ["skyline", "gtr", "gt-r"],
+  "911": ["911", "carrera", "turbo"],
+  countach: ["countach"],
+  testarossa: ["testarossa"],
+  f40: ["f40"],
+  f50: ["f50"],
+  enzo: ["enzo"],
+  laferrari: ["laferrari"],
+  huracan: ["huracan", "huracán"],
+  aventador: ["aventador"],
+  gallardo: ["gallardo"],
+  murcielago: ["murcielago", "murciélago"],
+};
+
 // Generate multiple search query variations for better results
 const generateSearchQueries = (car: RealCarData, originalTerms: string[]): string[] => {
   const queries: string[] = [];
+  const brandLower = car.brand.toLowerCase();
+  const modelLower = car.model.toLowerCase();
   
-  // Original AI-suggested terms first
+  // Get brand variations
+  const brandVariations = Object.entries(BRAND_ALIASES).find(([key]) => 
+    brandLower.includes(key) || key.includes(brandLower)
+  )?.[1] || [car.brand];
+  
+  // Get model variations
+  const modelVariations = Object.entries(MODEL_ALIASES).find(([key]) => 
+    modelLower.includes(key) || key.includes(modelLower)
+  )?.[1] || [car.model];
+  
+  // Original AI-suggested terms first (they're often good)
   queries.push(...originalTerms);
   
-  // Brand + Model combinations
-  queries.push(`${car.brand} ${car.model} miniatura`);
-  queries.push(`${car.brand} ${car.model} diecast`);
-  queries.push(`${car.brand} ${car.model} hot wheels`);
-  queries.push(`${car.brand} ${car.model} escala`);
-  
-  // Just model (some models are unique enough)
-  queries.push(`${car.model} miniatura`);
-  queries.push(`${car.model} diecast`);
-  
-  // Brand only (for broader results)
-  queries.push(`${car.brand} miniatura colecionável`);
-  queries.push(`${car.brand} diecast hot wheels`);
-  
-  // Generic with year if available
-  if (car.year && !car.year.includes("Anos")) {
-    queries.push(`${car.brand} ${car.model} ${car.year} miniatura`);
+  // Generate combinations with brand/model variations
+  for (const brand of brandVariations) {
+    for (const model of modelVariations) {
+      queries.push(`${brand} ${model} miniatura`);
+      queries.push(`${brand} ${model} diecast`);
+      queries.push(`${brand} ${model} hot wheels`);
+      queries.push(`${brand} ${model} 1:64`);
+    }
   }
   
-  // Remove duplicates and empty strings
-  return [...new Set(queries.filter(q => q.trim()))];
+  // Specific manufacturer searches
+  queries.push(`hot wheels ${car.brand} ${car.model}`);
+  queries.push(`matchbox ${car.brand} ${car.model}`);
+  queries.push(`majorette ${car.brand} ${car.model}`);
+  queries.push(`tomica ${car.brand} ${car.model}`);
+  
+  // Just model (some models are unique enough)
+  queries.push(`${car.model} miniatura diecast`);
+  queries.push(`${car.model} hot wheels`);
+  
+  // Brand + collectible terms
+  queries.push(`${car.brand} miniatura colecionável`);
+  queries.push(`${car.brand} diecast escala`);
+  
+  // With year if specific (not decade)
+  if (car.year && !car.year.includes("Anos") && car.year.length === 4) {
+    queries.push(`${car.brand} ${car.model} ${car.year} miniatura`);
+    queries.push(`${car.brand} ${car.model} ${car.year} diecast`);
+  }
+  
+  // Variant-specific searches
+  if (car.variant && car.variant.trim()) {
+    queries.push(`${car.brand} ${car.model} ${car.variant} miniatura`);
+    queries.push(`${car.model} ${car.variant} hot wheels`);
+  }
+  
+  // Body style specific
+  if (car.bodyStyle) {
+    queries.push(`${car.brand} ${car.bodyStyle.toLowerCase()} miniatura`);
+  }
+  
+  // Remove duplicates and empty strings, normalize
+  const uniqueQueries = [...new Set(
+    queries
+      .filter(q => q.trim())
+      .map(q => q.toLowerCase().trim())
+  )];
+  
+  // Prioritize queries with both brand and model
+  return uniqueQueries.sort((a, b) => {
+    const aHasBrand = a.includes(brandLower);
+    const aHasModel = a.includes(modelLower);
+    const bHasBrand = b.includes(brandLower);
+    const bHasModel = b.includes(modelLower);
+    
+    const aScore = (aHasBrand ? 2 : 0) + (aHasModel ? 1 : 0);
+    const bScore = (bHasBrand ? 2 : 0) + (bHasModel ? 1 : 0);
+    
+    return bScore - aScore;
+  });
 };
 
 interface CollectionMatch {
@@ -77,9 +180,11 @@ export const RealCarResults = ({
 }: RealCarResultsProps) => {
   const [listings, setListings] = useState<Listing[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [searchStatus, setSearchStatus] = useState<"searching" | "found" | "empty">("searching");
+  const [isValidating, setIsValidating] = useState(false);
+  const [searchStatus, setSearchStatus] = useState<"searching" | "validating" | "found" | "empty">("searching");
   const [currentQueryIndex, setCurrentQueryIndex] = useState(0);
   const [allQueries, setAllQueries] = useState<string[]>([]);
+  const [validatedCount, setValidatedCount] = useState<number | null>(null);
   const [triedQueries, setTriedQueries] = useState<string[]>([]);
   const [collectionMatch, setCollectionMatch] = useState<CollectionMatch | null>(null);
   const [checkingCollection, setCheckingCollection] = useState(true);
@@ -189,50 +294,87 @@ export const RealCarResults = ({
     console.log("[RealCarResults] Generated search queries:", queries);
   }, [car, searchTerms]);
 
-  // Fetch listings with progressive search
+  // Fetch listings with progressive search and AI validation
   useEffect(() => {
     if (allQueries.length === 0) return;
 
-    const fetchListings = async () => {
+    const fetchAndValidateListings = async () => {
       setIsLoading(true);
       setSearchStatus("searching");
+      setValidatedCount(null);
 
-      // Try each query until we find results
-      for (let i = currentQueryIndex; i < allQueries.length; i++) {
+      // Collect results from multiple queries for better coverage
+      let allFoundListings: Listing[] = [];
+      const maxQueries = Math.min(currentQueryIndex + 5, allQueries.length);
+
+      for (let i = currentQueryIndex; i < maxQueries; i++) {
         const query = allQueries[i];
         console.log(`[RealCarResults] Trying query ${i + 1}/${allQueries.length}: "${query}"`);
         
         setTriedQueries(prev => [...prev, query]);
 
         try {
-          const result = await fetchExternalListings({ query, limit: 12 });
+          const result = await fetchExternalListings({ query, limit: 15 });
 
           if (result.success && result.listings.length > 0) {
             console.log(`[RealCarResults] Found ${result.listings.length} listings with query: "${query}"`);
-            setListings(result.listings);
-            setSearchStatus("found");
-            setCurrentQueryIndex(i);
-            setIsLoading(false);
-            return;
+            allFoundListings = [...allFoundListings, ...result.listings];
           }
         } catch (error) {
           console.error(`[RealCarResults] Error with query "${query}":`, error);
         }
 
-        // Only try first 3 queries automatically, then stop
-        if (i >= currentQueryIndex + 2) {
+        // Stop if we have enough results
+        if (allFoundListings.length >= 20) {
           break;
         }
       }
 
-      // No results found
-      setListings([]);
-      setSearchStatus("empty");
-      setIsLoading(false);
+      if (allFoundListings.length === 0) {
+        setListings([]);
+        setSearchStatus("empty");
+        setIsLoading(false);
+        return;
+      }
+
+      // Remove duplicates by URL
+      const uniqueListings = allFoundListings.filter((listing, index, self) =>
+        index === self.findIndex(l => l.external_url === listing.external_url)
+      );
+
+      console.log(`[RealCarResults] Total unique listings before validation: ${uniqueListings.length}`);
+
+      // Now validate with AI
+      setSearchStatus("validating");
+      setIsValidating(true);
+
+      try {
+        const validated = await validateListings(uniqueListings, {
+          brand: car.brand,
+          model: car.model,
+          year: car.year || undefined,
+          variant: car.variant || undefined,
+          bodyStyle: car.bodyStyle || undefined
+        });
+
+        console.log(`[RealCarResults] Validated listings: ${validated.length}/${uniqueListings.length}`);
+        
+        setValidatedCount(validated.length);
+        setListings(validated.slice(0, 12)); // Limit to 12 for display
+        setSearchStatus(validated.length > 0 ? "found" : "empty");
+      } catch (error) {
+        console.error("[RealCarResults] Validation error:", error);
+        // Fallback to unvalidated results
+        setListings(uniqueListings.slice(0, 12));
+        setSearchStatus("found");
+      } finally {
+        setIsValidating(false);
+        setIsLoading(false);
+      }
     };
 
-    fetchListings();
-  }, [allQueries, currentQueryIndex]);
+    fetchAndValidateListings();
+  }, [allQueries, currentQueryIndex, car]);
 
   const handleTryMoreQueries = () => {
     // Move to next batch of queries
@@ -367,9 +509,17 @@ export const RealCarResults = ({
               <h2 className="font-semibold text-foreground">{t.scanner.foundMiniatures}</h2>
             </div>
             {searchStatus === "found" && listings.length > 0 && (
-              <span className="text-xs text-foreground-secondary">
-                {listings.length} {t.scanner.foundMiniatures.toLowerCase()}
-              </span>
+              <div className="flex items-center gap-2">
+                {validatedCount !== null && (
+                  <Badge variant="outline" className="text-[10px] bg-primary/10 text-primary border-primary/30">
+                    <Shield className="h-3 w-3 mr-1" />
+                    Verificado
+                  </Badge>
+                )}
+                <span className="text-xs text-muted-foreground">
+                  {listings.length} encontrados
+                </span>
+              </div>
             )}
           </div>
 
@@ -379,7 +529,16 @@ export const RealCarResults = ({
               <div className="flex items-center justify-center py-8">
                 <div className="flex flex-col items-center gap-3">
                   <Loader2 className="h-8 w-8 text-primary animate-spin" />
-                  <p className="text-sm text-foreground-secondary">{t.scanner.searchingMiniatures}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {searchStatus === "validating" 
+                      ? "Verificando correspondência com IA..." 
+                      : t.scanner.searchingMiniatures}
+                  </p>
+                  {searchStatus === "validating" && (
+                    <p className="text-xs text-muted-foreground/70">
+                      Filtrando apenas miniaturas do {car.brand} {car.model}
+                    </p>
+                  )}
                 </div>
               </div>
               {/* Skeleton grid */}
