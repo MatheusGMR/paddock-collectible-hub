@@ -103,7 +103,17 @@ export const ptBR = {
     videoRecorded: "Vídeo gravado!",
     postVideo: "Postar Vídeo",
     recordAgain: "Gravar Outro",
-    maxDuration: "Máximo 30 segundos",
+    maxDuration: "Máximo 15 segundos",
+    // Video upload
+    videoTooLarge: "Vídeo muito grande",
+    videoTooLong: "Vídeo muito longo",
+    maxVideoSize: "Máximo",
+    maxVideoDuration: "Máximo 15 segundos de gravação",
+    analyzingVideo: "Analisando vídeo...",
+    // Loading facts
+    whileMagicHappens: "Enquanto a mágica acontece...",
+    didYouKnow: "Você Sabia?",
+    videoAnalysisTakesLonger: "Vídeos podem levar até 15 segundos",
     // Multi-car detection
     multipleCarsDetected: "carros detectados",
     swipeToSee: "Deslize para ver todos",

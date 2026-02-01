@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from "react";
-import { X, RotateCcw, Check, Plus, Camera, SwitchCamera, Loader2, Share, Video } from "lucide-react";
+import { X, RotateCcw, Camera, SwitchCamera, Loader2, Share, Video } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -12,6 +12,7 @@ import { CaptureButton } from "@/components/scanner/CaptureButton";
 import { ResultCarousel } from "@/components/scanner/ResultCarousel";
 import { ImageQualityError, ImageQualityIssue } from "@/components/scanner/ImageQualityError";
 import { RealCarResults } from "@/components/scanner/RealCarResults";
+import { LoadingFacts } from "@/components/scanner/LoadingFacts";
 import { PriceIndex } from "@/lib/priceIndex";
 import { cropImageByBoundingBox, BoundingBox } from "@/lib/imageCrop";
 import { PaddockLogo } from "@/components/icons/PaddockLogo";
@@ -85,7 +86,7 @@ interface RealCarAnalysisResponse {
   error?: string;
 }
 
-const MAX_RECORDING_DURATION = 30; // seconds
+const MAX_RECORDING_DURATION = 15; // seconds (reduced for AI processing)
 
 export const ScannerView = () => {
   const [isScanning, setIsScanning] = useState(false);
@@ -797,16 +798,7 @@ export const ScannerView = () => {
           </button>
         )}
 
-        {isScanning && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black/50">
-            <div className="flex flex-col items-center gap-3">
-              <Loader2 className="h-12 w-12 text-primary animate-spin" />
-              <p className="text-sm font-medium text-primary">
-                {t.scanner.analyzing}
-              </p>
-            </div>
-          </div>
-        )}
+        {isScanning && <LoadingFacts isVideo={false} />}
       </div>
 
       {/* Video recorded panel */}

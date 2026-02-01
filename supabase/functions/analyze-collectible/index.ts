@@ -16,7 +16,7 @@ serve(async (req) => {
 
     if (!imageBase64) {
       return new Response(
-        JSON.stringify({ error: "Image data is required" }),
+        JSON.stringify({ error: "Image or video data is required" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -25,6 +25,9 @@ serve(async (req) => {
     if (!LOVABLE_API_KEY) {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
+
+    // Detect if it's a video or image based on the data URI
+    const isVideo = imageBase64.startsWith("data:video/");
 
     const systemPrompt = `You are an expert in identifying vehicles - both collectible diecast/toy cars AND real full-size vehicles.
 
@@ -211,6 +214,27 @@ TIER: ultra_rare 85-100, super_rare 70-84, rare 50-69, uncommon 30-49, common 1-
 
 Only respond with valid JSON, no additional text or markdown.`;
 
+    // Build the content for the AI request
+    const mediaContent = isVideo
+      ? {
+          type: "video_url" as const,
+          video_url: {
+            url: imageBase64,
+          },
+        }
+      : {
+          type: "image_url" as const,
+          image_url: {
+            url: imageBase64.startsWith("data:") ? imageBase64 : `data:image/jpeg;base64,${imageBase64}`,
+          },
+        };
+
+    const userPrompt = isVideo
+      ? "Analyze this video. The video shows collectible cars from multiple angles. Identify all unique cars visible and provide detailed analysis for each. First determine if they are toy/collectible cars or real full-size vehicles."
+      : "Analyze this image. First determine if it shows a toy/collectible car or a real full-size vehicle. Then provide the appropriate analysis based on the type detected.";
+
+    console.log("[analyze-collectible] Processing", isVideo ? "video" : "image");
+
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -226,14 +250,9 @@ Only respond with valid JSON, no additional text or markdown.`;
             content: [
               {
                 type: "text",
-                text: "Analyze this image. First determine if it shows a toy/collectible car or a real full-size vehicle. Then provide the appropriate analysis based on the type detected.",
+                text: userPrompt,
               },
-              {
-                type: "image_url",
-                image_url: {
-                  url: imageBase64.startsWith("data:") ? imageBase64 : `data:image/jpeg;base64,${imageBase64}`,
-                },
-              },
+              mediaContent,
             ],
           },
         ],
