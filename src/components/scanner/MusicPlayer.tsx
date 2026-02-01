@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 
 interface MusicPlayerProps {
   suggestion: string;
+  selectionReason?: string;
   carBrand?: string;
 }
 
@@ -34,7 +35,7 @@ const getYouTubeMusicUrl = (title: string, artist: string) => {
   return `https://music.youtube.com/search?q=${query}`;
 };
 
-export const MusicPlayer = ({ suggestion }: MusicPlayerProps) => {
+export const MusicPlayer = ({ suggestion, selectionReason }: MusicPlayerProps) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const pulseIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const [pulse, setPulse] = useState(false);
@@ -146,6 +147,16 @@ export const MusicPlayer = ({ suggestion }: MusicPlayerProps) => {
         {/* Music service options */}
         {isExpanded && (
           <div className="mt-4 pt-3 border-t border-primary/20 animate-fade-in">
+            {/* Selection reason */}
+            {selectionReason && (
+              <div className="mb-4 p-3 rounded-lg bg-primary/5 border border-primary/10">
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  <span className="text-primary font-medium">Por que essa música? </span>
+                  {selectionReason}
+                </p>
+              </div>
+            )}
+            
             <p className="text-xs text-muted-foreground mb-3 text-center">
               Abrir música em:
             </p>
