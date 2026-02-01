@@ -63,7 +63,47 @@ Check for these issues:
 If issues found, return imageQuality.isValid = false with issues array.
 
 STEP 2 - CAR ANALYSIS:
-For each collectible (max 5), provide full analysis with boundingBox, realCar, collectible, priceIndex, musicSuggestion, realCarPhotos.
+For each collectible (max 5), provide full analysis with boundingBox, realCar, collectible, priceIndex, musicSuggestion, musicSelectionReason, realCarPhotos.
+
+---
+
+MUSIC SUGGESTION GUIDELINES (VERY IMPORTANT):
+The music suggestion should create an emotional connection with the car. Follow this priority order:
+
+1. DIRECT CULTURAL CONNECTIONS (Highest Priority):
+   - Songs dedicated to or associated with famous drivers/personalities linked to the car
+   - Example: Ayrton Senna → "Simply the Best - Tina Turner (1989)" because she dedicated it to him
+   - Example: Steve McQueen cars → songs from Bullitt soundtrack or his era
+   
+2. MOVIE/TV/GAME SOUNDTRACKS:
+   - If the car appeared in famous movies, use songs from that soundtrack
+   - Example: Ford Mustang from Bullitt → "Bullitt Theme - Lalo Schifrin"
+   - Example: DeLorean → "Back in Time - Huey Lewis (1985)"
+   - Example: Nissan Skyline R34 → "Teriyaki Boyz - Tokyo Drift"
+   - Example: Mitsubishi Eclipse from Fast & Furious → songs from the movie soundtrack
+   
+3. ERA AND ORIGIN (Medium Priority):
+   - Match the song era with the car's production year
+   - Match the music genre with the car's country of origin:
+     * Japanese cars → J-Rock, J-Pop, Initial D soundtrack, anime OSTs
+     * Italian supercars → Italian classics, opera pieces, romantic Italian songs
+     * German cars → Kraftwerk, electronic, precision-themed music
+     * American muscle cars → Rock n' Roll, Classic Rock, Blues
+     * British cars → British Invasion, The Beatles, Rolling Stones era
+     * Brazilian connections → MPB, Bossa Nova, or Brazilian rock
+   
+4. CAR CHARACTER/VIBE (Lower Priority):
+   - Sports cars → high energy, adrenaline music
+   - Luxury cars → sophisticated jazz, classical
+   - Off-road/trucks → country, rock
+   - Classic cars → music from their golden era
+
+5. FAMOUS RACING CONNECTIONS:
+   - F1 cars → songs associated with F1 legends or racing culture
+   - Rally cars → songs from WRC culture or driver nationalities
+   - NASCAR → American rock, country
+
+ALWAYS provide a musicSelectionReason explaining WHY you chose that specific song for this car.
 
 ---
 
@@ -120,6 +160,7 @@ For COLLECTIBLE (toy car):
         }
       },
       "musicSuggestion": "Song Title - Artist (Year)",
+      "musicSelectionReason": "Brief explanation of why this song was chosen",
       "realCarPhotos": ["url1", "url2", "url3"]
     }
   ],
