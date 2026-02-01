@@ -9,6 +9,8 @@ export const en: Translations = {
     cancel: "Cancel",
     confirm: "Confirm",
     save: "Save",
+    saving: "Saving...",
+    saved: "Saved",
     delete: "Delete",
     edit: "Edit",
     close: "Close",
@@ -241,6 +243,10 @@ export const en: Translations = {
     chooseFile: "Choose file",
     chooseFiles: "Choose files",
     useCamera: "Use camera",
+    // Avatar crop
+    adjustPhoto: "Adjust photo",
+    rotate: "Rotate 90°",
+    dragToAdjust: "Drag to adjust position",
   },
 
   // Feed
