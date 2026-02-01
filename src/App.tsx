@@ -9,6 +9,8 @@ import { SplashScreen } from "@/components/SplashScreen";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import { SubscriptionProvider, useSubscription } from "@/contexts/SubscriptionContext";
+import { GuidedTipsProvider } from "@/contexts/GuidedTipsContext";
+import { SpotlightOverlay } from "@/components/guided-tips/SpotlightOverlay";
 import { OnboardingCarousel } from "@/components/onboarding/OnboardingCarousel";
 import { SubscriptionGate } from "@/components/onboarding/SubscriptionGate";
 import { usePageTracking } from "@/hooks/usePageTracking";
@@ -195,13 +197,16 @@ const App = () => {
       <AuthProvider>
         <SubscriptionProvider>
           <LanguageProvider>
-            <TooltipProvider>
-              <Toaster />
-              <Sonner />
-              <BrowserRouter>
-                <AppContent />
-              </BrowserRouter>
-            </TooltipProvider>
+            <GuidedTipsProvider>
+              <TooltipProvider>
+                <Toaster />
+                <Sonner />
+                <BrowserRouter>
+                  <AppContent />
+                  <SpotlightOverlay />
+                </BrowserRouter>
+              </TooltipProvider>
+            </GuidedTipsProvider>
           </LanguageProvider>
         </SubscriptionProvider>
       </AuthProvider>

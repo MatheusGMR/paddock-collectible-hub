@@ -22,6 +22,7 @@ export const BottomNav = () => {
             end={item.path === "/"}
             className="nav-item flex-1"
             activeClassName="nav-item-active"
+            data-tip={item.isCenter ? "scanner-nav" : undefined}
           >
             {item.isCenter ? (
               <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary scanner-glow transition-transform active:scale-95">

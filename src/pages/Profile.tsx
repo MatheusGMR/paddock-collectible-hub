@@ -11,10 +11,13 @@ import { PhotoUploadSheet } from "@/components/profile/PhotoUploadSheet";
 import { SettingsSheet } from "@/components/profile/SettingsSheet";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useScreenTips } from "@/hooks/useScreenTips";
 import { getProfile, getCollectionWithIndex, getFollowCounts, getCollectionCount, updateProfile, Profile, CollectionItemWithIndex } from "@/lib/database";
 import { Loader2, ImagePlus } from "lucide-react";
 
 const ProfilePage = () => {
+  // Trigger guided tips for profile screen
+  useScreenTips("profile", 600);
   const [activeTab, setActiveTab] = useState<"posts" | "collection" | "index">("posts");
   const [profile, setProfile] = useState<Profile | null>(null);
   const [collection, setCollection] = useState<CollectionItemWithIndex[]>([]);
@@ -127,6 +130,7 @@ const ProfilePage = () => {
           delay: 0.3 
         }}
         onClick={() => setUploadSheetOpen(true)}
+        data-tip="upload-button"
         className="fixed bottom-24 right-4 z-40 flex items-center gap-2 px-4 py-3 bg-primary text-primary-foreground rounded-full font-medium text-sm active:scale-95 hover:bg-primary/90"
         style={{ boxShadow: '0 4px 20px rgba(76, 195, 255, 0.3)' }}
         whileHover={{ scale: 1.05 }}

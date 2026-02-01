@@ -1,9 +1,13 @@
 import { NotificationItem } from "@/components/notifications/NotificationItem";
 import { mockNotifications } from "@/data/mockData";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useScreenTips } from "@/hooks/useScreenTips";
 
 const Notifications = () => {
   const { t } = useLanguage();
+  
+  // Trigger guided tips for notifications screen
+  useScreenTips("notifications", 600);
 
   return (
     <div className="min-h-screen">
