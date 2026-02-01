@@ -875,7 +875,7 @@ export const ScannerView = () => {
                   {t.scanner.tryAgain}
                 </Button>
               </div>
-            ) : cameraActive ? (
+            ) : cameraActive && (
               <>
                 <p className="text-[11px] text-white/50 text-center tracking-wide">
                   {t.scanner.tapToCapture} • {t.scanner.holdToRecord}
@@ -888,19 +888,6 @@ export const ScannerView = () => {
                   onPressEnd={handlePressEnd}
                 />
               </>
-            ) : (
-              <div className="bg-black/40 backdrop-blur-sm rounded-2xl p-4 mx-6">
-                <p className="text-sm text-white/70 text-center mb-3">
-                  {t.scanner.cameraError}
-                </p>
-                <Button
-                  onClick={startCamera}
-                  className="w-full bg-white/20 backdrop-blur-sm text-white hover:bg-white/30 h-11 border-0"
-                >
-                  <Camera className="h-5 w-5 mr-2" />
-                  {t.scanner.tryAgain}
-                </Button>
-              </div>
             )}
           </div>
         </div>

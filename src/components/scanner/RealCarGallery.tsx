@@ -1,5 +1,5 @@
-import { useState, useRef, useEffect } from "react";
-import { Camera, ChevronLeft, ChevronRight, X, ZoomIn, ExternalLink } from "lucide-react";
+import { useState, useRef } from "react";
+import { Camera, ChevronLeft, ChevronRight, X, ZoomIn, ExternalLink, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -11,6 +11,15 @@ interface RealCarGalleryProps {
   photos: string[];
   carName: string;
 }
+
+// Photo type labels for display
+const photoLabels = [
+  "Hero Shot",
+  "Em Movimento",
+  "Clássica",
+  "Detalhes",
+  "Ambiente"
+];
 
 export const RealCarGallery = ({ photos, carName }: RealCarGalleryProps) => {
   const [loadedImages, setLoadedImages] = useState<Set<number>>(new Set());
@@ -34,18 +43,17 @@ export const RealCarGallery = ({ photos, carName }: RealCarGalleryProps) => {
 
   const scrollLeft = () => {
     if (scrollContainerRef.current) {
-      scrollContainerRef.current.scrollBy({ left: -200, behavior: 'smooth' });
+      scrollContainerRef.current.scrollBy({ left: -180, behavior: 'smooth' });
     }
   };
 
   const scrollRight = () => {
     if (scrollContainerRef.current) {
-      scrollContainerRef.current.scrollBy({ left: 200, behavior: 'smooth' });
+      scrollContainerRef.current.scrollBy({ left: 180, behavior: 'smooth' });
     }
   };
 
   const openFullscreen = (index: number) => {
-    // Map the visual index to the actual photo index (accounting for failed images)
     const actualIndex = photos.findIndex((_, i) => !failedImages.has(i) && 
       photos.slice(0, i + 1).filter((_, j) => !failedImages.has(j)).length === index + 1
     );
@@ -65,87 +73,101 @@ export const RealCarGallery = ({ photos, carName }: RealCarGalleryProps) => {
     }
   };
 
+  // Get visual index for a photo (accounting for failed images)
+  const getVisualIndex = (index: number) => {
+    return photos.slice(0, index + 1).filter((_, i) => !failedImages.has(i)).length - 1;
+  };
+
   return (
     <>
-      <div className="relative rounded-xl overflow-hidden bg-gradient-to-b from-muted/50 to-background border border-border">
+      <div className="space-y-3">
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-          <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-full bg-primary/20 flex items-center justify-center">
-              <Camera className="h-3.5 w-3.5 text-primary" />
-            </div>
-            <div>
-              <p className="text-xs font-semibold text-primary">O Carro Real</p>
-              <p className="text-[10px] text-muted-foreground">{validPhotos.length} fotos encontradas</p>
-            </div>
+        <div className="flex items-center gap-2 px-1">
+          <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center">
+            <Sparkles className="h-3 w-3 text-primary" />
           </div>
-          
+          <span className="text-sm font-semibold text-foreground">O Carro Real</span>
+          <span className="text-xs text-muted-foreground ml-auto">
+            {validPhotos.length} fotos
+          </span>
+        </div>
+
+        {/* Horizontal scroll gallery */}
+        <div className="relative -mx-6">
           {/* Navigation arrows for desktop */}
           {validPhotos.length > 2 && (
-            <div className="hidden sm:flex gap-1">
+            <>
               <button
                 onClick={scrollLeft}
-                className="p-1.5 rounded-full bg-muted hover:bg-muted/80 transition-colors"
+                className="absolute left-2 top-1/2 -translate-y-1/2 z-10 p-2 rounded-full bg-background/80 backdrop-blur-sm hidden sm:flex"
               >
                 <ChevronLeft className="h-4 w-4 text-foreground" />
               </button>
               <button
                 onClick={scrollRight}
-                className="p-1.5 rounded-full bg-muted hover:bg-muted/80 transition-colors"
+                className="absolute right-2 top-1/2 -translate-y-1/2 z-10 p-2 rounded-full bg-background/80 backdrop-blur-sm hidden sm:flex"
               >
                 <ChevronRight className="h-4 w-4 text-foreground" />
               </button>
-            </div>
+            </>
           )}
-        </div>
 
-        {/* Gallery scroll */}
-        <div 
-          ref={scrollContainerRef}
-          className="flex gap-2 p-3 overflow-x-auto scrollbar-hide"
-        >
-          {photos.map((url, index) => {
-            if (failedImages.has(index)) return null;
-            
-            const visualIndex = photos.slice(0, index + 1).filter((_, i) => !failedImages.has(i)).length - 1;
-            
-            return (
-              <button
-                key={index}
-                onClick={() => openFullscreen(visualIndex)}
-                className={cn(
-                  "group relative flex-shrink-0 rounded-lg overflow-hidden bg-muted transition-all hover:scale-[1.02]",
-                  validPhotos.length === 1 ? "w-full aspect-video" : "w-36 h-24"
-                )}
-              >
-                <img
-                  src={url}
-                  alt={`${carName} - ${visualIndex + 1}`}
-                  className={cn(
-                    "w-full h-full object-cover transition-all",
-                    loadedImages.has(index) ? "opacity-100" : "opacity-0"
-                  )}
-                  onLoad={() => handleImageLoad(index)}
-                  onError={() => handleImageError(index)}
-                />
-                
-                {/* Loading skeleton */}
-                {!loadedImages.has(index) && !failedImages.has(index) && (
-                  <div className="absolute inset-0 bg-muted animate-pulse" />
-                )}
-                
-                {/* Hover overlay */}
-                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
-                  <ZoomIn className="h-5 w-5 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
-                </div>
-                
-                {/* Image number badge */}
-                <div className="absolute bottom-1.5 right-1.5 px-1.5 py-0.5 rounded bg-black/60 text-[10px] text-white font-medium">
-                  {visualIndex + 1}/{validPhotos.length}
-                </div>
-              </button>
-            );
-          })}
+          {/* Photos container */}
+          <div 
+            ref={scrollContainerRef}
+            className="flex gap-3 px-6 overflow-x-auto scrollbar-hide snap-x snap-mandatory"
+          >
+            {photos.map((url, index) => {
+              if (failedImages.has(index)) return null;
+              
+              const visualIndex = getVisualIndex(index);
+              const label = photoLabels[visualIndex] || `Foto ${visualIndex + 1}`;
+              
+              return (
+                <button
+                  key={index}
+                  onClick={() => openFullscreen(visualIndex)}
+                  className="group relative flex-shrink-0 snap-start first:pl-0"
+                >
+                  {/* Image container with elegant aspect ratio */}
+                  <div className="relative w-44 aspect-[4/3] rounded-xl overflow-hidden bg-muted">
+                    <img
+                      src={url}
+                      alt={`${carName} - ${label}`}
+                      className={cn(
+                        "w-full h-full object-cover transition-all duration-300 group-hover:scale-105",
+                        loadedImages.has(index) ? "opacity-100" : "opacity-0"
+                      )}
+                      onLoad={() => handleImageLoad(index)}
+                      onError={() => handleImageError(index)}
+                    />
+                    
+                    {/* Loading skeleton */}
+                    {!loadedImages.has(index) && !failedImages.has(index) && (
+                      <div className="absolute inset-0 bg-muted animate-pulse" />
+                    )}
+                    
+                    {/* Gradient overlay */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+                    
+                    {/* Zoom icon on hover */}
+                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                        <ZoomIn className="h-5 w-5 text-white" />
+                      </div>
+                    </div>
+                    
+                    {/* Label badge at bottom */}
+                    <div className="absolute bottom-2 left-2 right-2">
+                      <span className="text-xs font-medium text-white/90 drop-shadow-lg">
+                        {label}
+                      </span>
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
 
@@ -196,7 +218,13 @@ export const RealCarGallery = ({ photos, carName }: RealCarGalleryProps) => {
                 <div>
                   <p className="text-white font-medium">{carName}</p>
                   <p className="text-white/60 text-sm">
-                    {selectedIndex !== null && `Foto ${photos.slice(0, selectedIndex + 1).filter((_, i) => !failedImages.has(i)).length} de ${validPhotos.length}`}
+                    {selectedIndex !== null && (
+                      <>
+                        {photoLabels[getVisualIndex(selectedIndex)] || `Foto ${getVisualIndex(selectedIndex) + 1}`}
+                        {" • "}
+                        {getVisualIndex(selectedIndex) + 1} de {validPhotos.length}
+                      </>
+                    )}
                   </p>
                 </div>
                 {selectedIndex !== null && photos[selectedIndex] && (
