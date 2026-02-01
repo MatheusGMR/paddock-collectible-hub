@@ -7,6 +7,8 @@ export const ptBR = {
     cancel: "Cancelar",
     confirm: "Confirmar",
     save: "Salvar",
+    saving: "Salvando...",
+    saved: "Salvo",
     delete: "Excluir",
     edit: "Editar",
     close: "Fechar",
@@ -239,6 +241,10 @@ export const ptBR = {
     chooseFile: "Escolher arquivo",
     chooseFiles: "Escolher arquivos",
     useCamera: "Usar câmera",
+    // Avatar crop
+    adjustPhoto: "Ajustar foto",
+    rotate: "Girar 90°",
+    dragToAdjust: "Arraste para ajustar a posição",
   },
 
   // Feed
