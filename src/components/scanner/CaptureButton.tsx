@@ -48,6 +48,7 @@ export function CaptureButton({
           onPressEnd();
         }}
         onTouchCancel={onPressEnd}
+        data-tip="capture-button"
         className={cn(
           "relative transition-all duration-200",
           "active:scale-90",

@@ -5,8 +5,11 @@ import { NewsPreferencesModal } from "@/components/news/NewsPreferencesModal";
 import { getNewsArticles, refreshNews, NewsArticle } from "@/lib/api/news";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useScreenTips } from "@/hooks/useScreenTips";
 
 const Mercado = () => {
+  // Trigger guided tips for mercado screen
+  useScreenTips("mercado", 600);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [articles, setArticles] = useState<NewsArticle[]>([]);

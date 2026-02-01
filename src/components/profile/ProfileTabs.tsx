@@ -7,7 +7,7 @@ interface ProfileTabsProps {
 
 export const ProfileTabs = ({ activeTab, onTabChange }: ProfileTabsProps) => {
   return (
-    <div className="flex border-b border-border">
+    <div className="flex border-b border-border" data-tip="profile-tabs">
       <TabButton 
         icon={Grid3X3}
         isActive={activeTab === "posts"}

@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useScreenTips } from "@/hooks/useScreenTips";
 import { addToCollection, checkDuplicateInCollection } from "@/lib/database";
 import { useNavigate } from "react-router-dom";
 import { CreatePostDialog } from "@/components/posts/CreatePostDialog";
@@ -89,6 +90,8 @@ interface RealCarAnalysisResponse {
 const MAX_RECORDING_DURATION = 15; // seconds (reduced for AI processing)
 
 export const ScannerView = () => {
+  // Trigger guided tips for scanner screen
+  useScreenTips("scanner", 1000);
   const [isScanning, setIsScanning] = useState(false);
   const [analysisResults, setAnalysisResults] = useState<AnalysisResult[]>([]);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
@@ -792,6 +795,7 @@ export const ScannerView = () => {
         {cameraActive && !isRecording && (
           <button
             onClick={switchCamera}
+            data-tip="flip-camera"
             className="absolute top-4 left-4 p-2 bg-background/50 backdrop-blur-sm rounded-full z-10"
           >
             <SwitchCamera className="h-6 w-6 text-foreground" />
