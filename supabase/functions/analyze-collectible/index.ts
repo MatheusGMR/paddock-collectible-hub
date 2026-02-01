@@ -65,6 +65,17 @@ If issues found, return imageQuality.isValid = false with issues array.
 STEP 2 - CAR ANALYSIS:
 For each collectible (max 5), provide full analysis with boundingBox, realCar, collectible, priceIndex, musicSuggestion, musicSelectionReason, realCarPhotos.
 
+STEP 3 - REAL CAR PHOTOS (REQUIRED):
+For the realCarPhotos array, you MUST provide exactly 5 high-quality image URLs of the REAL car (not the toy).
+Search for iconic, beautiful photos that showcase:
+1. A dramatic hero shot of the car
+2. The car in motion or racing context  
+3. A classic/vintage photograph of the model
+4. Interior or detail shot
+5. The car in its natural environment (track, road, show)
+
+Use real, working image URLs from reputable automotive sources. These photos create an immersive experience for collectors.
+
 ---
 
 MUSIC SUGGESTION GUIDELINES (VERY IMPORTANT):
@@ -161,7 +172,7 @@ For COLLECTIBLE (toy car):
       },
       "musicSuggestion": "Song Title - Artist (Year)",
       "musicSelectionReason": "Brief explanation of why this song was chosen",
-      "realCarPhotos": ["url1", "url2", "url3"]
+      "realCarPhotos": ["url1", "url2", "url3", "url4", "url5"]
     }
   ],
   "warning": "optional warning message"
