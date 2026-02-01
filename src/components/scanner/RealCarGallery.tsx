@@ -12,9 +12,9 @@ interface RealCarGalleryProps {
   carName: string;
 }
 
-// Photo type labels for display
+// Photo type labels for display (all in Portuguese)
 const photoLabels = [
-  "Hero Shot",
+  "Destaque",
   "Em Movimento",
   "Clássica",
   "Detalhes",
