@@ -105,7 +105,17 @@ export const en: Translations = {
     videoRecorded: "Video recorded!",
     postVideo: "Post Video",
     recordAgain: "Record Again",
-    maxDuration: "Maximum 30 seconds",
+    maxDuration: "Maximum 15 seconds",
+    // Video upload
+    videoTooLarge: "Video too large",
+    videoTooLong: "Video too long",
+    maxVideoSize: "Maximum",
+    maxVideoDuration: "Maximum 15 seconds recording",
+    analyzingVideo: "Analyzing video...",
+    // Loading facts
+    whileMagicHappens: "While the magic happens...",
+    didYouKnow: "Did You Know?",
+    videoAnalysisTakesLonger: "Videos may take up to 15 seconds",
     // Multi-car detection
     multipleCarsDetected: "cars detected",
     swipeToSee: "Swipe to see all",

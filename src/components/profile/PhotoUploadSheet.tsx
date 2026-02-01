@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { Upload, Loader2, Camera, X, ImagePlus, CheckCircle2, XCircle, ChevronLeft, ChevronRight } from "lucide-react";
+import { Upload, Loader2, Camera, X, ImagePlus, CheckCircle2, XCircle, ChevronLeft, ChevronRight, Video } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -10,10 +10,14 @@ import { addToCollection, checkDuplicateInCollection } from "@/lib/database";
 import { ResultCarousel } from "@/components/scanner/ResultCarousel";
 import { ImageQualityError, ImageQualityIssue } from "@/components/scanner/ImageQualityError";
 import { RealCarResults } from "@/components/scanner/RealCarResults";
+import { LoadingFacts } from "@/components/scanner/LoadingFacts";
 import { cropImageByBoundingBox, BoundingBox } from "@/lib/imageCrop";
 import { PriceIndex } from "@/lib/priceIndex";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
+
+const MAX_VIDEO_SIZE_MB = 20;
+const MAX_VIDEO_DURATION_SECONDS = 30;
 
 interface AnalysisResult {
   boundingBox?: BoundingBox;
@@ -82,9 +86,10 @@ interface RealCarAnalysisResponse {
   error?: string;
 }
 
-interface QueuedImage {
+interface QueuedMedia {
   id: string;
   base64: string;
+  isVideo: boolean;
   status: "pending" | "analyzing" | "success" | "error";
   results?: AnalysisResult[];
   error?: string;
@@ -101,9 +106,9 @@ export const PhotoUploadSheet = ({
   onOpenChange,
   onCollectionUpdated,
 }: PhotoUploadSheetProps) => {
-  // Multi-image queue state
-  const [imageQueue, setImageQueue] = useState<QueuedImage[]>([]);
-  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  // Multi-media queue state
+  const [mediaQueue, setMediaQueue] = useState<QueuedMedia[]>([]);
+  const [currentMediaIndex, setCurrentMediaIndex] = useState(0);
   const [isProcessingQueue, setIsProcessingQueue] = useState(false);
   
   // Current image analysis state
@@ -114,6 +119,7 @@ export const PhotoUploadSheet = ({
   const [addedIndices, setAddedIndices] = useState<Set<number>>(new Set());
   const [skippedIndices, setSkippedIndices] = useState<Set<number>>(new Set());
   const [warningMessage, setWarningMessage] = useState<string | null>(null);
+  const [isAnalyzingVideo, setIsAnalyzingVideo] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
@@ -125,29 +131,44 @@ export const PhotoUploadSheet = ({
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
-    const newImages: QueuedImage[] = [];
+    const newMedia: QueuedMedia[] = [];
     
     // Convert all files to base64
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
+      const isVideo = file.type.startsWith("video/");
+      
+      // Validate video size
+      if (isVideo && file.size > MAX_VIDEO_SIZE_MB * 1024 * 1024) {
+        toast({
+          title: t.scanner.videoTooLarge || "Vídeo muito grande",
+          description: `${t.scanner.maxVideoSize || "Máximo"} ${MAX_VIDEO_SIZE_MB}MB`,
+          variant: "destructive",
+        });
+        continue;
+      }
+      
       const base64 = await fileToBase64(file);
-      newImages.push({
+      newMedia.push({
         id: `${Date.now()}-${i}`,
         base64,
+        isVideo,
         status: "pending",
       });
     }
 
-    setImageQueue(newImages);
-    setCurrentImageIndex(0);
-    
+    if (newMedia.length === 0) return;
+
+    setMediaQueue(newMedia);
+    setCurrentMediaIndex(0);
+
     // Reset input
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
 
     // Start processing queue
-    processQueue(newImages, 0);
+    processQueue(newMedia, 0);
   };
 
   const fileToBase64 = (file: File): Promise<string> => {
@@ -159,18 +180,19 @@ export const PhotoUploadSheet = ({
     });
   };
 
-  const processQueue = async (queue: QueuedImage[], startIndex: number) => {
+  const processQueue = async (queue: QueuedMedia[], startIndex: number) => {
     setIsProcessingQueue(true);
     
     const updatedQueue = [...queue];
     
     for (let i = startIndex; i < updatedQueue.length; i++) {
-      setCurrentImageIndex(i);
+      setCurrentMediaIndex(i);
       updatedQueue[i].status = "analyzing";
-      setImageQueue([...updatedQueue]);
+      setMediaQueue([...updatedQueue]);
+      setIsAnalyzingVideo(updatedQueue[i].isVideo);
 
       try {
-        const results = await analyzeImage(updatedQueue[i].base64);
+        const results = await analyzeMedia(updatedQueue[i].base64, updatedQueue[i].isVideo);
         updatedQueue[i].status = "success";
         updatedQueue[i].results = results;
       } catch (error) {
@@ -179,22 +201,23 @@ export const PhotoUploadSheet = ({
         updatedQueue[i].error = "Falha na análise";
       }
       
-      setImageQueue([...updatedQueue]);
+      setMediaQueue([...updatedQueue]);
     }
 
     setIsProcessingQueue(false);
+    setIsAnalyzingVideo(false);
     
-    // Show results for first successful image
-    const firstSuccess = updatedQueue.find(img => img.status === "success" && img.results && img.results.length > 0);
+    // Show results for first successful media
+    const firstSuccess = updatedQueue.find(media => media.status === "success" && media.results && media.results.length > 0);
     if (firstSuccess) {
       setAnalysisResults(firstSuccess.results || []);
-      setCurrentImageIndex(updatedQueue.indexOf(firstSuccess));
+      setCurrentMediaIndex(updatedQueue.indexOf(firstSuccess));
     }
   };
 
-  const analyzeImage = async (imageBase64: string): Promise<AnalysisResult[]> => {
+  const analyzeMedia = async (mediaBase64: string, isVideo: boolean): Promise<AnalysisResult[]> => {
     const { data, error } = await supabase.functions.invoke("analyze-collectible", {
-      body: { imageBase64 },
+      body: { imageBase64: mediaBase64 },
     });
 
     if (error) throw error;
@@ -224,19 +247,19 @@ export const PhotoUploadSheet = ({
       return [];
     }
 
-    // Crop individual car images
+    // Crop individual car images (only for images, not videos)
     const itemsWithCrops = await Promise.all(
       response.items.map(async (item) => {
-        if (item.boundingBox && imageBase64) {
+        if (!isVideo && item.boundingBox && mediaBase64) {
           try {
-            const croppedImage = await cropImageByBoundingBox(imageBase64, item.boundingBox as BoundingBox);
+            const croppedImage = await cropImageByBoundingBox(mediaBase64, item.boundingBox as BoundingBox);
             return { ...item, croppedImage };
           } catch (error) {
             console.error("Failed to crop image:", error);
-            return { ...item, croppedImage: imageBase64 };
+            return { ...item, croppedImage: mediaBase64 };
           }
         }
-        return { ...item, croppedImage: imageBase64 };
+        return { ...item, croppedImage: isVideo ? undefined : mediaBase64 };
       })
     );
 
@@ -320,19 +343,19 @@ export const PhotoUploadSheet = ({
   };
 
   const handleComplete = () => {
-    // Check if there are more images to process
-    const nextImageIndex = imageQueue.findIndex(
-      (img, idx) => idx > currentImageIndex && img.status === "success" && img.results && img.results.length > 0
+    // Check if there are more media to process
+    const nextMediaIndex = mediaQueue.findIndex(
+      (media, idx) => idx > currentMediaIndex && media.status === "success" && media.results && media.results.length > 0
     );
     
-    if (nextImageIndex !== -1) {
-      // Move to next image with results
-      setCurrentImageIndex(nextImageIndex);
-      setAnalysisResults(imageQueue[nextImageIndex].results || []);
+    if (nextMediaIndex !== -1) {
+      // Move to next media with results
+      setCurrentMediaIndex(nextMediaIndex);
+      setAnalysisResults(mediaQueue[nextMediaIndex].results || []);
       setAddedIndices(new Set());
       setSkippedIndices(new Set());
     } else {
-      // All images processed
+      // All media processed
       resetState();
       onOpenChange(false);
       onCollectionUpdated?.();
@@ -349,19 +372,19 @@ export const PhotoUploadSheet = ({
     navigate("/scanner");
   };
 
-  const navigateToImage = (index: number) => {
-    const img = imageQueue[index];
-    if (img && img.status === "success" && img.results) {
-      setCurrentImageIndex(index);
-      setAnalysisResults(img.results);
+  const navigateToMedia = (index: number) => {
+    const media = mediaQueue[index];
+    if (media && media.status === "success" && media.results) {
+      setCurrentMediaIndex(index);
+      setAnalysisResults(media.results);
       setAddedIndices(new Set());
       setSkippedIndices(new Set());
     }
   };
 
   const resetState = () => {
-    setImageQueue([]);
-    setCurrentImageIndex(0);
+    setMediaQueue([]);
+    setCurrentMediaIndex(0);
     setIsProcessingQueue(false);
     setAnalysisResults([]);
     setDetectedType(null);
@@ -370,12 +393,13 @@ export const PhotoUploadSheet = ({
     setAddedIndices(new Set());
     setSkippedIndices(new Set());
     setWarningMessage(null);
+    setIsAnalyzingVideo(false);
   };
 
-  const currentImage = imageQueue[currentImageIndex];
+  const currentMedia = mediaQueue[currentMediaIndex];
   const hasResults = analysisResults.length > 0 || realCarResult !== null || imageQualityError !== null;
-  const isAnalyzing = isProcessingQueue || currentImage?.status === "analyzing";
-  const successfulImages = imageQueue.filter(img => img.status === "success" && img.results && img.results.length > 0);
+  const isAnalyzing = isProcessingQueue || currentMedia?.status === "analyzing";
+  const successfulMedia = mediaQueue.filter(media => media.status === "success" && media.results && media.results.length > 0);
 
   return (
     <Sheet open={open} onOpenChange={(val) => {
@@ -401,7 +425,7 @@ export const PhotoUploadSheet = ({
 
         <div className="flex-1 overflow-y-auto">
           {/* Initial State - Upload Prompt */}
-          {imageQueue.length === 0 && !hasResults && !isAnalyzing && (
+          {mediaQueue.length === 0 && !hasResults && !isAnalyzing && (
             <div className="flex flex-col items-center justify-center h-full p-8 gap-6">
               <div className="w-24 h-24 rounded-full bg-primary/10 flex items-center justify-center">
                 <ImagePlus className="h-10 w-10 text-primary" />
@@ -412,6 +436,9 @@ export const PhotoUploadSheet = ({
                 </h3>
                 <p className="text-sm text-foreground-secondary max-w-xs">
                   {t.profile.uploadDescription}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  JPG, PNG, MP4, MOV (máx {MAX_VIDEO_SIZE_MB}MB)
                 </p>
               </div>
               <div className="flex flex-col gap-3 w-full max-w-xs">
@@ -434,7 +461,7 @@ export const PhotoUploadSheet = ({
               <input
                 ref={fileInputRef}
                 type="file"
-                accept="image/*"
+                accept="image/*,video/mp4,video/webm,video/quicktime"
                 multiple
                 onChange={handleFileSelect}
                 className="hidden"
@@ -442,72 +469,78 @@ export const PhotoUploadSheet = ({
             </div>
           )}
 
-          {/* Multi-image Queue Progress */}
-          {imageQueue.length > 1 && (
+          {/* Multi-media Queue Progress */}
+          {mediaQueue.length > 1 && (
             <div className="px-4 py-3 border-b border-border bg-muted/30">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm font-medium text-foreground">
-                  {imageQueue.length} fotos selecionadas
+                  {mediaQueue.length} arquivos selecionados
                 </span>
                 <span className="text-xs text-foreground-secondary">
-                  {currentImageIndex + 1} de {imageQueue.length}
+                  {currentMediaIndex + 1} de {mediaQueue.length}
                 </span>
               </div>
               <div className="flex gap-2 overflow-x-auto pb-2">
-                {imageQueue.map((img, idx) => (
+                {mediaQueue.map((media, idx) => (
                   <button
-                    key={img.id}
-                    onClick={() => img.status === "success" && navigateToImage(idx)}
+                    key={media.id}
+                    onClick={() => media.status === "success" && navigateToMedia(idx)}
                     className={cn(
                       "relative flex-shrink-0 w-14 h-14 rounded-lg overflow-hidden border-2 transition-all",
-                      idx === currentImageIndex
+                      idx === currentMediaIndex
                         ? "border-primary ring-2 ring-primary/30"
-                        : img.status === "success"
-                        ? "border-green-500/50 cursor-pointer hover:border-green-500"
-                        : img.status === "error"
-                        ? "border-red-500/50"
+                        : media.status === "success"
+                        ? "border-emerald-500/50 cursor-pointer hover:border-emerald-500"
+                        : media.status === "error"
+                        ? "border-destructive/50"
                         : "border-border"
                     )}
-                    disabled={img.status !== "success"}
+                    disabled={media.status !== "success"}
                   >
-                    <img
-                      src={img.base64}
-                      alt={`Foto ${idx + 1}`}
-                      className="w-full h-full object-cover"
-                    />
+                    {media.isVideo ? (
+                      <div className="w-full h-full bg-muted flex items-center justify-center">
+                        <Video className="h-5 w-5 text-muted-foreground" />
+                      </div>
+                    ) : (
+                      <img
+                        src={media.base64}
+                        alt={`Arquivo ${idx + 1}`}
+                        className="w-full h-full object-cover"
+                      />
+                    )}
                     {/* Status overlay */}
                     <div className="absolute inset-0 flex items-center justify-center bg-black/40">
-                      {img.status === "analyzing" && (
+                      {media.status === "analyzing" && (
                         <Loader2 className="h-4 w-4 text-white animate-spin" />
                       )}
-                      {img.status === "success" && (
-                        <CheckCircle2 className="h-4 w-4 text-green-400" />
+                      {media.status === "success" && (
+                        <CheckCircle2 className="h-4 w-4 text-emerald-400" />
                       )}
-                      {img.status === "error" && (
-                        <XCircle className="h-4 w-4 text-red-400" />
+                      {media.status === "error" && (
+                        <XCircle className="h-4 w-4 text-destructive" />
                       )}
-                      {img.status === "pending" && (
+                      {media.status === "pending" && (
                         <span className="text-xs text-white/70">{idx + 1}</span>
                       )}
                     </div>
                   </button>
                 ))}
               </div>
-              {/* Navigation arrows for multiple successful images */}
-              {successfulImages.length > 1 && (
+              {/* Navigation arrows for multiple successful media */}
+              {successfulMedia.length > 1 && (
                 <div className="flex justify-center gap-4 mt-2">
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={() => {
-                      const prevIdx = successfulImages.findIndex((_, i) => 
-                        imageQueue.indexOf(successfulImages[i]) === currentImageIndex
+                      const prevIdx = successfulMedia.findIndex((_, i) => 
+                        mediaQueue.indexOf(successfulMedia[i]) === currentMediaIndex
                       );
                       if (prevIdx > 0) {
-                        navigateToImage(imageQueue.indexOf(successfulImages[prevIdx - 1]));
+                        navigateToMedia(mediaQueue.indexOf(successfulMedia[prevIdx - 1]));
                       }
                     }}
-                    disabled={currentImageIndex === imageQueue.indexOf(successfulImages[0])}
+                    disabled={currentMediaIndex === mediaQueue.indexOf(successfulMedia[0])}
                     className="h-8"
                   >
                     <ChevronLeft className="h-4 w-4 mr-1" />
@@ -517,14 +550,14 @@ export const PhotoUploadSheet = ({
                     variant="ghost"
                     size="sm"
                     onClick={() => {
-                      const currIdx = successfulImages.findIndex((_, i) => 
-                        imageQueue.indexOf(successfulImages[i]) === currentImageIndex
+                      const currIdx = successfulMedia.findIndex((_, i) => 
+                        mediaQueue.indexOf(successfulMedia[i]) === currentMediaIndex
                       );
-                      if (currIdx < successfulImages.length - 1) {
-                        navigateToImage(imageQueue.indexOf(successfulImages[currIdx + 1]));
+                      if (currIdx < successfulMedia.length - 1) {
+                        navigateToMedia(mediaQueue.indexOf(successfulMedia[currIdx + 1]));
                       }
                     }}
-                    disabled={currentImageIndex === imageQueue.indexOf(successfulImages[successfulImages.length - 1])}
+                    disabled={currentMediaIndex === mediaQueue.indexOf(successfulMedia[successfulMedia.length - 1])}
                     className="h-8"
                   >
                     Próxima
@@ -535,47 +568,53 @@ export const PhotoUploadSheet = ({
             </div>
           )}
 
-          {/* Loading State */}
-          {isAnalyzing && currentImage && (
-            <div className="flex flex-col items-center justify-center h-full p-8 gap-4">
-              <div className="w-48 h-48 rounded-xl overflow-hidden mb-4">
-                <img
-                  src={currentImage.base64}
-                  alt="Analyzing"
-                  className="w-full h-full object-cover"
-                />
+          {/* Loading State with LoadingFacts */}
+          {isAnalyzing && currentMedia && (
+            <div className="relative flex flex-col items-center justify-center h-[60vh]">
+              {/* Media preview behind the loading overlay */}
+              <div className="absolute inset-0 opacity-30">
+                {currentMedia.isVideo ? (
+                  <div className="w-full h-full bg-muted flex items-center justify-center">
+                    <Video className="h-16 w-16 text-muted-foreground" />
+                  </div>
+                ) : (
+                  <img
+                    src={currentMedia.base64}
+                    alt="Analyzing"
+                    className="w-full h-full object-cover"
+                  />
+                )}
               </div>
-              <Loader2 className="h-8 w-8 text-primary animate-spin" />
-              <p className="text-foreground-secondary">
-                {t.scanner.analyzing}
-              </p>
-              {imageQueue.length > 1 && (
-                <p className="text-xs text-foreground-secondary">
-                  Analisando foto {currentImageIndex + 1} de {imageQueue.length}
-                </p>
+              <LoadingFacts isVideo={isAnalyzingVideo} />
+              {mediaQueue.length > 1 && (
+                <div className="absolute bottom-4 left-0 right-0 text-center">
+                  <p className="text-xs text-white/70">
+                    Analisando {currentMediaIndex + 1} de {mediaQueue.length}
+                  </p>
+                </div>
               )}
             </div>
           )}
 
           {/* Image Quality Error */}
-          {imageQualityError && currentImage && (
+          {imageQualityError && currentMedia && (
             <div className="p-4">
               <ImageQualityError
                 issues={imageQualityError.issues}
                 suggestion={imageQualityError.suggestion}
-                capturedImage={currentImage.base64}
+                capturedImage={currentMedia.base64}
                 onRetry={handleTryAgain}
               />
             </div>
           )}
 
           {/* Real Car Results */}
-          {realCarResult && realCarResult.car && currentImage && (
+          {realCarResult && realCarResult.car && currentMedia && (
             <RealCarResults
               car={realCarResult.car}
               searchTerms={realCarResult.searchTerms}
               confidence={realCarResult.confidence}
-              capturedImage={currentImage.base64}
+              capturedImage={currentMedia.base64}
               onScanAgain={handleTryAgain}
             />
           )}
