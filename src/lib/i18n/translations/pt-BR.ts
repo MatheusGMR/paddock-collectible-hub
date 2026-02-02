@@ -245,6 +245,11 @@ export const ptBR = {
     adjustPhoto: "Ajustar foto",
     rotate: "Girar 90°",
     dragToAdjust: "Arraste para ajustar a posição",
+    // Username validation
+    usernameChecking: "Verificando disponibilidade...",
+    usernameAvailable: "Nome de usuário disponível",
+    usernameTaken: "Este nome de usuário já está em uso",
+    usernameRequired: "Nome de usuário é obrigatório",
   },
 
   // Feed

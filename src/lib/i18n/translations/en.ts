@@ -247,6 +247,11 @@ export const en: Translations = {
     adjustPhoto: "Adjust photo",
     rotate: "Rotate 90°",
     dragToAdjust: "Drag to adjust position",
+    // Username validation
+    usernameChecking: "Checking availability...",
+    usernameAvailable: "Username available",
+    usernameTaken: "This username is already taken",
+    usernameRequired: "Username is required",
   },
 
   // Feed
