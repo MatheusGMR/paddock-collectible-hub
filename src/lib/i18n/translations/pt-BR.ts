@@ -332,8 +332,8 @@ export const ptBR = {
     slide3Title: "Descubra a Raridade",
     slide3Text: "Saiba qual pontuação baseada em milhões de análises feitas, o Índice de Raridade permite entender fatores que fazem seu colecionável raro.",
     
-    slide4Title: "Compre e Venda",
-    slide4Text: "Encontre peças raras em marketplaces do mundo todo em um só lugar",
+    slide4Title: "Conheça e Compartilhe",
+    slide4Text: "Descubra colecionadores e suas coleções, tenha informações sobre o mundo dos colecionáveis e o universo dos carros",
     
     // Pricing slide
     pricingTitle: "Comece Grátis!",
