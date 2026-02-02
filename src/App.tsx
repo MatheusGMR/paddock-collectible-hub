@@ -9,7 +9,7 @@ import { SplashScreen } from "@/components/SplashScreen";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import { SubscriptionProvider, useSubscription } from "@/contexts/SubscriptionContext";
-import { GuidedTipsProvider } from "@/contexts/GuidedTipsContext";
+import { GuidedTipsProvider, useGuidedTips } from "@/contexts/GuidedTipsContext";
 import { SpotlightOverlay } from "@/components/guided-tips/SpotlightOverlay";
 import { OnboardingCarousel } from "@/components/onboarding/OnboardingCarousel";
 import { SubscriptionGate } from "@/components/onboarding/SubscriptionGate";
@@ -39,6 +39,7 @@ const AnalyticsTracker = () => {
 const SubscriptionFlow = ({ children }: { children: React.ReactNode }) => {
   const { user, loading: authLoading } = useAuth();
   const { status, isNewUser, isLoading: subLoading, startTrial, createCheckout } = useSubscription();
+  const { markOnboardingComplete } = useGuidedTips();
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [hasCheckedOnboarding, setHasCheckedOnboarding] = useState(false);
@@ -49,9 +50,12 @@ const SubscriptionFlow = ({ children }: { children: React.ReactNode }) => {
       setHasCheckedOnboarding(true);
       if (isNewUser && status === "none") {
         setShowOnboarding(true);
+      } else {
+        // User already completed onboarding before, mark it as complete
+        markOnboardingComplete();
       }
     }
-  }, [authLoading, subLoading, user, isNewUser, status, hasCheckedOnboarding]);
+  }, [authLoading, subLoading, user, isNewUser, status, hasCheckedOnboarding, markOnboardingComplete]);
 
   // Reset onboarding check when user changes
   useEffect(() => {
@@ -67,9 +71,11 @@ const SubscriptionFlow = ({ children }: { children: React.ReactNode }) => {
     setCheckoutLoading(false);
     
     if (url) {
+      // Mark onboarding as complete before redirecting to checkout
+      markOnboardingComplete();
       window.location.href = url;
     }
-  }, [createCheckout]);
+  }, [createCheckout, markOnboardingComplete]);
 
   const handleSkipOnboarding = useCallback(async () => {
     setCheckoutLoading(true);
@@ -77,9 +83,11 @@ const SubscriptionFlow = ({ children }: { children: React.ReactNode }) => {
     setCheckoutLoading(false);
     
     if (success) {
+      // Mark onboarding as complete after starting trial
+      markOnboardingComplete();
       setShowOnboarding(false);
     }
-  }, [startTrial]);
+  }, [startTrial, markOnboardingComplete]);
 
   const handleSubscribe = useCallback(async () => {
     setCheckoutLoading(true);

@@ -3,6 +3,7 @@ import { GuidedTip, getTipsForScreen } from "@/data/guidedTips";
 
 const TIPS_STORAGE_KEY = "paddock_guided_tips_completed";
 const TIPS_FULLY_COMPLETED_KEY = "paddock_tips_all_completed";
+const ONBOARDING_COMPLETE_KEY = "paddock_onboarding_complete";
 
 interface GuidedTipsContextType {
   // Current tip being shown
@@ -17,6 +18,8 @@ interface GuidedTipsContextType {
   hasCompletedAllTips: boolean;
   // Whether tips are currently active (showing)
   isTipsActive: boolean;
+  // Whether onboarding flow is complete (user can now see tips)
+  isOnboardingComplete: boolean;
   // Start tips for a specific screen
   startScreenTips: (screen: string) => void;
   // Go to next tip
@@ -31,6 +34,8 @@ interface GuidedTipsContextType {
   resetAllTips: () => void;
   // Mark screen as seen
   markScreenAsSeen: (screen: string) => void;
+  // Mark onboarding as complete (called after user finishes onboarding flow)
+  markOnboardingComplete: () => void;
 }
 
 const GuidedTipsContext = createContext<GuidedTipsContextType | undefined>(undefined);
@@ -42,8 +47,9 @@ export const GuidedTipsProvider = ({ children }: { children: ReactNode }) => {
   const [currentTipIndex, setCurrentTipIndex] = useState(0);
   const [hasCompletedAllTips, setHasCompletedAllTips] = useState(false);
   const [isTipsActive, setIsTipsActive] = useState(false);
+  const [isOnboardingComplete, setIsOnboardingComplete] = useState(false);
 
-  // Load completed screens from localStorage
+  // Load state from localStorage
   useEffect(() => {
     const stored = localStorage.getItem(TIPS_STORAGE_KEY);
     if (stored) {
@@ -59,6 +65,11 @@ export const GuidedTipsProvider = ({ children }: { children: ReactNode }) => {
     if (fullyCompleted === "true") {
       setHasCompletedAllTips(true);
     }
+
+    const onboardingComplete = localStorage.getItem(ONBOARDING_COMPLETE_KEY);
+    if (onboardingComplete === "true") {
+      setIsOnboardingComplete(true);
+    }
   }, []);
 
   // Save completed screens to localStorage
@@ -73,6 +84,9 @@ export const GuidedTipsProvider = ({ children }: { children: ReactNode }) => {
 
   // Start tips for a screen
   const startScreenTips = useCallback((screen: string) => {
+    // Only show tips if onboarding is complete
+    if (!isOnboardingComplete) return;
+
     const tips = getTipsForScreen(screen);
     
     // Only show if screen hasn't been completed
@@ -82,7 +96,7 @@ export const GuidedTipsProvider = ({ children }: { children: ReactNode }) => {
       setCurrentTip(tips[0]);
       setIsTipsActive(true);
     }
-  }, [completedScreens]);
+  }, [completedScreens, isOnboardingComplete]);
 
   // Go to next tip
   const nextTip = useCallback(() => {
@@ -144,6 +158,12 @@ export const GuidedTipsProvider = ({ children }: { children: ReactNode }) => {
     localStorage.removeItem(TIPS_FULLY_COMPLETED_KEY);
   }, []);
 
+  // Mark onboarding as complete - called after user finishes onboarding flow
+  const markOnboardingComplete = useCallback(() => {
+    setIsOnboardingComplete(true);
+    localStorage.setItem(ONBOARDING_COMPLETE_KEY, "true");
+  }, []);
+
   return (
     <GuidedTipsContext.Provider
       value={{
@@ -153,6 +173,7 @@ export const GuidedTipsProvider = ({ children }: { children: ReactNode }) => {
         totalTipsInScreen: screenTips.length,
         hasCompletedAllTips,
         isTipsActive,
+        isOnboardingComplete,
         startScreenTips,
         nextTip,
         skipAllTips,
@@ -160,6 +181,7 @@ export const GuidedTipsProvider = ({ children }: { children: ReactNode }) => {
         hasUnseenTips,
         resetAllTips,
         markScreenAsSeen,
+        markOnboardingComplete,
       }}
     >
       {children}
