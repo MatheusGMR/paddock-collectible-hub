@@ -2,6 +2,7 @@ import { motion } from "framer-motion";
 import paddockBanner1 from "@/assets/paddock-collection-banner.jpeg";
 import paddockBanner2 from "@/assets/paddock-collection-banner-2.jpeg";
 import indexPreviewVideo from "@/assets/index-preview-video.mov";
+import socialPreviewVideo from "@/assets/social-preview-video.mov";
 
 interface OnboardingSlideProps {
   title: string;
@@ -10,14 +11,18 @@ interface OnboardingSlideProps {
 }
 
 export const OnboardingSlide = ({ title, description, slideIndex = 0 }: OnboardingSlideProps) => {
-  // Select banner based on slide index (slide 1 = index slide with video, slide 2 uses banner 2)
-  const bannerImage = slideIndex === 2 ? paddockBanner2 : paddockBanner1;
+  // Determine which visual to show based on slide index
+  // Slide 1 = Index (video), Slide 3 = Social (video), others use images
   const isIndexSlide = slideIndex === 1;
+  const isSocialSlide = slideIndex === 3;
+  const hasVideo = isIndexSlide || isSocialSlide;
+  const videoSrc = isIndexSlide ? indexPreviewVideo : socialPreviewVideo;
+  const bannerImage = slideIndex === 2 ? paddockBanner2 : paddockBanner1;
 
   return (
     <div className="flex flex-col items-center justify-between h-full px-4 sm:px-8 py-4 text-center">
       {/* Visual Content - Either banner image or video */}
-      {isIndexSlide ? (
+      {hasVideo ? (
         <motion.div
           initial={{ scale: 0.9, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
@@ -31,7 +36,7 @@ export const OnboardingSlide = ({ title, description, slideIndex = 0 }: Onboardi
         >
           <div className="relative w-full max-w-sm mx-auto rounded-2xl overflow-hidden shadow-xl border border-white/10">
             <video
-              src={indexPreviewVideo}
+              src={videoSrc}
               autoPlay
               loop
               muted

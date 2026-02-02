@@ -334,8 +334,8 @@ export const en: Translations = {
     slide3Title: "Discover the Rarity",
     slide3Text: "Get scores based on millions of analyses. The Rarity Index helps you understand the factors that make your collectible rare.",
     
-    slide4Title: "Buy and Sell",
-    slide4Text: "Find rare pieces from marketplaces around the world in one place",
+    slide4Title: "Meet and Share",
+    slide4Text: "Discover collectors and their collections, get information about the world of collectibles and the car universe",
     
     // Pricing slide
     pricingTitle: "Start Free!",
