@@ -15,7 +15,7 @@ const Mercado = () => {
   const [articles, setArticles] = useState<NewsArticle[]>([]);
   const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(true);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true); // Start with loading true for immediate skeleton
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showPreferences, setShowPreferences] = useState(false);
   const { toast } = useToast();
