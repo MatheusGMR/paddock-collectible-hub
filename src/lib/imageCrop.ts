@@ -80,3 +80,60 @@ export const cropMultipleRegions = async (
   
   return results;
 };
+
+/**
+ * Extract a frame from a video blob at a specific time (or first frame)
+ * Returns a base64 data URL of the extracted frame
+ */
+export const extractFrameFromVideo = (
+  videoBlob: Blob,
+  timeInSeconds: number = 0.5
+): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const video = document.createElement("video");
+    const url = URL.createObjectURL(videoBlob);
+    
+    video.src = url;
+    video.muted = true;
+    video.playsInline = true;
+    
+    video.onloadedmetadata = () => {
+      // Seek to the specified time (or 0.5s by default to skip any initial black frames)
+      const seekTime = Math.min(timeInSeconds, video.duration * 0.5);
+      video.currentTime = seekTime;
+    };
+    
+    video.onseeked = () => {
+      try {
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("2d");
+        
+        if (!ctx) {
+          URL.revokeObjectURL(url);
+          reject(new Error("Could not get canvas context"));
+          return;
+        }
+        
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        
+        const frameBase64 = canvas.toDataURL("image/jpeg", 0.85);
+        
+        URL.revokeObjectURL(url);
+        resolve(frameBase64);
+      } catch (error) {
+        URL.revokeObjectURL(url);
+        reject(error);
+      }
+    };
+    
+    video.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("Failed to load video for frame extraction"));
+    };
+    
+    // Start loading the video
+    video.load();
+  });
+};
