@@ -1097,15 +1097,7 @@ export const ScannerView = () => {
         {isScanning && <LoadingFacts isVideo={!!videoPreviewUrl} />}
       </div>
 
-      {/* Video analyzing indicator - shows during video analysis */}
-      {videoPreviewUrl && isScanning && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-30">
-          <div className="flex flex-col items-center gap-3">
-            <Loader2 className="h-10 w-10 text-primary animate-spin" />
-            <p className="text-sm text-white">{t.scanner.analyzingVideo}</p>
-          </div>
-        </div>
-      )}
+      {/* Video analyzing indicator removed - LoadingFacts already handles this */}
 
       {/* Results Panel - Multi-car Carousel */}
       {hasResults ? (
