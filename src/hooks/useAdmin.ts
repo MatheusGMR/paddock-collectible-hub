@@ -231,3 +231,62 @@ export const useAdminPageAnalytics = (daysBack: number = 7) => {
 
   return { analytics, isLoading, refetch: fetchAnalytics };
 };
+
+// AI Usage types
+export interface AIUsageStats {
+  total_requests: number;
+  total_tokens: number;
+  total_cost_usd: number;
+  by_function: Array<{
+    function_name: string;
+    requests: number;
+    tokens: number;
+    cost_usd: number;
+  }> | null;
+  by_user: Array<{
+    user_id: string;
+    username: string;
+    requests: number;
+    tokens: number;
+    cost_usd: number;
+  }> | null;
+  daily_usage: Array<{
+    date: string;
+    requests: number;
+    tokens: number;
+    cost_usd: number;
+  }> | null;
+  by_model: Array<{
+    model: string;
+    requests: number;
+    tokens: number;
+    cost_usd: number;
+  }> | null;
+}
+
+export const useAdminAIUsage = (daysBack: number = 30) => {
+  const [stats, setStats] = useState<AIUsageStats | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const fetchStats = async () => {
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase.rpc("get_admin_ai_usage_stats", {
+        days_back: daysBack
+      });
+      
+      if (error) throw error;
+      setStats(data as unknown as AIUsageStats);
+    } catch (err) {
+      console.error("Error fetching AI usage stats:", err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchStats();
+  }, [daysBack]);
+
+  return { stats, isLoading, refetch: fetchStats };
+};

@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -19,6 +20,64 @@ interface RealCarAnalysisResponse {
   searchTerms: string[];
   confidence: "high" | "medium" | "low";
   error?: string;
+}
+
+// Pricing per 1M tokens (in USD)
+const MODEL_PRICING = {
+  "google/gemini-3-flash-preview": {
+    input: 0.50,
+    output: 3.00,
+  },
+};
+
+// Estimate tokens based on content size
+function estimateTokens(content: string, isImage: boolean = false): number {
+  // Text tokens: ~4 chars per token
+  const textTokens = Math.ceil(content.length / 4);
+  
+  // Image tokens: rough estimate ~2500 tokens
+  if (isImage) return textTokens + 2500;
+  return textTokens;
+}
+
+function calculateCost(inputTokens: number, outputTokens: number, model: string): number {
+  const pricing = MODEL_PRICING[model as keyof typeof MODEL_PRICING] || MODEL_PRICING["google/gemini-3-flash-preview"];
+  const inputCost = (inputTokens / 1_000_000) * pricing.input;
+  const outputCost = (outputTokens / 1_000_000) * pricing.output;
+  return inputCost + outputCost;
+}
+
+// deno-lint-ignore no-explicit-any
+async function logAIUsage(
+  supabase: any,
+  userId: string | null,
+  functionName: string,
+  model: string,
+  inputTokens: number,
+  outputTokens: number,
+  metadata: Record<string, unknown> = {}
+) {
+  const costEstimate = calculateCost(inputTokens, outputTokens, model);
+  
+  try {
+    const { error } = await supabase.from("ai_usage_logs").insert({
+      user_id: userId,
+      function_name: functionName,
+      model,
+      input_tokens: inputTokens,
+      output_tokens: outputTokens,
+      cost_estimate_usd: costEstimate,
+      metadata,
+    });
+    
+    if (error) {
+      console.error("[AI Usage Log] Failed to log:", error);
+    } else {
+      console.log(`[AI Usage Log] ${functionName}: ${inputTokens}in + ${outputTokens}out = $${costEstimate.toFixed(6)}`);
+    }
+  } catch (err) {
+    console.error("[AI Usage Log] Exception:", err);
+  }
 }
 
 const systemPrompt = `Você é um especialista em identificação de carros reais (veículos em tamanho normal, NÃO miniaturas ou carrinhos de brinquedo).
@@ -111,10 +170,31 @@ serve(async (req) => {
       );
     }
 
+    // Initialize Supabase client for logging
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Extract user ID from authorization header if present
+    let userId: string | null = null;
+    const authHeader = req.headers.get("authorization");
+    if (authHeader) {
+      try {
+        const token = authHeader.replace("Bearer ", "");
+        const { data: { user } } = await supabase.auth.getUser(token);
+        userId = user?.id || null;
+      } catch {
+        // Ignore auth errors, just log as anonymous
+      }
+    }
+
     // Remove data URL prefix if present
     const base64Image = imageBase64.replace(/^data:image\/\w+;base64,/, "");
 
     console.log("[analyze-real-car] Sending image to Gemini for analysis...");
+
+    const model = "google/gemini-3-flash-preview";
+    const userPrompt = "Identifique o carro real nesta imagem e sugira termos de busca para encontrar miniaturas deste veículo.";
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -123,7 +203,7 @@ serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+        model,
         messages: [
           { role: "system", content: systemPrompt },
           {
@@ -137,7 +217,7 @@ serve(async (req) => {
               },
               {
                 type: "text",
-                text: "Identifique o carro real nesta imagem e sugira termos de busca para encontrar miniaturas deste veículo.",
+                text: userPrompt,
               },
             ],
           },
@@ -203,6 +283,21 @@ serve(async (req) => {
     }
 
     console.log("[analyze-real-car] AI response:", content);
+
+    // Estimate token usage
+    const inputTokens = estimateTokens(systemPrompt + userPrompt, true);
+    const outputTokens = estimateTokens(content);
+    
+    // Log AI usage
+    await logAIUsage(
+      supabase,
+      userId,
+      "analyze-real-car",
+      model,
+      inputTokens,
+      outputTokens,
+      { responseLength: content.length }
+    );
 
     // Parse the JSON response
     let analysisResult: RealCarAnalysisResponse;

@@ -10,7 +10,8 @@ import {
   UserPlus,
   Shield,
   ArrowLeft,
-  RefreshCw
+  RefreshCw,
+  Bot
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,13 +22,15 @@ import {
   useAdminSubscriptionStats, 
   useAdminUserGrowth,
   useAdminUsers,
-  useAdminPageAnalytics
+  useAdminPageAnalytics,
+  useAdminAIUsage
 } from "@/hooks/useAdmin";
 import { AdminStatCard } from "@/components/admin/AdminStatCard";
 import { AdminUsersTable } from "@/components/admin/AdminUsersTable";
 import { AdminSubscriptionChart } from "@/components/admin/AdminSubscriptionChart";
 import { AdminUserGrowthChart } from "@/components/admin/AdminUserGrowthChart";
 import { AdminAnalyticsSection } from "@/components/admin/AdminAnalyticsSection";
+import { AdminAIUsageSection } from "@/components/admin/AdminAIUsageSection";
 import { useAuth } from "@/contexts/AuthContext";
 
 const Admin = () => {
@@ -40,6 +43,8 @@ const Admin = () => {
   const { users, isLoading: isLoadingUsers, refetch: refetchUsers } = useAdminUsers();
   const [analyticsDays, setAnalyticsDays] = useState(7);
   const { analytics, isLoading: isLoadingAnalytics, refetch: refetchAnalytics } = useAdminPageAnalytics(analyticsDays);
+  const [aiDays, setAIDays] = useState(30);
+  const { stats: aiStats, isLoading: isLoadingAI, refetch: refetchAI } = useAdminAIUsage(aiDays);
 
   // Redirect if not admin
   useEffect(() => {
@@ -59,6 +64,7 @@ const Admin = () => {
     refetchStats();
     refetchUsers();
     refetchAnalytics();
+    refetchAI();
   };
 
   if (isCheckingAdmin) {
@@ -112,9 +118,13 @@ const Admin = () => {
       <div className="p-4 space-y-6">
         {/* Tabs for different sections */}
         <Tabs defaultValue="overview" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="overview">Visão Geral</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="overview">Geral</TabsTrigger>
             <TabsTrigger value="analytics">Analytics</TabsTrigger>
+            <TabsTrigger value="ai" className="gap-1">
+              <Bot className="h-3 w-3" />
+              IA
+            </TabsTrigger>
             <TabsTrigger value="users">Usuários</TabsTrigger>
           </TabsList>
 
@@ -204,6 +214,29 @@ const Admin = () => {
             <AdminAnalyticsSection 
               analytics={analytics} 
               isLoading={isLoadingAnalytics} 
+            />
+          </TabsContent>
+
+          <TabsContent value="ai" className="mt-4">
+            {/* Period selector */}
+            <div className="flex items-center gap-2 mb-4">
+              <span className="text-sm text-muted-foreground">Período:</span>
+              <div className="flex gap-1">
+                {[7, 14, 30].map(days => (
+                  <Button
+                    key={days}
+                    variant={aiDays === days ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setAIDays(days)}
+                  >
+                    {days}d
+                  </Button>
+                ))}
+              </div>
+            </div>
+            <AdminAIUsageSection 
+              stats={aiStats} 
+              isLoading={isLoadingAI} 
             />
           </TabsContent>
 
