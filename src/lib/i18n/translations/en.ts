@@ -331,8 +331,8 @@ export const en: Translations = {
     slide2Title: "Organize Your Collection",
     slide2Text: "Keep your collection catalogued with photos, details and acquisition history",
     
-    slide3Title: "Discover the Rarity Index",
-    slide3Text: "Each car gets an exclusive score based on rarity, condition, manufacturer and more. Know exactly how special your collection is!",
+    slide3Title: "Discover the Rarity",
+    slide3Text: "Get scores based on millions of analyses. The Rarity Index helps you understand the factors that make your collectible rare.",
     
     slide4Title: "Buy and Sell",
     slide4Text: "Find rare pieces from marketplaces around the world in one place",
