@@ -28,56 +28,65 @@ export const SpotlightOverlay = () => {
   const calculatePositions = useCallback(() => {
     if (!currentTip) return;
 
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    const isMobile = viewportWidth < 400;
+    const padding = isMobile ? 12 : 16;
+    
+    // Responsive tooltip width - use percentage on mobile
+    const tooltipWidth = Math.min(viewportWidth - padding * 2, 320);
+    const tooltipHeight = 180; // Approximate height
+
     if (currentTip.targetSelector) {
       const element = document.querySelector(currentTip.targetSelector);
       if (element) {
         const rect = element.getBoundingClientRect();
-        const padding = 8;
+        const spotPadding = 8;
         
         setSpotlightPos({
-          top: rect.top - padding,
-          left: rect.left - padding,
-          width: rect.width + padding * 2,
-          height: rect.height + padding * 2,
+          top: rect.top - spotPadding,
+          left: rect.left - spotPadding,
+          width: rect.width + spotPadding * 2,
+          height: rect.height + spotPadding * 2,
         });
 
         // Calculate tooltip position based on targetPosition
-        const tooltipWidth = 300;
-        const tooltipHeight = 160;
         let top = 0;
         let left = 0;
 
         switch (currentTip.targetPosition) {
           case "top":
-            top = rect.top - tooltipHeight - 20;
-            left = rect.left + rect.width / 2 - tooltipWidth / 2;
+            top = rect.top - tooltipHeight - 16;
+            left = (viewportWidth - tooltipWidth) / 2; // Center horizontally on mobile
             break;
           case "bottom":
-            top = rect.bottom + 20;
-            left = rect.left + rect.width / 2 - tooltipWidth / 2;
+            top = rect.bottom + 16;
+            left = (viewportWidth - tooltipWidth) / 2;
             break;
           case "left":
             top = rect.top + rect.height / 2 - tooltipHeight / 2;
-            left = rect.left - tooltipWidth - 20;
+            left = padding; // Align to left edge with padding
             break;
           case "right":
             top = rect.top + rect.height / 2 - tooltipHeight / 2;
-            left = rect.right + 20;
+            left = padding; // On mobile, still align left for safety
             break;
           default:
-            top = window.innerHeight / 2 - tooltipHeight / 2;
-            left = window.innerWidth / 2 - tooltipWidth / 2;
+            top = viewportHeight / 2 - tooltipHeight / 2;
+            left = (viewportWidth - tooltipWidth) / 2;
         }
 
-        // Ensure tooltip stays within viewport
-        left = Math.max(16, Math.min(left, window.innerWidth - tooltipWidth - 16));
-        top = Math.max(16, Math.min(top, window.innerHeight - tooltipHeight - 16));
+        // Ensure tooltip stays within viewport with safe margins
+        const safeMargin = padding;
+        left = Math.max(safeMargin, Math.min(left, viewportWidth - tooltipWidth - safeMargin));
+        top = Math.max(safeMargin, Math.min(top, viewportHeight - tooltipHeight - safeMargin));
 
         setTooltipStyle({
           position: "fixed",
           top: `${top}px`,
           left: `${left}px`,
           width: `${tooltipWidth}px`,
+          maxWidth: `calc(100vw - ${padding * 2}px)`,
         });
       }
     } else {
@@ -88,7 +97,8 @@ export const SpotlightOverlay = () => {
         top: "50%",
         left: "50%",
         transform: "translate(-50%, -50%)",
-        width: "300px",
+        width: `${tooltipWidth}px`,
+        maxWidth: `calc(100vw - ${padding * 2}px)`,
       });
     }
   }, [currentTip]);
@@ -170,30 +180,30 @@ export const SpotlightOverlay = () => {
           animate={{ scale: 1, opacity: 1 }}
           transition={{ delay: 0.1, type: "spring", stiffness: 300, damping: 25 }}
           style={tooltipStyle}
-          className="bg-card border border-border rounded-2xl p-4 shadow-2xl"
+          className="bg-card border border-border rounded-2xl p-4 shadow-2xl overflow-hidden"
         >
           {/* Skip button */}
           <button
             onClick={skipAllTips}
-            className="absolute -top-2 -right-2 p-1.5 bg-muted rounded-full text-muted-foreground hover:text-foreground transition-colors"
+            className="absolute top-2 right-2 p-1.5 bg-muted rounded-full text-muted-foreground hover:text-foreground transition-colors z-10"
           >
             <X className="h-4 w-4" />
           </button>
 
           {/* Title */}
-          <h3 className="text-lg font-bold text-foreground mb-2">
+          <h3 className="text-base sm:text-lg font-bold text-foreground mb-2 pr-8">
             {currentTip.title}
           </h3>
 
           {/* Description */}
-          <p className="text-sm text-muted-foreground leading-relaxed mb-4">
+          <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed mb-4">
             {currentTip.description}
           </p>
 
           {/* Footer with progress and action */}
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-2">
             {/* Progress dots */}
-            <div className="flex gap-1.5">
+            <div className="flex gap-1.5 flex-shrink-0">
               {Array.from({ length: totalTipsInScreen }).map((_, i) => (
                 <div
                   key={i}
@@ -212,7 +222,7 @@ export const SpotlightOverlay = () => {
             <Button
               onClick={nextTip}
               size="sm"
-              className="gap-1"
+              className="gap-1 flex-shrink-0"
             >
               {currentTip.action || "Próximo"}
               {currentTipIndex < totalTipsInScreen - 1 && (
