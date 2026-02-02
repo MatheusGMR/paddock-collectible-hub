@@ -44,18 +44,57 @@ const SubscriptionFlow = ({ children }: { children: React.ReactNode }) => {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [hasCheckedOnboarding, setHasCheckedOnboarding] = useState(false);
 
+  // Check if user has completed onboarding before (persisted in localStorage)
+  const hasCompletedOnboardingBefore = useCallback((userId: string): boolean => {
+    const completedUsers = localStorage.getItem("paddock_onboarding_completed");
+    if (!completedUsers) return false;
+    try {
+      const users = JSON.parse(completedUsers) as string[];
+      return users.includes(userId);
+    } catch {
+      return false;
+    }
+  }, []);
+
+  // Mark user as having completed onboarding
+  const markUserOnboardingComplete = useCallback((userId: string) => {
+    const completedUsers = localStorage.getItem("paddock_onboarding_completed");
+    let users: string[] = [];
+    try {
+      users = completedUsers ? JSON.parse(completedUsers) : [];
+    } catch {
+      users = [];
+    }
+    if (!users.includes(userId)) {
+      users.push(userId);
+      localStorage.setItem("paddock_onboarding_completed", JSON.stringify(users));
+    }
+  }, []);
+
   // Show onboarding for new users - only check once
   useEffect(() => {
     if (!authLoading && !subLoading && user && !hasCheckedOnboarding) {
       setHasCheckedOnboarding(true);
-      if (isNewUser && status === "none") {
+      
+      // Check if this specific user has completed onboarding before
+      const alreadyCompleted = hasCompletedOnboardingBefore(user.id);
+      
+      if (alreadyCompleted) {
+        // User already completed onboarding, don't show again
+        console.log("[Onboarding] User already completed onboarding before");
+        markOnboardingComplete();
+      } else if (isNewUser && status === "none") {
+        // New user who hasn't completed onboarding
+        console.log("[Onboarding] Showing onboarding for new user");
         setShowOnboarding(true);
       } else {
-        // User already completed onboarding before, mark it as complete
+        // User has subscription record but hasn't been marked locally - mark now
+        console.log("[Onboarding] User has subscription, marking onboarding complete");
+        markUserOnboardingComplete(user.id);
         markOnboardingComplete();
       }
     }
-  }, [authLoading, subLoading, user, isNewUser, status, hasCheckedOnboarding, markOnboardingComplete]);
+  }, [authLoading, subLoading, user, isNewUser, status, hasCheckedOnboarding, markOnboardingComplete, hasCompletedOnboardingBefore, markUserOnboardingComplete]);
 
   // Reset onboarding check when user changes
   useEffect(() => {
@@ -66,28 +105,34 @@ const SubscriptionFlow = ({ children }: { children: React.ReactNode }) => {
   }, [user]);
 
   const handleStartTrial = useCallback(async () => {
+    if (!user) return;
+    
     setCheckoutLoading(true);
     const url = await createCheckout();
     setCheckoutLoading(false);
     
     if (url) {
       // Mark onboarding as complete before redirecting to checkout
+      markUserOnboardingComplete(user.id);
       markOnboardingComplete();
       window.location.href = url;
     }
-  }, [createCheckout, markOnboardingComplete]);
+  }, [createCheckout, markOnboardingComplete, markUserOnboardingComplete, user]);
 
   const handleSkipOnboarding = useCallback(async () => {
+    if (!user) return;
+    
     setCheckoutLoading(true);
     const success = await startTrial();
     setCheckoutLoading(false);
     
     if (success) {
       // Mark onboarding as complete after starting trial
+      markUserOnboardingComplete(user.id);
       markOnboardingComplete();
       setShowOnboarding(false);
     }
-  }, [startTrial, markOnboardingComplete]);
+  }, [startTrial, markOnboardingComplete, markUserOnboardingComplete, user]);
 
   const handleSubscribe = useCallback(async () => {
     setCheckoutLoading(true);
