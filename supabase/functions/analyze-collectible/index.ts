@@ -31,8 +31,10 @@ serve(async (req) => {
 
     const systemPrompt = `You are an expert in identifying vehicles - both collectible diecast/toy cars AND real full-size vehicles.
 
+CRITICAL: ALL TEXT RESPONSES MUST BE IN BRAZILIAN PORTUGUESE (PT-BR).
+This includes: historicalFact, notes, musicSelectionReason, issues, suggestions, warning messages, etc.
+
 STEP 0 - DETERMINE IMAGE TYPE (MOST IMPORTANT):
-First, determine what type of vehicle is in the image:
 
 A) TOY/COLLECTIBLE CAR - Characteristics:
    - Small scale model (fits in a hand)
