@@ -1,53 +1,213 @@
-import { useState } from "react";
-import { ChevronRight } from "lucide-react";
+import { useState, useMemo } from "react";
+import { ChevronRight, ChevronDown } from "lucide-react";
 import { CollectibleDetailCard, CollectibleDetailItem } from "@/components/collection/CollectibleDetailCard";
+import { CollectionFilters, CollectionSortOption } from "./CollectionFilters";
+import { cn } from "@/lib/utils";
 
 interface CollectionListProps {
+  items: CollectibleDetailItem[];
+}
+
+// Country flags and labels
+const countryData: Record<string, { flag: string; label: string }> = {
+  "Japan": { flag: "🇯🇵", label: "Japão" },
+  "Japão": { flag: "🇯🇵", label: "Japão" },
+  "USA": { flag: "🇺🇸", label: "EUA" },
+  "EUA": { flag: "🇺🇸", label: "EUA" },
+  "United States": { flag: "🇺🇸", label: "EUA" },
+  "Germany": { flag: "🇩🇪", label: "Alemanha" },
+  "Alemanha": { flag: "🇩🇪", label: "Alemanha" },
+  "Italy": { flag: "🇮🇹", label: "Itália" },
+  "Itália": { flag: "🇮🇹", label: "Itália" },
+  "UK": { flag: "🇬🇧", label: "Reino Unido" },
+  "United Kingdom": { flag: "🇬🇧", label: "Reino Unido" },
+  "Reino Unido": { flag: "🇬🇧", label: "Reino Unido" },
+  "France": { flag: "🇫🇷", label: "França" },
+  "França": { flag: "🇫🇷", label: "França" },
+  "Brazil": { flag: "🇧🇷", label: "Brasil" },
+  "Brasil": { flag: "🇧🇷", label: "Brasil" },
+  "China": { flag: "🇨🇳", label: "China" },
+  "Malaysia": { flag: "🇲🇾", label: "Malásia" },
+  "Malásia": { flag: "🇲🇾", label: "Malásia" },
+  "Thailand": { flag: "🇹🇭", label: "Tailândia" },
+  "Tailândia": { flag: "🇹🇭", label: "Tailândia" },
+  "South Korea": { flag: "🇰🇷", label: "Coreia do Sul" },
+  "Coreia do Sul": { flag: "🇰🇷", label: "Coreia do Sul" },
+};
+
+// Manufacturer logos (using emojis as fallback, could be replaced with actual logos)
+const manufacturerIcons: Record<string, string> = {
+  "Hot Wheels": "🔥",
+  "Matchbox": "📦",
+  "Tomica": "🎌",
+  "Majorette": "🇫🇷",
+  "Maisto": "⭐",
+  "Bburago": "🏎️",
+  "Jada Toys": "🎯",
+  "Auto World": "🌍",
+  "Greenlight": "💚",
+  "M2 Machines": "⚙️",
+  "Johnny Lightning": "⚡",
+  "Racing Champions": "🏁",
+  "Kyosho": "🗾",
+  "Minichamps": "🔬",
+  "AUTOart": "🎨",
+  "Norev": "🇫🇷",
+  "Schuco": "🇩🇪",
+  "Welly": "🌟",
+  "Siku": "🚛",
+};
+
+interface GroupedItems {
+  key: string;
+  label: string;
+  icon?: string;
   items: CollectibleDetailItem[];
 }
 
 export const CollectionList = ({ items }: CollectionListProps) => {
   const [selectedItem, setSelectedItem] = useState<CollectibleDetailItem | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [sortOption, setSortOption] = useState<CollectionSortOption>("name");
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
 
   const handleItemClick = (item: CollectibleDetailItem) => {
     setSelectedItem(item);
     setDrawerOpen(true);
   };
 
+  const toggleGroup = (key: string) => {
+    setExpandedGroups(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) {
+        next.delete(key);
+      } else {
+        next.add(key);
+      }
+      return next;
+    });
+  };
+
+  // Process items based on sort option
+  const processedData = useMemo(() => {
+    if (sortOption === "name") {
+      // Sort alphabetically by car name
+      return {
+        grouped: false,
+        items: [...items].sort((a, b) => {
+          const nameA = `${a.item?.real_car_brand || ""} ${a.item?.real_car_model || ""}`.toLowerCase();
+          const nameB = `${b.item?.real_car_brand || ""} ${b.item?.real_car_model || ""}`.toLowerCase();
+          return nameA.localeCompare(nameB, "pt-BR");
+        }),
+      };
+    }
+
+    // Group items
+    const groups: Record<string, CollectibleDetailItem[]> = {};
+    
+    items.forEach(item => {
+      let key: string;
+      
+      if (sortOption === "manufacturer") {
+        key = item.item?.collectible_manufacturer || "Outros";
+      } else {
+        // Country - use origin field
+        key = item.item?.collectible_origin || "Outros";
+      }
+      
+      if (!groups[key]) {
+        groups[key] = [];
+      }
+      groups[key].push(item);
+    });
+
+    // Convert to array and sort
+    const groupedArray: GroupedItems[] = Object.entries(groups).map(([key, groupItems]) => {
+      let icon: string | undefined;
+      let label = key;
+      
+      if (sortOption === "manufacturer") {
+        icon = manufacturerIcons[key] || "📦";
+      } else {
+        const country = countryData[key];
+        if (country) {
+          icon = country.flag;
+          label = country.label;
+        } else {
+          icon = "🌍";
+        }
+      }
+      
+      return {
+        key,
+        label,
+        icon,
+        items: groupItems.sort((a, b) => {
+          const nameA = `${a.item?.real_car_brand || ""} ${a.item?.real_car_model || ""}`.toLowerCase();
+          const nameB = `${b.item?.real_car_brand || ""} ${b.item?.real_car_model || ""}`.toLowerCase();
+          return nameA.localeCompare(nameB, "pt-BR");
+        }),
+      };
+    }).sort((a, b) => b.items.length - a.items.length); // Sort by count
+
+    return { grouped: true, groups: groupedArray };
+  }, [items, sortOption]);
+
+  // Expand all groups initially when switching to grouped view
+  useMemo(() => {
+    if ('groups' in processedData && processedData.groups) {
+      setExpandedGroups(new Set(processedData.groups.map(g => g.key)));
+    }
+  }, [sortOption]);
+
   return (
     <>
-      <div className="divide-y divide-border">
-        {items.map((item) => (
-          <button 
-            key={item.id}
-            onClick={() => handleItemClick(item)}
-            className="collection-item w-full hover:bg-muted/50 transition-colors flex items-center gap-3 p-3"
-          >
-            {/* Thumbnail */}
-            <div className="h-14 w-14 rounded-lg bg-muted overflow-hidden flex-shrink-0">
-              <img 
-                src={item.image_url || "/placeholder.svg"} 
-                alt={item.item?.real_car_model || "Item"}
-                className="w-full h-full object-cover"
-              />
+      <CollectionFilters activeSort={sortOption} onSortChange={setSortOption} />
+      
+      {processedData.grouped && 'groups' in processedData ? (
+        // Grouped view (by manufacturer or country)
+        <div className="divide-y divide-border">
+          {processedData.groups.map(group => (
+            <div key={group.key}>
+              {/* Group header */}
+              <button
+                onClick={() => toggleGroup(group.key)}
+                className="w-full flex items-center gap-3 p-4 bg-muted/30 hover:bg-muted/50 transition-colors"
+              >
+                <span className="text-xl">{group.icon}</span>
+                <div className="flex-1 text-left">
+                  <span className="font-semibold text-foreground">{group.label}</span>
+                  <span className="text-foreground-secondary text-sm ml-2">
+                    ({group.items.length})
+                  </span>
+                </div>
+                <ChevronDown
+                  className={cn(
+                    "h-5 w-5 text-foreground-secondary transition-transform",
+                    expandedGroups.has(group.key) && "rotate-180"
+                  )}
+                />
+              </button>
+              
+              {/* Group items */}
+              {expandedGroups.has(group.key) && (
+                <div className="divide-y divide-border/50">
+                  {group.items.map(item => (
+                    <ItemRow key={item.id} item={item} onClick={() => handleItemClick(item)} />
+                  ))}
+                </div>
+              )}
             </div>
-            
-            {/* Info */}
-            <div className="flex-1 text-left">
-              <p className="text-sm font-medium text-foreground">
-                {item.item?.real_car_brand} {item.item?.real_car_model}
-              </p>
-              <p className="text-xs text-foreground-secondary">
-                {item.item?.real_car_year} • {item.item?.collectible_scale}
-              </p>
-            </div>
-            
-            {/* Arrow */}
-            <ChevronRight className="h-5 w-5 text-foreground-secondary" />
-          </button>
-        ))}
-      </div>
+          ))}
+        </div>
+      ) : (
+        // Flat list view (by name)
+        <div className="divide-y divide-border">
+          {'items' in processedData && processedData.items.map(item => (
+            <ItemRow key={item.id} item={item} onClick={() => handleItemClick(item)} />
+          ))}
+        </div>
+      )}
 
       <CollectibleDetailCard
         item={selectedItem}
@@ -57,3 +217,33 @@ export const CollectionList = ({ items }: CollectionListProps) => {
     </>
   );
 };
+
+// Extracted item row component
+const ItemRow = ({ item, onClick }: { item: CollectibleDetailItem; onClick: () => void }) => (
+  <button 
+    onClick={onClick}
+    className="collection-item w-full hover:bg-muted/50 transition-colors flex items-center gap-3 p-3"
+  >
+    {/* Thumbnail */}
+    <div className="h-14 w-14 rounded-lg bg-muted overflow-hidden flex-shrink-0">
+      <img 
+        src={item.image_url || "/placeholder.svg"} 
+        alt={item.item?.real_car_model || "Item"}
+        className="w-full h-full object-cover"
+      />
+    </div>
+    
+    {/* Info */}
+    <div className="flex-1 text-left min-w-0">
+      <p className="text-sm font-medium text-foreground truncate">
+        {item.item?.real_car_brand} {item.item?.real_car_model}
+      </p>
+      <p className="text-xs text-foreground-secondary truncate">
+        {item.item?.real_car_year} • {item.item?.collectible_scale}
+      </p>
+    </div>
+    
+    {/* Arrow */}
+    <ChevronRight className="h-5 w-5 text-foreground-secondary flex-shrink-0" />
+  </button>
+);
