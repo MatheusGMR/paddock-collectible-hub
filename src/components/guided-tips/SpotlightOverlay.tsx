@@ -131,47 +131,76 @@ export const SpotlightOverlay = () => {
           e.stopPropagation();
         }}
       >
-        {/* Dark overlay with spotlight cutout */}
-        <svg className="absolute inset-0 w-full h-full">
-          <defs>
-            <mask id="spotlight-mask">
-              <rect x="0" y="0" width="100%" height="100%" fill="white" />
-              {spotlightPos && (
-                <rect
-                  x={spotlightPos.left}
-                  y={spotlightPos.top}
-                  width={spotlightPos.width}
-                  height={spotlightPos.height}
-                  rx="12"
-                  fill="black"
-                />
-              )}
-            </mask>
-          </defs>
-          <rect
-            x="0"
-            y="0"
-            width="100%"
-            height="100%"
-            fill="rgba(0, 0, 0, 0.85)"
-            mask="url(#spotlight-mask)"
-          />
-        </svg>
+        {/* Dark overlay with spotlight cutout using clip-path for better rendering */}
+        {spotlightPos ? (
+          <>
+            {/* Top overlay */}
+            <div 
+              className="absolute left-0 right-0 top-0 bg-black/90"
+              style={{ height: spotlightPos.top }}
+            />
+            {/* Bottom overlay */}
+            <div 
+              className="absolute left-0 right-0 bottom-0 bg-black/90"
+              style={{ top: spotlightPos.top + spotlightPos.height }}
+            />
+            {/* Left overlay */}
+            <div 
+              className="absolute left-0 bg-black/90"
+              style={{ 
+                top: spotlightPos.top, 
+                width: spotlightPos.left,
+                height: spotlightPos.height 
+              }}
+            />
+            {/* Right overlay */}
+            <div 
+              className="absolute right-0 bg-black/90"
+              style={{ 
+                top: spotlightPos.top, 
+                left: spotlightPos.left + spotlightPos.width,
+                height: spotlightPos.height 
+              }}
+            />
+          </>
+        ) : (
+          /* Full dark overlay when no target element */
+          <div className="absolute inset-0 bg-black/90" />
+        )}
 
-        {/* Spotlight border glow */}
+        {/* Spotlight border glow - enhanced visibility */}
         {spotlightPos && (
           <motion.div
-            initial={{ scale: 0.9, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            className="absolute rounded-xl border-2 border-primary/60 pointer-events-none"
+            initial={{ scale: 0.95, opacity: 0 }}
+            animate={{ 
+              scale: 1, 
+              opacity: 1,
+            }}
+            transition={{ type: "spring", stiffness: 300, damping: 25 }}
+            className="absolute rounded-2xl pointer-events-none"
             style={{
               top: spotlightPos.top,
               left: spotlightPos.left,
               width: spotlightPos.width,
               height: spotlightPos.height,
-              boxShadow: "0 0 20px rgba(76, 195, 255, 0.4)",
+              border: "3px solid hsl(var(--primary))",
+              boxShadow: "0 0 0 4px rgba(76, 195, 255, 0.3), 0 0 30px rgba(76, 195, 255, 0.5), inset 0 0 20px rgba(76, 195, 255, 0.1)",
             }}
-          />
+          >
+            {/* Pulsing ring animation */}
+            <motion.div
+              animate={{ 
+                scale: [1, 1.05, 1],
+                opacity: [0.5, 0.8, 0.5],
+              }}
+              transition={{ 
+                duration: 2, 
+                repeat: Infinity,
+                ease: "easeInOut"
+              }}
+              className="absolute inset-[-6px] rounded-2xl border-2 border-primary/40"
+            />
+          </motion.div>
         )}
 
         {/* Tooltip card */}
