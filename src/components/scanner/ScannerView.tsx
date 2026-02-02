@@ -14,7 +14,7 @@ import { ImageQualityError, ImageQualityIssue } from "@/components/scanner/Image
 import { RealCarResults } from "@/components/scanner/RealCarResults";
 import { LoadingFacts } from "@/components/scanner/LoadingFacts";
 import { PriceIndex } from "@/lib/priceIndex";
-import { cropImageByBoundingBox, BoundingBox } from "@/lib/imageCrop";
+import { cropImageByBoundingBox, BoundingBox, extractFrameFromVideo } from "@/lib/imageCrop";
 import { PaddockLogo } from "@/components/icons/PaddockLogo";
 import { trackInteraction, trackEvent } from "@/lib/analytics";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -523,16 +523,39 @@ export const ScannerView = () => {
           });
           setAnalysisResults([]);
         } else {
-          // For video analysis, use the first frame as the base image
-          // Items from video don't have individual cropping - use video frame
-          const itemsWithImages = response.items.map((item) => ({
-            ...item,
-            croppedImage: undefined, // Video doesn't support individual cropping
-          }));
+          // For video analysis, extract a frame and crop individual cars
+          let baseImageForCropping: string | null = null;
+          
+          // Extract a frame from the video for cropping
+          if (videoBlob && response.items.some(item => item.boundingBox)) {
+            try {
+              baseImageForCropping = await extractFrameFromVideo(videoBlob);
+              console.log("[Scanner] Extracted video frame for cropping");
+            } catch (error) {
+              console.error("[Scanner] Failed to extract video frame:", error);
+            }
+          }
+          
+          // Crop individual car images from bounding boxes
+          const itemsWithCrops = await Promise.all(
+            response.items.map(async (item) => {
+              if (item.boundingBox && baseImageForCropping) {
+                try {
+                  const croppedImage = await cropImageByBoundingBox(baseImageForCropping, item.boundingBox as BoundingBox);
+                  return { ...item, croppedImage };
+                } catch (error) {
+                  console.error("Failed to crop image:", error);
+                  return { ...item, croppedImage: baseImageForCropping };
+                }
+              }
+              // Fallback to extracted frame or undefined
+              return { ...item, croppedImage: baseImageForCropping || undefined };
+            })
+          );
           
           // Check for duplicates in user's collection
           const itemsWithDuplicateCheck = await Promise.all(
-            itemsWithImages.map(async (item) => {
+            itemsWithCrops.map(async (item) => {
               if (user) {
                 try {
                   const duplicate = await checkDuplicateInCollection(

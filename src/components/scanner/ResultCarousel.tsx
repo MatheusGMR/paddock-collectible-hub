@@ -219,21 +219,25 @@ export const ResultCarousel = ({
                 )}
               >
                 <div className="space-y-4 max-h-[65vh] overflow-y-auto pb-2">
-                  {/* Hero image with gradient overlay */}
-                  {result.croppedImage && (
-                    <div className="relative w-full aspect-[4/3] rounded-2xl overflow-hidden bg-gradient-to-b from-muted to-muted/50">
+                  {/* Hero image with gradient overlay - always show car image */}
+                  <div className="relative w-full aspect-[4/3] rounded-2xl overflow-hidden bg-gradient-to-b from-muted to-muted/50">
+                    {result.croppedImage ? (
                       <img
                         src={result.croppedImage}
                         alt={`${result.realCar.brand} ${result.realCar.model}`}
                         className="w-full h-full object-contain"
                       />
-                      {/* Car badge */}
-                      <div className="absolute top-3 left-3 flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/60 backdrop-blur-sm">
-                        <Car className="h-3.5 w-3.5 text-primary" />
-                        <span className="text-xs font-medium text-white">{result.realCar.year}</span>
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <Car className="h-16 w-16 text-muted-foreground/50" />
                       </div>
+                    )}
+                    {/* Car badge */}
+                    <div className="absolute top-3 left-3 flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/60 backdrop-blur-sm">
+                      <Car className="h-3.5 w-3.5 text-primary" />
+                      <span className="text-xs font-medium text-white">{result.realCar.year}</span>
                     </div>
-                  )}
+                  </div>
 
                   {/* Car title */}
                   <div className="text-center space-y-1">
