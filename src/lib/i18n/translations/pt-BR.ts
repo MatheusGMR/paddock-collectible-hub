@@ -102,6 +102,7 @@ export const ptBR = {
     tapToCapture: "Toque para foto",
     holdToRecord: "Segure para gravar",
     recording: "Gravando...",
+    analyzingVideo: "Analisando vídeo...",
     videoRecorded: "Vídeo gravado!",
     postVideo: "Postar Vídeo",
     recordAgain: "Gravar Outro",
@@ -111,7 +112,6 @@ export const ptBR = {
     videoTooLong: "Vídeo muito longo",
     maxVideoSize: "Máximo",
     maxVideoDuration: "Máximo 15 segundos de gravação",
-    analyzingVideo: "Analisando vídeo...",
     // Loading facts
     whileMagicHappens: "Enquanto a mágica acontece...",
     didYouKnow: "Você Sabia?",

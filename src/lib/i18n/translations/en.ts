@@ -104,6 +104,7 @@ export const en: Translations = {
     tapToCapture: "Tap to capture",
     holdToRecord: "Hold to record",
     recording: "Recording...",
+    analyzingVideo: "Analyzing video...",
     videoRecorded: "Video recorded!",
     postVideo: "Post Video",
     recordAgain: "Record Again",
@@ -113,7 +114,6 @@ export const en: Translations = {
     videoTooLong: "Video too long",
     maxVideoSize: "Maximum",
     maxVideoDuration: "Maximum 15 seconds recording",
-    analyzingVideo: "Analyzing video...",
     // Loading facts
     whileMagicHappens: "While the magic happens...",
     didYouKnow: "Did You Know?",
