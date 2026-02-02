@@ -129,8 +129,15 @@ export const ptBR = {
     viewCollection: "Ver Coleção",
     // Image quality errors
     imageQualityError: "Ops! Temos um problema",
+    pleaseRetakePhoto: "Por favor, tire uma nova foto",
     tip: "Dica",
     retryCapture: "Tentar Novamente",
+    takeNewPhoto: "Tirar Nova Foto",
+    betterPhotoTips: "Para melhores resultados:",
+    tipGoodLighting: "Boa iluminação (luz natural é ideal)",
+    tipStable: "Câmera estável e focada",
+    tipDistance: "Distância adequada (carrinho inteiro visível)",
+    tipClearView: "Sem obstruções na frente",
     issueTypes: {
       too_many_cars: "Muitos carrinhos na foto!",
       too_many_cars_desc: "Detectamos {{count}} carros, mas o máximo é 5.",
