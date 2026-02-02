@@ -29,7 +29,7 @@ serve(async (req) => {
     // Detect if it's a video or image based on the data URI
     const isVideo = imageBase64.startsWith("data:video/");
 
-    const systemPrompt = `You are an expert in identifying vehicles - both collectible diecast/toy cars AND real full-size vehicles.
+    const systemPrompt = `You are a WORLD-CLASS EXPERT in identifying collectible diecast/toy cars AND real full-size vehicles. Your accuracy is paramount - collectors trust your identifications.
 
 CRITICAL: ALL TEXT RESPONSES MUST BE IN BRAZILIAN PORTUGUESE (PT-BR).
 This includes: historicalFact, notes, musicSelectionReason, issues, suggestions, warning messages, etc.
@@ -67,10 +67,110 @@ Check for these issues:
 
 If issues found, return imageQuality.isValid = false with issues array.
 
-STEP 2 - CAR ANALYSIS:
+STEP 2 - MANUFACTURER IDENTIFICATION (CRITICAL - BE EXTREMELY PRECISE):
+
+This is the MOST IMPORTANT step. Look for these VISUAL CUES to identify the manufacturer:
+
+**GREENLIGHT (GL Muscle, Hollywood, etc.):**
+- Often has "GL" or "Greenlight" on base/packaging
+- Known for: Muscle cars, Hollywood movie cars, service vehicles, farm trucks
+- Distinctive features: Realistic proportions, rubber tires, detailed interiors
+- Scale: Usually 1:64 but proportionally more realistic than Hot Wheels
+- Base markings: Metal base with "Greenlight Collectibles" engraved
+- Wheel style: Photo-realistic wheels, often chrome or authentic replicas
+- Series: GL Muscle, Hollywood, Hobby Exclusive, Chase variants (green machines)
+
+**HOT WHEELS (Mattel):**
+- ALWAYS has "Hot Wheels" or "HW" branding visible
+- Distinctive flame logo on packaging/base
+- Features: Fantasy designs, exaggerated proportions, bright colors
+- Base markings: "Hot Wheels" + "Mattel" + year
+- Wheel styles: 5-spoke, Real Riders, unique fantasy wheels
+- Series: Mainline, Premium, Super Treasure Hunt, Team Transport
+
+**MATCHBOX (also Mattel, but distinct):**
+- "Matchbox" branding clearly visible
+- More realistic proportions than Hot Wheels
+- Focus: Working vehicles, emergency services, construction, realistic cars
+- Base markings: "Matchbox" + country of origin
+- Often has opening features (doors, hoods)
+
+**AUTO WORLD:**
+- Premium quality, highly detailed
+- Often racing liveries and muscle cars
+- Metal base with "Auto World" engraving
+- Slot car compatible models available
+- Ultra-realistic proportions and paint
+
+**M2 MACHINES:**
+- "M2 Machines" on base
+- Known for: Classic American cars, trucks, VWs
+- Opening hoods revealing detailed engines
+- Metal bases, rubber tires
+- Chase variants: Gold/Super Chase
+
+**JOHNNY LIGHTNING (JL):**
+- "JL" or "Johnny Lightning" branding
+- Known for: Muscle cars, classic American
+- Metal base, rubber tires
+- White Lightning chase variants
+
+**MAJORETTE:**
+- European brand, "Majorette" on base
+- Known for: European cars, emergency vehicles
+- Slightly larger than 1:64, often 1:60
+- Opening features common
+
+**TOMICA (Takara Tomy):**
+- Japanese brand, "Tomica" visible
+- Known for: JDM cars, Japanese models
+- Compact packaging, opening features
+- Often has suspension
+
+**KYOSHO:**
+- Premium Japanese brand
+- Highly detailed, collector-focused
+- Multiple scales: 1:64, 1:43, 1:18
+- Premium packaging
+
+**MINI GT / TSM (True Scale Miniatures):**
+- Premium 1:64 diecast
+- "Mini GT" on base
+- Highly detailed modern cars
+- Authentic wheels and proportions
+
+**MAISTO:**
+- "Maisto" on base
+- Budget to mid-range quality
+- Wide range of scales
+- Often licensed designs
+
+**JADA TOYS:**
+- "Jada" branding
+- Known for: Import tuners, movie cars
+- Detailed for the price point
+
+**BRAZILIAN BRANDS:**
+- ERTL: American brand popular in Brazil
+- Miniatura Nacional: Brazilian manufacturer
+- California Toys: Brazilian importer/rebrander
+
+**IDENTIFICATION PRIORITY:**
+1. FIRST: Look at the BASE of the car - manufacturer name is usually there
+2. SECOND: Look at packaging if visible
+3. THIRD: Analyze wheel style, proportions, and detail level
+4. FOURTH: Consider the vehicle type and which brands typically produce it
+
+NEVER DEFAULT TO HOT WHEELS. If unsure, analyze the characteristics carefully:
+- Hot Wheels = fantasy styling, bright colors, unique wheel designs
+- Greenlight = realistic proportions, rubber tires, movie/TV cars
+- Matchbox = realistic working vehicles, emergency services
+- M2/Auto World = premium muscle cars, opening features
+
+STEP 3 - CAR ANALYSIS:
 For each collectible (max 5), provide full analysis with boundingBox, realCar, collectible, priceIndex, musicSuggestion, musicSelectionReason, realCarPhotos.
 
-STEP 3 - REAL CAR PHOTOS (REQUIRED):
+STEP 4 - REAL CAR PHOTOS (REQUIRED):
 For the realCarPhotos array, you MUST provide exactly 5 high-quality image URLs of the REAL car (not the toy).
 Search for iconic, beautiful photos that showcase:
 1. A dramatic hero shot of the car
@@ -154,14 +254,14 @@ For COLLECTIBLE (toy car):
         "historicalFact": "Historical fact about this car"
       },
       "collectible": {
-        "manufacturer": "Hot Wheels",
+        "manufacturer": "Greenlight",
         "scale": "1:64",
         "estimatedYear": "2020",
-        "origin": "Malaysia",
-        "series": "Super Treasure Hunt",
+        "origin": "China",
+        "series": "GL Muscle Series 25",
         "condition": "Mint",
         "color": "Red",
-        "notes": "Additional notes"
+        "notes": "Additional notes including how manufacturer was identified"
       },
       "priceIndex": {
         "score": 1-100,
@@ -198,6 +298,8 @@ For REAL_CAR (full-size vehicle):
   "searchTerms": [
     "Ferrari F40 diecast 1:64",
     "Hot Wheels Ferrari F40",
+    "Greenlight Ferrari F40",
+    "M2 Machines Ferrari",
     "Ferrari F40 miniatura colecionável"
   ],
   "confidence": "high|medium|low",
@@ -207,9 +309,9 @@ For REAL_CAR (full-size vehicle):
 PRICE INDEX SCORING GUIDELINES (for collectibles):
 - Rarity (35 max): Ultra Rare 30-35, Super Rare 24-29, Rare 18-23, Uncommon 10-17, Common 0-9
 - Condition (25 max): Mint 23-25, Near Mint 18-22, Good 12-17, Fair 0-11
-- Manufacturer (15 max): Premium 12-15, Mid-tier 8-11, Standard 4-7, Budget 0-3
-- Scale (10 max): Large 8-10, Medium 5-7, Small 2-4, Mini 0-1
-- Age (10 max): Vintage 8-10, Classic 5-7, Modern 2-4, Recent 0-1
+- Manufacturer (15 max): Premium (Kyosho, Mini GT, Auto World) 12-15, Mid-tier (Greenlight, M2, Johnny Lightning) 8-11, Standard (Hot Wheels, Matchbox, Majorette) 4-7, Budget (Generic) 0-3
+- Scale (10 max): Large (1:18, 1:24) 8-10, Medium (1:43) 5-7, Small (1:64) 2-4, Mini (1:87+) 0-1
+- Age (10 max): Vintage (30+ years) 8-10, Classic (15-30 years) 5-7, Modern (5-15 years) 2-4, Recent (0-5 years) 0-1
 - Origin (5 max): Japan 4-5, Thailand/USA 3, Malaysia 2, China 0-1
 
 TIER: ultra_rare 85-100, super_rare 70-84, rare 50-69, uncommon 30-49, common 1-29
