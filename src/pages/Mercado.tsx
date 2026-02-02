@@ -63,7 +63,7 @@ const Mercado = () => {
     [searchQuery, selectedCategory, page, isLoading, toast, t]
   );
 
-  // Initial load and trigger refresh in background
+  // Initial load
   useEffect(() => {
     loadArticles(true);
     
@@ -71,6 +71,7 @@ const Mercado = () => {
     refreshNews().catch((err) => {
       console.log("Background refresh failed:", err);
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Handle search change with debounce
@@ -78,15 +79,16 @@ const Mercado = () => {
     setSearchQuery(query);
   }, []);
 
-  // Debounced search effect
+  // Debounced search effect - reload when search changes
   useEffect(() => {
+    if (searchQuery === "") return; // Skip initial empty state
+    
     const timeoutId = setTimeout(() => {
-      setPage(0);
-      setArticles([]);
-      setHasMore(true);
+      loadArticles(true);
     }, 500);
 
     return () => clearTimeout(timeoutId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchQuery]);
 
   // Handle category filter change
