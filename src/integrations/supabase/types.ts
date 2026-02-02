@@ -14,6 +14,45 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_usage_logs: {
+        Row: {
+          cost_estimate_usd: number
+          created_at: string
+          function_name: string
+          id: string
+          input_tokens: number
+          metadata: Json | null
+          model: string
+          output_tokens: number
+          total_tokens: number | null
+          user_id: string | null
+        }
+        Insert: {
+          cost_estimate_usd?: number
+          created_at?: string
+          function_name: string
+          id?: string
+          input_tokens?: number
+          metadata?: Json | null
+          model: string
+          output_tokens?: number
+          total_tokens?: number | null
+          user_id?: string | null
+        }
+        Update: {
+          cost_estimate_usd?: number
+          created_at?: string
+          function_name?: string
+          id?: string
+          input_tokens?: number
+          metadata?: Json | null
+          model?: string
+          output_tokens?: number
+          total_tokens?: number | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       analytics_events: {
         Row: {
           created_at: string
@@ -639,6 +678,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_admin_ai_usage_stats: { Args: { days_back?: number }; Returns: Json }
       get_admin_page_analytics: { Args: { days_back?: number }; Returns: Json }
       get_admin_stats: { Args: never; Returns: Json }
       get_admin_subscription_stats: { Args: never; Returns: Json }
