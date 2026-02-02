@@ -114,6 +114,8 @@ export const en: Translations = {
     videoTooLong: "Video too long",
     maxVideoSize: "Maximum",
     maxVideoDuration: "Maximum 15 seconds recording",
+    unsupportedFileType: "Unsupported file type",
+    selectFromGallery: "Select from gallery",
     // Loading facts
     whileMagicHappens: "While the magic happens...",
     didYouKnow: "Did You Know?",

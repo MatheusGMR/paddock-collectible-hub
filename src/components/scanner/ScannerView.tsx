@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from "react";
-import { X, RotateCcw, Camera, SwitchCamera, Loader2 } from "lucide-react";
+import { X, RotateCcw, Camera, SwitchCamera, Loader2, ImageIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -130,6 +130,7 @@ export const ScannerView = () => {
   const pressTimerRef = useRef<NodeJS.Timeout | null>(null);
   const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
   const isPressedRef = useRef(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   const { toast } = useToast();
   const { user } = useAuth();
@@ -579,6 +580,182 @@ export const ScannerView = () => {
     }
   }, [toast, t, user, videoPreviewUrl]);
 
+  // Handle file selection from gallery
+  const handleFileSelect = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    console.log("[Scanner] File selected from gallery:", file.type, file.size);
+
+    // Check file size (20MB max)
+    const MAX_FILE_SIZE = 20 * 1024 * 1024;
+    if (file.size > MAX_FILE_SIZE) {
+      toast({
+        title: t.scanner.videoTooLarge,
+        description: `${t.scanner.maxVideoSize} 20MB`,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    stopCamera();
+
+    const isVideo = file.type.startsWith("video/");
+    const isImage = file.type.startsWith("image/");
+
+    if (isVideo) {
+      // Handle video file
+      const url = URL.createObjectURL(file);
+      setVideoPreviewUrl(url);
+      setRecordedVideo(file);
+      
+      // Analyze video
+      await analyzeVideo(file);
+    } else if (isImage) {
+      // Handle image file
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        const imageBase64 = reader.result as string;
+        setCapturedImage(imageBase64);
+        setIsScanning(true);
+        
+        // Track scan event
+        trackEvent("scan_initiated", { source: "gallery_image" });
+
+        try {
+          const { data, error } = await supabase.functions.invoke("analyze-collectible", {
+            body: { imageBase64 },
+          });
+
+          if (error) throw error;
+
+          const response = data as MultiCarAnalysisResponse;
+          const responseType = response.detectedType || "collectible";
+          setDetectedType(responseType);
+
+          trackEvent("scan_completed", { 
+            detected_type: responseType, 
+            identified: response.identified,
+            items_count: response.count || (response.identified ? 1 : 0),
+            source: "gallery_image"
+          });
+
+          console.log("[Scanner] Gallery image detected type:", responseType);
+
+          if (responseType === "real_car") {
+            if (!response.identified || !response.car) {
+              toast({
+                title: t.scanner.couldNotIdentify,
+                description: response.error || t.scanner.tryDifferentAngle,
+                variant: "destructive",
+              });
+              setRealCarResult(null);
+            } else {
+              setRealCarResult({
+                identified: response.identified,
+                car: response.car,
+                searchTerms: response.searchTerms || [],
+                confidence: response.confidence || "medium",
+              });
+            }
+          } else {
+            if (response.imageQuality && !response.imageQuality.isValid) {
+              setImageQualityError(response.imageQuality);
+              setAnalysisResults([]);
+              setIsScanning(false);
+              return;
+            }
+
+            setImageQualityError(null);
+
+            if (!response.identified || response.count === 0) {
+              toast({
+                title: t.scanner.itemNotIdentified,
+                description: t.scanner.itemNotIdentifiedDesc,
+                variant: "destructive",
+              });
+              setAnalysisResults([]);
+            } else {
+              const itemsWithCrops = await Promise.all(
+                response.items.map(async (item) => {
+                  if (item.boundingBox && imageBase64) {
+                    try {
+                      const croppedImage = await cropImageByBoundingBox(imageBase64, item.boundingBox as BoundingBox);
+                      return { ...item, croppedImage };
+                    } catch (error) {
+                      console.error("Failed to crop image:", error);
+                      return { ...item, croppedImage: imageBase64 };
+                    }
+                  }
+                  return { ...item, croppedImage: imageBase64 };
+                })
+              );
+              
+              const itemsWithDuplicateCheck = await Promise.all(
+                itemsWithCrops.map(async (item) => {
+                  if (user) {
+                    try {
+                      const duplicate = await checkDuplicateInCollection(
+                        user.id,
+                        item.realCar.brand,
+                        item.realCar.model,
+                        item.collectible?.color
+                      );
+                      return {
+                        ...item,
+                        isDuplicate: duplicate.isDuplicate,
+                        existingItemImage: duplicate.existingItemImage
+                      };
+                    } catch (error) {
+                      console.error("Failed to check duplicate:", error);
+                      return item;
+                    }
+                  }
+                  return item;
+                })
+              );
+              
+              setAnalysisResults(itemsWithDuplicateCheck);
+              setAddedIndices(new Set());
+              setSkippedIndices(new Set());
+              
+              if (response.warning) {
+                setWarningMessage(response.warning);
+                toast({
+                  title: t.scanner.maxCarsWarning,
+                  description: response.warning,
+                });
+              }
+            }
+          }
+        } catch (error) {
+          console.error("Gallery image analysis error:", error);
+          toast({
+            title: t.scanner.analysisFailed,
+            description: t.scanner.analysisFailedDesc,
+            variant: "destructive",
+          });
+        } finally {
+          setIsScanning(false);
+        }
+      };
+      reader.readAsDataURL(file);
+    } else {
+      toast({
+        title: t.common.error,
+        description: t.scanner.unsupportedFileType || "Tipo de arquivo não suportado",
+        variant: "destructive",
+      });
+    }
+
+    // Reset the input so the same file can be selected again
+    event.target.value = "";
+  }, [stopCamera, toast, t, user, analyzeVideo]);
+
+  const openGallery = useCallback(() => {
+    fileInputRef.current?.click();
+  }, []);
+
   // Video recording functions
   const startRecording = useCallback(() => {
     if (!streamRef.current) return;
@@ -967,22 +1144,42 @@ export const ScannerView = () => {
                 </Button>
               </div>
             ) : cameraActive && (
-              <>
-                <p className="text-[11px] text-white/50 text-center tracking-wide">
-                  {t.scanner.tapToCapture} • {t.scanner.holdToRecord}
-                </p>
-                <CaptureButton
-                  isRecording={isRecording}
-                  recordingDuration={recordingDuration}
-                  disabled={isScanning}
-                  onPressStart={handlePressStart}
-                  onPressEnd={handlePressEnd}
-                />
-              </>
+              <div className="relative w-full flex items-center justify-center">
+                {/* Gallery button - bottom left */}
+                <button
+                  onClick={openGallery}
+                  className="absolute left-6 bottom-0 p-3 bg-background/50 backdrop-blur-sm rounded-full z-10"
+                  aria-label={t.scanner.selectFromGallery}
+                >
+                  <ImageIcon className="h-6 w-6 text-white" />
+                </button>
+                
+                <div className="flex flex-col items-center gap-3">
+                  <p className="text-[11px] text-white/50 text-center tracking-wide">
+                    {t.scanner.tapToCapture} • {t.scanner.holdToRecord}
+                  </p>
+                  <CaptureButton
+                    isRecording={isRecording}
+                    recordingDuration={recordingDuration}
+                    disabled={isScanning}
+                    onPressStart={handlePressStart}
+                    onPressEnd={handlePressEnd}
+                  />
+                </div>
+              </div>
             )}
           </div>
         </div>
       )}
+
+      {/* Hidden file input for gallery selection */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*,video/*"
+        onChange={handleFileSelect}
+        className="hidden"
+      />
 
     </div>
   );

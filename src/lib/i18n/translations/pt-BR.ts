@@ -112,6 +112,8 @@ export const ptBR = {
     videoTooLong: "Vídeo muito longo",
     maxVideoSize: "Máximo",
     maxVideoDuration: "Máximo 15 segundos de gravação",
+    unsupportedFileType: "Tipo de arquivo não suportado",
+    selectFromGallery: "Selecionar da galeria",
     // Loading facts
     whileMagicHappens: "Enquanto a mágica acontece...",
     didYouKnow: "Você Sabia?",
