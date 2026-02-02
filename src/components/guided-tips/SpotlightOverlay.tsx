@@ -30,12 +30,13 @@ export const SpotlightOverlay = () => {
 
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight;
-    const isMobile = viewportWidth < 400;
-    const padding = isMobile ? 12 : 16;
     
-    // Responsive tooltip width - use percentage on mobile
-    const tooltipWidth = Math.min(viewportWidth - padding * 2, 320);
-    const tooltipHeight = 180; // Approximate height
+    // Safe margins - larger on mobile to avoid edge clipping
+    const safeMargin = 16;
+    
+    // Responsive tooltip width - ensure it fits within screen with margins
+    const maxTooltipWidth = Math.min(viewportWidth - safeMargin * 2, 320);
+    const tooltipHeight = 200; // Approximate height with some buffer
 
     if (currentTip.targetSelector) {
       const element = document.querySelector(currentTip.targetSelector);
@@ -43,50 +44,73 @@ export const SpotlightOverlay = () => {
         const rect = element.getBoundingClientRect();
         const spotPadding = 8;
         
+        // Ensure spotlight stays within viewport
+        const spotTop = Math.max(0, rect.top - spotPadding);
+        const spotLeft = Math.max(0, rect.left - spotPadding);
+        const spotWidth = Math.min(rect.width + spotPadding * 2, viewportWidth - spotLeft);
+        const spotHeight = Math.min(rect.height + spotPadding * 2, viewportHeight - spotTop);
+        
         setSpotlightPos({
-          top: rect.top - spotPadding,
-          left: rect.left - spotPadding,
-          width: rect.width + spotPadding * 2,
-          height: rect.height + spotPadding * 2,
+          top: spotTop,
+          left: spotLeft,
+          width: spotWidth,
+          height: spotHeight,
         });
 
-        // Calculate tooltip position based on targetPosition
+        // Calculate tooltip position - prioritize visibility
         let top = 0;
-        let left = 0;
+        let left = safeMargin; // Default to left margin
+
+        // Center horizontally within safe margins
+        left = (viewportWidth - maxTooltipWidth) / 2;
 
         switch (currentTip.targetPosition) {
           case "top":
-            top = rect.top - tooltipHeight - 16;
-            left = (viewportWidth - tooltipWidth) / 2; // Center horizontally on mobile
+            // Position above target, but check if there's space
+            top = rect.top - tooltipHeight - 20;
+            if (top < safeMargin) {
+              // Not enough space above, position below instead
+              top = rect.bottom + 20;
+            }
             break;
           case "bottom":
-            top = rect.bottom + 16;
-            left = (viewportWidth - tooltipWidth) / 2;
+            // Position below target
+            top = rect.bottom + 20;
+            if (top + tooltipHeight > viewportHeight - safeMargin) {
+              // Not enough space below, position above instead
+              top = rect.top - tooltipHeight - 20;
+            }
             break;
           case "left":
-            top = rect.top + rect.height / 2 - tooltipHeight / 2;
-            left = padding; // Align to left edge with padding
-            break;
           case "right":
+            // Position vertically centered relative to target
             top = rect.top + rect.height / 2 - tooltipHeight / 2;
-            left = padding; // On mobile, still align left for safety
             break;
           default:
-            top = viewportHeight / 2 - tooltipHeight / 2;
-            left = (viewportWidth - tooltipWidth) / 2;
+            // Center on screen
+            top = (viewportHeight - tooltipHeight) / 2;
         }
 
-        // Ensure tooltip stays within viewport with safe margins
-        const safeMargin = padding;
-        left = Math.max(safeMargin, Math.min(left, viewportWidth - tooltipWidth - safeMargin));
+        // Final clamp to ensure tooltip stays within viewport
+        left = Math.max(safeMargin, Math.min(left, viewportWidth - maxTooltipWidth - safeMargin));
         top = Math.max(safeMargin, Math.min(top, viewportHeight - tooltipHeight - safeMargin));
 
         setTooltipStyle({
           position: "fixed",
           top: `${top}px`,
           left: `${left}px`,
-          width: `${tooltipWidth}px`,
-          maxWidth: `calc(100vw - ${padding * 2}px)`,
+          width: `${maxTooltipWidth}px`,
+        });
+      } else {
+        // Target element not found - center the tooltip
+        setSpotlightPos(null);
+        setTooltipStyle({
+          position: "fixed",
+          top: "50%",
+          left: "50%",
+          transform: "translate(-50%, -50%)",
+          width: `${maxTooltipWidth}px`,
+          maxWidth: `calc(100vw - ${safeMargin * 2}px)`,
         });
       }
     } else {
@@ -97,8 +121,8 @@ export const SpotlightOverlay = () => {
         top: "50%",
         left: "50%",
         transform: "translate(-50%, -50%)",
-        width: `${tooltipWidth}px`,
-        maxWidth: `calc(100vw - ${padding * 2}px)`,
+        width: `${maxTooltipWidth}px`,
+        maxWidth: `calc(100vw - ${safeMargin * 2}px)`,
       });
     }
   }, [currentTip]);
