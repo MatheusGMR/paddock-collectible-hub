@@ -1,26 +1,31 @@
-import { Heart, MessageCircle, Send, Bookmark, MoreHorizontal } from "lucide-react";
+import { Heart, MessageCircle, Send, Bookmark, MoreHorizontal, Info } from "lucide-react";
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ItemBadge } from "./ItemBadge";
 import { trackInteraction } from "@/lib/analytics";
+import { cn } from "@/lib/utils";
 
 interface PostCardProps {
   post: {
     id: string;
     user: {
+      id?: string;
       username: string;
       avatar: string;
     };
     image: string;
-    caption: string;
+    caption: string | null;
+    historicalFact?: string | null;
     likes: number;
     comments: number;
     item?: {
       brand: string;
       model: string;
-      year: string;
-      scale: string;
-    };
+      year?: string | null;
+      scale?: string | null;
+      manufacturer?: string | null;
+    } | null;
     createdAt: string;
   };
 }
@@ -28,6 +33,7 @@ interface PostCardProps {
 export const PostCard = ({ post }: PostCardProps) => {
   const [liked, setLiked] = useState(false);
   const [saved, setSaved] = useState(false);
+  const navigate = useNavigate();
 
   const handleLike = () => {
     const newLiked = !liked;
@@ -55,15 +61,30 @@ export const PostCard = ({ post }: PostCardProps) => {
     trackInteraction("open_comments", `post_${post.id}`, { post_id: post.id });
   };
 
+  const handleUserClick = () => {
+    if (post.user.id) {
+      navigate(`/user/${post.user.id}`);
+    }
+  };
+
+  // Determine which text to show - prefer historical fact with owner mention, fallback to caption
+  const hasHistoricalFact = post.historicalFact && post.item;
+  const displayText = hasHistoricalFact
+    ? post.historicalFact
+    : post.caption;
+
   return (
     <article className="border-b border-border animate-fade-in">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3">
-        <div className="flex items-center gap-3">
+        <div 
+          className="flex items-center gap-3 cursor-pointer"
+          onClick={handleUserClick}
+        >
           <Avatar className="h-9 w-9 ring-2 ring-primary/20">
             <AvatarImage src={post.user.avatar} alt={post.user.username} />
             <AvatarFallback className="bg-muted text-foreground">
-              {post.user.username[0].toUpperCase()}
+              {post.user.username[0]?.toUpperCase() || "U"}
             </AvatarFallback>
           </Avatar>
           <span className="text-sm font-medium">{post.user.username}</span>
@@ -77,7 +98,7 @@ export const PostCard = ({ post }: PostCardProps) => {
       <div className="relative aspect-square w-full bg-muted">
         <img 
           src={post.image} 
-          alt={post.caption}
+          alt={post.caption || "Post"}
           className="post-image"
           loading="lazy"
         />
@@ -91,7 +112,10 @@ export const PostCard = ({ post }: PostCardProps) => {
             className="transition-transform active:scale-90"
           >
             <Heart 
-              className={`h-6 w-6 ${liked ? "fill-red-500 text-red-500" : "text-foreground"}`} 
+              className={cn(
+                "h-6 w-6",
+                liked ? "fill-red-500 text-red-500" : "text-foreground"
+              )} 
             />
           </button>
           <button 
@@ -112,7 +136,7 @@ export const PostCard = ({ post }: PostCardProps) => {
           className="transition-transform active:scale-90"
         >
           <Bookmark 
-            className={`h-6 w-6 ${saved ? "fill-foreground" : ""}`} 
+            className={cn("h-6 w-6", saved && "fill-foreground")} 
           />
         </button>
       </div>
@@ -124,18 +148,45 @@ export const PostCard = ({ post }: PostCardProps) => {
         </p>
       </div>
 
-      {/* Caption */}
+      {/* Caption or Historical Fact */}
       <div className="px-4 py-2">
-        <p className="text-sm">
-          <span className="font-semibold">{post.user.username}</span>{" "}
-          <span className="text-foreground/90">{post.caption}</span>
-        </p>
+        {hasHistoricalFact ? (
+          <div className="space-y-2">
+            {/* Historical fact with icon */}
+            <div className="flex items-start gap-2">
+              <Info className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+              <p className="text-sm text-foreground/90 leading-relaxed">
+                {displayText}
+              </p>
+            </div>
+            {/* Owner credit */}
+            <p className="text-xs text-muted-foreground">
+              Da coleção de{" "}
+              <button 
+                className="font-semibold text-primary hover:underline"
+                onClick={handleUserClick}
+              >
+                @{post.user.username}
+              </button>
+            </p>
+          </div>
+        ) : displayText ? (
+          <p className="text-sm">
+            <span className="font-semibold">{post.user.username}</span>{" "}
+            <span className="text-foreground/90">{displayText}</span>
+          </p>
+        ) : null}
       </div>
 
       {/* Item Badge */}
       {post.item && (
         <div className="px-4 pb-3">
-          <ItemBadge item={post.item} />
+          <ItemBadge item={{
+            brand: post.item.manufacturer || post.item.brand,
+            model: `${post.item.brand} ${post.item.model}`,
+            year: post.item.year || "",
+            scale: post.item.scale || "1:64",
+          }} />
         </div>
       )}
 
