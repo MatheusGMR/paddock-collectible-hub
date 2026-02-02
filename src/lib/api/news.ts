@@ -42,7 +42,10 @@ export interface NewsSource {
   fetch_method: string;
 }
 
-// Fetch news articles from database
+// Valid categories (excluding aeromodeling and planes)
+const VALID_CATEGORIES = ['collectibles', 'motorsport', 'cars'];
+
+// Fetch news articles from database with balanced distribution
 export async function getNewsArticles(options: {
   category?: string | null;
   language?: string;
@@ -52,36 +55,89 @@ export async function getNewsArticles(options: {
 }): Promise<{ articles: NewsArticle[]; hasMore: boolean }> {
   const { category, language, limit = 20, offset = 0, search } = options;
   
-  let query = supabase
-    .from('news_articles')
-    .select('*')
-    .order('published_at', { ascending: false, nullsFirst: false })
-    .order('fetched_at', { ascending: false })
-    .range(offset, offset + limit);
-  
-  // Only filter by category if one is selected (null means "all")
+  // If a specific category is selected, fetch normally
   if (category) {
-    query = query.eq('category', category);
+    let query = supabase
+      .from('news_articles')
+      .select('*')
+      .eq('category', category)
+      .order('published_at', { ascending: false, nullsFirst: false })
+      .order('fetched_at', { ascending: false })
+      .range(offset, offset + limit);
+    
+    if (language && language !== 'all') {
+      query = query.eq('language', language);
+    }
+    
+    if (search) {
+      query = query.or(`title.ilike.%${search}%,summary.ilike.%${search}%`);
+    }
+    
+    const { data, error } = await query;
+    
+    if (error) {
+      console.error('Error fetching news:', error);
+      throw error;
+    }
+    
+    return {
+      articles: data || [],
+      hasMore: (data?.length || 0) > limit,
+    };
   }
   
-  if (language && language !== 'all') {
-    query = query.eq('language', language);
+  // For "all" category, fetch balanced from each category (33% each)
+  const perCategory = Math.ceil(limit / 3);
+  const categoryOffset = Math.floor(offset / 3);
+  
+  const fetchCategory = async (cat: string) => {
+    let query = supabase
+      .from('news_articles')
+      .select('*')
+      .eq('category', cat)
+      .order('published_at', { ascending: false, nullsFirst: false })
+      .order('fetched_at', { ascending: false })
+      .range(categoryOffset, categoryOffset + perCategory);
+    
+    if (language && language !== 'all') {
+      query = query.eq('language', language);
+    }
+    
+    if (search) {
+      query = query.or(`title.ilike.%${search}%,summary.ilike.%${search}%`);
+    }
+    
+    const { data } = await query;
+    return data || [];
+  };
+  
+  // Fetch from all 3 categories in parallel
+  const [collectibles, motorsport, cars] = await Promise.all([
+    fetchCategory('collectibles'),
+    fetchCategory('motorsport'),
+    fetchCategory('cars'),
+  ]);
+  
+  // Interleave articles for balanced display
+  const combined: NewsArticle[] = [];
+  const maxLen = Math.max(collectibles.length, motorsport.length, cars.length);
+  
+  for (let i = 0; i < maxLen; i++) {
+    if (collectibles[i]) combined.push(collectibles[i]);
+    if (motorsport[i]) combined.push(motorsport[i]);
+    if (cars[i]) combined.push(cars[i]);
   }
   
-  if (search) {
-    query = query.or(`title.ilike.%${search}%,summary.ilike.%${search}%`);
-  }
-  
-  const { data, error } = await query;
-  
-  if (error) {
-    console.error('Error fetching news:', error);
-    throw error;
-  }
+  // Sort by published date while maintaining some category balance
+  const sorted = combined.sort((a, b) => {
+    const dateA = a.published_at ? new Date(a.published_at).getTime() : 0;
+    const dateB = b.published_at ? new Date(b.published_at).getTime() : 0;
+    return dateB - dateA;
+  });
   
   return {
-    articles: data || [],
-    hasMore: (data?.length || 0) > limit,
+    articles: sorted.slice(0, limit),
+    hasMore: sorted.length > limit,
   };
 }
 
