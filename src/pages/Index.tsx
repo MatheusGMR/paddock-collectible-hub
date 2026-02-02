@@ -1,15 +1,26 @@
 import { useEffect, useRef, useCallback } from "react";
 import { FeedHeader } from "@/components/feed/FeedHeader";
 import { PostCard } from "@/components/feed/PostCard";
+import { PullToRefreshIndicator } from "@/components/feed/PullToRefreshIndicator";
 import { useFeedPosts } from "@/hooks/useFeedPosts";
+import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { useScreenTips } from "@/hooks/useScreenTips";
 import { Loader2, Inbox } from "lucide-react";
 import { mockPosts } from "@/data/mockData";
 
 const Index = () => {
-  const { posts, loading, loadingMore, error, hasMore, loadMore } = useFeedPosts();
+  const { posts, loading, loadingMore, error, hasMore, loadMore, refetch } = useFeedPosts();
   const observerRef = useRef<IntersectionObserver | null>(null);
   const loadMoreTriggerRef = useRef<HTMLDivElement | null>(null);
+  
+  // Pull to refresh
+  const { pullDistance, isRefreshing, containerRef } = usePullToRefresh({
+    onRefresh: async () => {
+      await new Promise(resolve => setTimeout(resolve, 300)); // Small delay for visual feedback
+      refetch();
+    },
+    threshold: 80,
+  });
   
   // Trigger guided tips for feed screen
   useScreenTips("feed", 800);
@@ -56,10 +67,16 @@ const Index = () => {
   const showMockFallback = posts.length > 0 && !hasMore && posts.length < 5;
 
   return (
-    <div className="min-h-screen">
+    <div ref={containerRef} className="min-h-screen">
       <FeedHeader />
       
-      {loading ? (
+      {/* Pull to refresh indicator */}
+      <PullToRefreshIndicator 
+        pullDistance={pullDistance} 
+        isRefreshing={isRefreshing} 
+      />
+      
+      {loading && !isRefreshing ? (
         <div className="flex items-center justify-center py-20">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
