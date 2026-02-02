@@ -19,6 +19,7 @@ export const SpotlightOverlay = () => {
     nextTip,
     skipAllTips,
     isTipsActive,
+    isOnboardingComplete,
   } = useGuidedTips();
 
   const [spotlightPos, setSpotlightPos] = useState<SpotlightPosition | null>(null);
@@ -141,7 +142,8 @@ export const SpotlightOverlay = () => {
     }
   }, [currentTip, calculatePositions]);
 
-  if (!isTipsActive || !currentTip) return null;
+  // Don't show tips during onboarding or if not active
+  if (!isTipsActive || !currentTip || !isOnboardingComplete) return null;
 
   return (
     <AnimatePresence>
