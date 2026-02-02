@@ -11,6 +11,7 @@ import { MusicPlayer } from "./MusicPlayer";
 import { RealCarGallery } from "./RealCarGallery";
 import { CollectibleSpecs } from "./CollectibleSpecs";
 import { HistoricalFact } from "./HistoricalFact";
+import { ScanFeedback } from "./ScanFeedback";
 
 import { BoundingBox } from "@/lib/imageCrop";
 
@@ -367,6 +368,24 @@ export const ResultCarousel = ({
                       </>
                     )}
                   </div>
+
+                  {/* Feedback buttons */}
+                  <ScanFeedback
+                    collectibleData={{
+                      manufacturer: result.collectible.manufacturer,
+                      scale: result.collectible.scale,
+                      year: result.collectible.estimatedYear,
+                      origin: result.collectible.origin,
+                      series: result.collectible.series,
+                      condition: result.collectible.condition,
+                      color: result.collectible.color,
+                    }}
+                    realCarData={{
+                      brand: result.realCar.brand,
+                      model: result.realCar.model,
+                      year: result.realCar.year,
+                    }}
+                  />
                 </div>
               </div>
             ))}
