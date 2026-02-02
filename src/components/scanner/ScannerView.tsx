@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from "react";
-import { X, RotateCcw, Camera, SwitchCamera, Loader2, Share, Video } from "lucide-react";
+import { X, RotateCcw, Camera, SwitchCamera, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -8,7 +8,6 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { useScreenTips } from "@/hooks/useScreenTips";
 import { addToCollection, checkDuplicateInCollection } from "@/lib/database";
 import { useNavigate } from "react-router-dom";
-import { CreatePostDialog } from "@/components/posts/CreatePostDialog";
 import { CaptureButton } from "@/components/scanner/CaptureButton";
 import { ResultCarousel } from "@/components/scanner/ResultCarousel";
 import { ImageQualityError, ImageQualityIssue } from "@/components/scanner/ImageQualityError";
@@ -99,7 +98,6 @@ export const ScannerView = () => {
   const [cameraError, setCameraError] = useState(false);
   const [isInitializing, setIsInitializing] = useState(true);
   const [facingMode, setFacingMode] = useState<"environment" | "user">("environment");
-  const [showPostDialog, setShowPostDialog] = useState(false);
   const [warningMessage, setWarningMessage] = useState<string | null>(null);
   
   // Detected type from AI (auto-detected, not user selected)
@@ -447,6 +445,140 @@ export const ScannerView = () => {
     }
   }, [stopCamera, toast, t, user]);
 
+  // Video analysis function
+  const analyzeVideo = useCallback(async (videoBlob: Blob) => {
+    setIsScanning(true);
+    
+    // Track scan event
+    trackEvent("scan_initiated", { source: "video" });
+    
+    try {
+      // Convert video blob to base64
+      const reader = new FileReader();
+      const videoBase64 = await new Promise<string>((resolve, reject) => {
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(videoBlob);
+      });
+      
+      console.log("[Scanner] Sending video for analysis...");
+      
+      const { data, error } = await supabase.functions.invoke("analyze-collectible", {
+        body: { imageBase64: videoBase64 },
+      });
+
+      if (error) throw error;
+
+      const response = data as MultiCarAnalysisResponse;
+      const responseType = response.detectedType || "collectible";
+      setDetectedType(responseType);
+
+      // Track detection result
+      trackEvent("scan_completed", { 
+        detected_type: responseType, 
+        identified: response.identified,
+        items_count: response.count || (response.identified ? 1 : 0),
+        source: "video"
+      });
+
+      console.log("[Scanner] Video analysis detected type:", responseType);
+
+      if (responseType === "real_car") {
+        // Handle real car detection
+        if (!response.identified || !response.car) {
+          toast({
+            title: t.scanner.couldNotIdentify,
+            description: response.error || t.scanner.tryDifferentAngle,
+            variant: "destructive",
+          });
+          setRealCarResult(null);
+        } else {
+          // For real car from video, we need to capture a frame as the image
+          // Use the video preview URL to set as captured image
+          setCapturedImage(videoPreviewUrl);
+          setRealCarResult({
+            identified: response.identified,
+            car: response.car,
+            searchTerms: response.searchTerms || [],
+            confidence: response.confidence || "medium",
+          });
+        }
+      } else {
+        // Handle collectible detection
+        if (response.imageQuality && !response.imageQuality.isValid) {
+          setImageQualityError(response.imageQuality);
+          setAnalysisResults([]);
+          setIsScanning(false);
+          return;
+        }
+
+        setImageQualityError(null);
+
+        if (!response.identified || response.count === 0) {
+          toast({
+            title: t.scanner.itemNotIdentified,
+            description: t.scanner.itemNotIdentifiedDesc,
+            variant: "destructive",
+          });
+          setAnalysisResults([]);
+        } else {
+          // For video analysis, use the first frame as the base image
+          // Items from video don't have individual cropping - use video frame
+          const itemsWithImages = response.items.map((item) => ({
+            ...item,
+            croppedImage: undefined, // Video doesn't support individual cropping
+          }));
+          
+          // Check for duplicates in user's collection
+          const itemsWithDuplicateCheck = await Promise.all(
+            itemsWithImages.map(async (item) => {
+              if (user) {
+                try {
+                  const duplicate = await checkDuplicateInCollection(
+                    user.id,
+                    item.realCar.brand,
+                    item.realCar.model,
+                    item.collectible?.color
+                  );
+                  return {
+                    ...item,
+                    isDuplicate: duplicate.isDuplicate,
+                    existingItemImage: duplicate.existingItemImage
+                  };
+                } catch (error) {
+                  console.error("Failed to check duplicate:", error);
+                  return item;
+                }
+              }
+              return item;
+            })
+          );
+          
+          setAnalysisResults(itemsWithDuplicateCheck);
+          setAddedIndices(new Set());
+          setSkippedIndices(new Set());
+          
+          if (response.warning) {
+            setWarningMessage(response.warning);
+            toast({
+              title: t.scanner.maxCarsWarning,
+              description: response.warning,
+            });
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Video analysis error:", error);
+      toast({
+        title: t.scanner.analysisFailed,
+        description: t.scanner.analysisFailedDesc,
+        variant: "destructive",
+      });
+    } finally {
+      setIsScanning(false);
+    }
+  }, [toast, t, user, videoPreviewUrl]);
+
   // Video recording functions
   const startRecording = useCallback(() => {
     if (!streamRef.current) return;
@@ -468,13 +600,16 @@ export const ScannerView = () => {
         }
       };
       
-      mediaRecorder.onstop = () => {
-        console.log("[Scanner] Recording stopped, creating blob");
+      mediaRecorder.onstop = async () => {
+        console.log("[Scanner] Recording stopped, creating blob for analysis");
         const blob = new Blob(chunksRef.current, { type: 'video/webm' });
         setRecordedVideo(blob);
         const url = URL.createObjectURL(blob);
         setVideoPreviewUrl(url);
         stopCamera();
+        
+        // Automatically analyze the video
+        await analyzeVideo(blob);
       };
       
       mediaRecorder.start();
@@ -647,26 +782,6 @@ export const ScannerView = () => {
     navigate("/");
   }, [stopCamera, navigate]);
 
-  const handlePostSuccess = () => {
-    // Optionally navigate to feed or show success
-    setShowPostDialog(false);
-  };
-
-  const handlePostVideo = () => {
-    if (!user) {
-      toast({
-        title: t.scanner.signInRequired,
-        description: t.scanner.signInRequiredDesc,
-      });
-      navigate("/auth");
-      return;
-    }
-    
-    if (videoPreviewUrl) {
-      setShowPostDialog(true);
-    }
-  };
-
   const hasResults = analysisResults.length > 0;
 
   // Show real car results if available
@@ -802,35 +917,15 @@ export const ScannerView = () => {
           </button>
         )}
 
-        {isScanning && <LoadingFacts isVideo={false} />}
+        {isScanning && <LoadingFacts isVideo={!!videoPreviewUrl} />}
       </div>
 
-      {/* Video recorded panel */}
-      {videoPreviewUrl && !hasResults && (
-        <div className="bg-card border-t border-border p-6 safe-bottom">
-          <div className="flex flex-col items-center gap-4">
-            <div className="flex items-center gap-2 text-primary">
-              <Video className="h-5 w-5" />
-              <p className="text-sm font-medium">{t.scanner.videoRecorded}</p>
-            </div>
-            
-            <div className="flex gap-3 w-full">
-              <Button 
-                onClick={handlePostVideo}
-                className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90"
-              >
-                <Share className="h-4 w-4 mr-2" />
-                {t.scanner.postVideo}
-              </Button>
-              <Button
-                variant="outline"
-                className="flex-1 border-border text-foreground hover:bg-muted"
-                onClick={resetScan}
-              >
-                <RotateCcw className="h-4 w-4 mr-2" />
-                {t.scanner.recordAgain}
-              </Button>
-            </div>
+      {/* Video analyzing indicator - shows during video analysis */}
+      {videoPreviewUrl && isScanning && (
+        <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-30">
+          <div className="flex flex-col items-center gap-3">
+            <Loader2 className="h-10 w-10 text-primary animate-spin" />
+            <p className="text-sm text-white">{t.scanner.analyzingVideo}</p>
           </div>
         </div>
       )}
@@ -889,16 +984,6 @@ export const ScannerView = () => {
         </div>
       )}
 
-      {/* Post Dialog - for videos */}
-      {videoPreviewUrl && !hasResults && (
-        <CreatePostDialog
-          open={showPostDialog}
-          onOpenChange={setShowPostDialog}
-          videoUrl={videoPreviewUrl}
-          videoBlob={recordedVideo || undefined}
-          onSuccess={handlePostSuccess}
-        />
-      )}
     </div>
   );
 };
