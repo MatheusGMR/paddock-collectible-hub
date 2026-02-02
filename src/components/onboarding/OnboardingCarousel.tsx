@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import useEmblaCarousel from "embla-carousel-react";
+import { ChevronLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { OnboardingSlide } from "./OnboardingSlide";
@@ -16,6 +17,7 @@ interface OnboardingCarouselProps {
 export const OnboardingCarousel = ({ onStartTrial, onSkip, isLoading }: OnboardingCarouselProps) => {
   const { t } = useLanguage();
   const [currentSlide, setCurrentSlide] = useState(0);
+  const [showSwipeHint, setShowSwipeHint] = useState(true);
   
   const [emblaRef, emblaApi] = useEmblaCarousel({ 
     loop: false,
@@ -46,7 +48,13 @@ export const OnboardingCarousel = ({ onStartTrial, onSkip, isLoading }: Onboardi
 
   const onSelect = useCallback(() => {
     if (!emblaApi) return;
-    setCurrentSlide(emblaApi.selectedScrollSnap());
+    const index = emblaApi.selectedScrollSnap();
+    setCurrentSlide(index);
+    
+    // Hide swipe hint after first interaction
+    if (index > 0) {
+      setShowSwipeHint(false);
+    }
   }, [emblaApi]);
 
   useEffect(() => {
@@ -59,6 +67,15 @@ export const OnboardingCarousel = ({ onStartTrial, onSkip, isLoading }: Onboardi
       emblaApi.off('select', onSelect);
     };
   }, [emblaApi, onSelect]);
+
+  // Auto-hide swipe hint after 4 seconds
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setShowSwipeHint(false);
+    }, 4000);
+    
+    return () => clearTimeout(timer);
+  }, []);
 
   const scrollTo = useCallback((index: number) => {
     if (emblaApi) emblaApi.scrollTo(index);
@@ -86,7 +103,7 @@ export const OnboardingCarousel = ({ onStartTrial, onSkip, isLoading }: Onboardi
       </div>
 
       {/* Swipeable Carousel */}
-      <div className="flex-1 overflow-hidden" ref={emblaRef}>
+      <div className="flex-1 overflow-hidden relative" ref={emblaRef}>
         <div className="flex h-full">
           {slides.map((slide, index) => (
             <div key={index} className="flex-[0_0_100%] min-w-0 h-full">
@@ -102,6 +119,31 @@ export const OnboardingCarousel = ({ onStartTrial, onSkip, isLoading }: Onboardi
             />
           </div>
         </div>
+        
+        {/* Swipe Hint Indicator */}
+        <AnimatePresence>
+          {showSwipeHint && currentSlide === 0 && (
+            <motion.div
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-1 text-muted-foreground pointer-events-none"
+            >
+              <motion.div
+                animate={{ x: [-8, 0, -8] }}
+                transition={{ 
+                  duration: 1.2, 
+                  repeat: Infinity,
+                  ease: "easeInOut"
+                }}
+                className="flex items-center"
+              >
+                <ChevronLeft className="w-6 h-6" />
+                <ChevronLeft className="w-6 h-6 -ml-4 opacity-60" />
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* Navigation Dots */}
