@@ -23,12 +23,12 @@ export const OnboardingCarousel = ({ onStartTrial, onSkip, isLoading }: Onboardi
       description: t.onboarding.slide1Text,
     },
     {
-      title: t.onboarding.slide2Title,
-      description: t.onboarding.slide2Text,
-    },
-    {
       title: t.onboarding.slide3Title,
       description: t.onboarding.slide3Text,
+    },
+    {
+      title: t.onboarding.slide2Title,
+      description: t.onboarding.slide2Text,
     },
     {
       title: t.onboarding.slide4Title,
