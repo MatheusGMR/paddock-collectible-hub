@@ -644,8 +644,8 @@ export const ScannerView = () => {
 
   const handleClose = useCallback(() => {
     stopCamera();
-    window.history.back();
-  }, [stopCamera]);
+    navigate("/");
+  }, [stopCamera, navigate]);
 
   const handlePostSuccess = () => {
     // Optionally navigate to feed or show success
