@@ -1,5 +1,5 @@
 import paddockIcon from "@/assets/paddock-logo.png";
-import paddockWordmark from "@/assets/paddock-logo-full.png";
+import paddockWordmark from "@/assets/paddock-wordmark-new.png";
 
 interface PaddockLogoProps {
   className?: string;
