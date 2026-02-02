@@ -102,8 +102,11 @@ export const ImageQualityError = ({
                 <IssueIcon className="h-8 w-8 text-destructive" />
               </div>
               <h2 className="text-xl font-bold text-foreground mb-1">
-                {t.scanner.imageQualityError || "Oops! There's a problem"}
+                {t.scanner.imageQualityError || "Ops! Temos um problema"}
               </h2>
+              <p className="text-sm text-muted-foreground">
+                {t.scanner.pleaseRetakePhoto || "Por favor, tire uma nova foto"}
+              </p>
             </div>
             
             {/* Issue details */}
@@ -120,10 +123,23 @@ export const ImageQualityError = ({
               <div className="flex items-start gap-2 pt-3 border-t border-border">
                 <Lightbulb className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
                 <p className="text-sm text-foreground">
-                  <span className="font-medium">{t.scanner.tip || "Tip"}:</span>{" "}
+                  <span className="font-medium">{t.scanner.tip || "Dica"}:</span>{" "}
                   {getIssueTip(primaryIssue.type)}
                 </p>
               </div>
+            </div>
+            
+            {/* Additional tips for better photos */}
+            <div className="bg-primary/5 rounded-xl p-4 mb-6 border border-primary/20">
+              <p className="text-xs font-medium text-primary mb-2">
+                {t.scanner.betterPhotoTips || "Para melhores resultados:"}
+              </p>
+              <ul className="text-xs text-foreground-secondary space-y-1">
+                <li>• {t.scanner.tipGoodLighting || "Boa iluminação (luz natural é ideal)"}</li>
+                <li>• {t.scanner.tipStable || "Câmera estável e focada"}</li>
+                <li>• {t.scanner.tipDistance || "Distância adequada (carrinho inteiro visível)"}</li>
+                <li>• {t.scanner.tipClearView || "Sem obstruções na frente"}</li>
+              </ul>
             </div>
             
             {/* Retry button */}
@@ -132,8 +148,8 @@ export const ImageQualityError = ({
               className="w-full h-12 bg-primary text-primary-foreground hover:bg-primary/90"
               size="lg"
             >
-              <RotateCcw className="h-5 w-5 mr-2" />
-              {t.scanner.retryCapture || "Try Again"}
+              <Camera className="h-5 w-5 mr-2" />
+              {t.scanner.takeNewPhoto || "Tirar Nova Foto"}
             </Button>
           </div>
         </div>

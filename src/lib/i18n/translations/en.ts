@@ -131,8 +131,15 @@ export const en: Translations = {
     viewCollection: "View Collection",
     // Image quality errors
     imageQualityError: "Oops! There's a problem",
+    pleaseRetakePhoto: "Please take a new photo",
     tip: "Tip",
     retryCapture: "Try Again",
+    takeNewPhoto: "Take New Photo",
+    betterPhotoTips: "For better results:",
+    tipGoodLighting: "Good lighting (natural light is ideal)",
+    tipStable: "Steady and focused camera",
+    tipDistance: "Proper distance (entire car visible)",
+    tipClearView: "No obstructions in front",
     issueTypes: {
       too_many_cars: "Too many cars in the photo!",
       too_many_cars_desc: "We detected {{count}} cars, but the limit is 5.",
