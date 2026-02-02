@@ -869,17 +869,23 @@ export const ScannerView = () => {
   }, [isScanning, cameraActive, startRecording]);
 
   const handlePressEnd = useCallback(() => {
-    // If timer still active, it was a quick tap = photo
+    // Clear any pending press timer first
     if (pressTimerRef.current) {
       clearTimeout(pressTimerRef.current);
       pressTimerRef.current = null;
-      
-      if (isPressedRef.current && !isRecording) {
-        capturePhoto();
-      }
-    } else if (isRecording) {
-      // Was recording, stop video
+    }
+    
+    // Priority 1: If recording, stop immediately
+    if (isRecording) {
+      console.log("[Scanner] Stopping recording on press end");
       stopRecording();
+      isPressedRef.current = false;
+      return;
+    }
+    
+    // Priority 2: Quick tap = photo (only if we were pressing and not recording)
+    if (isPressedRef.current) {
+      capturePhoto();
     }
     
     isPressedRef.current = false;
