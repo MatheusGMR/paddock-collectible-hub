@@ -133,6 +133,7 @@ export type Database = {
           historical_fact: string | null
           id: string
           index_breakdown: Json | null
+          music_selection_reason: string | null
           music_suggestion: string | null
           price_index: number | null
           rarity_tier: string | null
@@ -154,6 +155,7 @@ export type Database = {
           historical_fact?: string | null
           id?: string
           index_breakdown?: Json | null
+          music_selection_reason?: string | null
           music_suggestion?: string | null
           price_index?: number | null
           rarity_tier?: string | null
@@ -175,6 +177,7 @@ export type Database = {
           historical_fact?: string | null
           id?: string
           index_breakdown?: Json | null
+          music_selection_reason?: string | null
           music_suggestion?: string | null
           price_index?: number | null
           rarity_tier?: string | null

@@ -32,6 +32,7 @@ export interface Item {
   rarity_tier: string | null;
   index_breakdown: PriceIndexBreakdown | null;
   music_suggestion: string | null;
+  music_selection_reason: string | null;
   real_car_photos: string[] | null;
   created_at: string;
 }
@@ -72,6 +73,7 @@ export interface CollectionItemWithIndex {
     rarity_tier: string | null;
     index_breakdown: PriceIndexBreakdown | null;
     music_suggestion?: string | null;
+    music_selection_reason?: string | null;
     real_car_photos?: string[] | null;
   } | null;
 }
@@ -170,6 +172,7 @@ export const getCollectionWithIndex = async (userId: string): Promise<Collection
         rarity_tier,
         index_breakdown,
         music_suggestion,
+        music_selection_reason,
         real_car_photos
       )
     `)
@@ -197,6 +200,7 @@ export const getCollectionWithIndex = async (userId: string): Promise<Collection
       rarity_tier: item.item.rarity_tier,
       index_breakdown: parseIndexBreakdown(item.item.index_breakdown),
       music_suggestion: item.item.music_suggestion,
+      music_selection_reason: item.item.music_selection_reason,
       real_car_photos: item.item.real_car_photos as string[] | null
     } : null
   }));
@@ -225,6 +229,7 @@ export const getPublicCollection = async (userId: string): Promise<CollectionIte
         rarity_tier,
         index_breakdown,
         music_suggestion,
+        music_selection_reason,
         real_car_photos
       )
     `)
@@ -252,6 +257,7 @@ export const getPublicCollection = async (userId: string): Promise<CollectionIte
       rarity_tier: item.item.rarity_tier,
       index_breakdown: parseIndexBreakdown(item.item.index_breakdown),
       music_suggestion: item.item.music_suggestion,
+      music_selection_reason: item.item.music_selection_reason,
       real_car_photos: item.item.real_car_photos as string[] | null
     } : null
   }));
@@ -319,6 +325,7 @@ export const addToCollection = async (
       rarity_tier: itemData.rarity_tier,
       index_breakdown: itemData.index_breakdown as unknown as Json,
       music_suggestion: itemData.music_suggestion,
+      music_selection_reason: itemData.music_selection_reason,
       real_car_photos: itemData.real_car_photos as unknown as Json,
     })
     .select()
@@ -441,6 +448,7 @@ export const checkItemInUserCollection = async (
         rarity_tier,
         index_breakdown,
         music_suggestion,
+        music_selection_reason,
         real_car_photos
       )
     `)
@@ -486,6 +494,7 @@ export const checkItemInUserCollection = async (
         rarity_tier: match.item.rarity_tier,
         index_breakdown: parseIndexBreakdown(match.item.index_breakdown),
         music_suggestion: match.item.music_suggestion,
+        music_selection_reason: match.item.music_selection_reason,
         real_car_photos: match.item.real_car_photos as string[] | null
       } : null
     }

@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Music2, Play, Pause, Volume2, VolumeX, Loader2 } from "lucide-react";
+import { Music2, Play, Pause, Volume2, VolumeX, Loader2, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Slider } from "@/components/ui/slider";
 import { cn } from "@/lib/utils";
 
 interface MusicPlayerProps {
@@ -25,17 +24,22 @@ const parseMusicSuggestion = (suggestion: string) => {
   return { title: suggestion, artist: "", year: null };
 };
 
-// Get YouTube video ID from search
+// Get YouTube search URL
 const getYouTubeSearchUrl = (title: string, artist: string) => {
-  const query = encodeURIComponent(`${title} ${artist} official audio`.trim());
+  const query = encodeURIComponent(`${title} ${artist}`.trim());
   return `https://www.youtube.com/results?search_query=${query}`;
 };
 
-// Generate YouTube embed URL for audio-only experience
-const getYouTubeEmbedUrl = (title: string, artist: string) => {
+// Get YouTube Music search URL
+const getYouTubeMusicUrl = (title: string, artist: string) => {
   const query = encodeURIComponent(`${title} ${artist}`.trim());
-  // Use invidious or youtube-nocookie for better privacy
-  return `https://www.youtube-nocookie.com/embed?listType=search&list=${query}&autoplay=0&rel=0&modestbranding=1`;
+  return `https://music.youtube.com/search?q=${query}`;
+};
+
+// Get Spotify search URL
+const getSpotifyUrl = (title: string, artist: string) => {
+  const query = encodeURIComponent(`${title} ${artist}`.trim());
+  return `https://open.spotify.com/search/${query}`;
 };
 
 export const MusicPlayer = ({ 
@@ -43,39 +47,31 @@ export const MusicPlayer = ({
   selectionReason,
   autoPreload = true 
 }: MusicPlayerProps) => {
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [isMuted, setIsMuted] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
-  const [progress, setProgress] = useState(0);
   const [isBuffered, setIsBuffered] = useState(false);
   const [showReason, setShowReason] = useState(false);
   
-  const iframeRef = useRef<HTMLIFrameElement>(null);
   const pulseIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const [pulse, setPulse] = useState(false);
 
   const { title, artist, year } = parseMusicSuggestion(suggestion);
 
-  // Pre-buffer by creating hidden iframe on mount
+  // Simulate pre-buffer on mount
   useEffect(() => {
     if (autoPreload && title) {
-      // Mark as buffered after a short delay (simulating preload)
       const timer = setTimeout(() => {
         setIsBuffered(true);
-      }, 1000);
+      }, 800);
       return () => clearTimeout(timer);
     }
   }, [autoPreload, title]);
 
-  // Animate equalizer bars when playing
+  // Animate equalizer bars when expanded
   useEffect(() => {
-    if (isPlaying) {
+    if (isExpanded) {
       pulseIntervalRef.current = setInterval(() => {
         setPulse(prev => !prev);
-        // Simulate progress
-        setProgress(prev => (prev >= 100 ? 0 : prev + 0.5));
-      }, 300);
+      }, 400);
     } else {
       if (pulseIntervalRef.current) {
         clearInterval(pulseIntervalRef.current);
@@ -86,34 +82,29 @@ export const MusicPlayer = ({
         clearInterval(pulseIntervalRef.current);
       }
     };
-  }, [isPlaying]);
+  }, [isExpanded]);
 
-  const handlePlayPause = useCallback(() => {
-    if (!isPlaying) {
-      setIsLoading(true);
-      // Simulate quick load since we pre-buffered
-      setTimeout(() => {
-        setIsLoading(false);
-        setIsPlaying(true);
-      }, isBuffered ? 200 : 800);
-    } else {
-      setIsPlaying(false);
-    }
-  }, [isPlaying, isBuffered]);
+  const handleExpand = useCallback(() => {
+    setIsExpanded(!isExpanded);
+  }, [isExpanded]);
 
-  const handleOpenExternal = () => {
-    window.open(getYouTubeSearchUrl(title, artist), "_blank", "noopener,noreferrer");
+  const handleSpotifyClick = () => {
+    window.open(getSpotifyUrl(title, artist), "_blank", "noopener,noreferrer");
+  };
+
+  const handleYouTubeMusicClick = () => {
+    window.open(getYouTubeMusicUrl(title, artist), "_blank", "noopener,noreferrer");
   };
 
   if (!suggestion) return null;
 
   return (
     <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-primary/20 via-primary/10 to-background border border-primary/20">
-      {/* Animated background glow when playing */}
+      {/* Animated background glow when expanded */}
       <div 
         className={cn(
           "absolute inset-0 bg-gradient-to-r from-primary/0 via-primary/10 to-primary/0 transition-opacity duration-700",
-          isPlaying ? "opacity-100 animate-pulse" : "opacity-0"
+          isExpanded ? "opacity-100 animate-pulse" : "opacity-0"
         )}
       />
       
@@ -122,33 +113,20 @@ export const MusicPlayer = ({
         <div className="flex items-center gap-2 mb-3">
           <div className={cn(
             "w-8 h-8 rounded-full flex items-center justify-center transition-all relative",
-            isPlaying ? "bg-primary text-primary-foreground" : "bg-primary/20 text-primary"
+            isExpanded ? "bg-primary text-primary-foreground" : "bg-primary/20 text-primary"
           )}>
             <Music2 className="h-4 w-4" />
             {/* Buffered indicator */}
-            {isBuffered && !isPlaying && (
+            {isBuffered && !isExpanded && (
               <div className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-background" />
             )}
           </div>
           <div className="flex-1">
             <p className="text-xs font-semibold text-primary">Trilha Sonora</p>
             <p className="text-[10px] text-muted-foreground">
-              {isBuffered ? "Pronta para tocar" : "Carregando..."}
+              {isBuffered ? "Toque para ouvir" : "Carregando..."}
             </p>
           </div>
-          {/* Mute button */}
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8"
-            onClick={() => setIsMuted(!isMuted)}
-          >
-            {isMuted ? (
-              <VolumeX className="h-4 w-4 text-muted-foreground" />
-            ) : (
-              <Volume2 className="h-4 w-4 text-muted-foreground" />
-            )}
-          </Button>
         </div>
 
         {/* Song info and main play button */}
@@ -156,11 +134,11 @@ export const MusicPlayer = ({
           {/* Album art with equalizer */}
           <div 
             className="relative w-16 h-16 rounded-lg bg-gradient-to-br from-primary/30 to-primary/10 flex items-center justify-center overflow-hidden cursor-pointer"
-            onClick={handlePlayPause}
+            onClick={handleExpand}
           >
-            {isLoading ? (
+            {!isBuffered ? (
               <Loader2 className="h-6 w-6 text-primary animate-spin" />
-            ) : isPlaying ? (
+            ) : isExpanded ? (
               <div className="flex items-end gap-0.5 h-8">
                 <div className={cn("w-1.5 bg-primary rounded-t transition-all duration-200", pulse ? "h-8" : "h-2")} />
                 <div className={cn("w-1.5 bg-primary rounded-t transition-all duration-200", !pulse ? "h-8" : "h-4")} />
@@ -183,22 +161,22 @@ export const MusicPlayer = ({
             )}
           </div>
 
-          {/* Play/Pause button */}
+          {/* Expand button */}
           <Button
             variant="ghost"
             size="icon"
-            onClick={handlePlayPause}
-            disabled={isLoading}
+            onClick={handleExpand}
+            disabled={!isBuffered}
             className={cn(
               "h-12 w-12 rounded-full transition-all",
-              isPlaying 
+              isExpanded 
                 ? "bg-primary text-primary-foreground hover:bg-primary/90" 
                 : "bg-primary/20 text-primary hover:bg-primary/30"
             )}
           >
-            {isLoading ? (
+            {!isBuffered ? (
               <Loader2 className="h-5 w-5 animate-spin" />
-            ) : isPlaying ? (
+            ) : isExpanded ? (
               <Pause className="h-5 w-5" />
             ) : (
               <Play className="h-6 w-6 ml-0.5" />
@@ -206,61 +184,53 @@ export const MusicPlayer = ({
           </Button>
         </div>
 
-        {/* Progress bar when playing */}
-        {isPlaying && (
-          <div className="mt-3">
-            <Slider
-              value={[progress]}
-              max={100}
-              step={0.1}
-              className="cursor-pointer"
-            />
-          </div>
-        )}
-
-        {/* Why this music? section */}
-        {selectionReason && (
-          <div className="mt-3">
-            <button
-              onClick={() => setShowReason(!showReason)}
-              className="text-xs text-primary hover:text-primary/80 transition-colors"
-            >
-              {showReason ? "Esconder" : "Por que essa música?"}
-            </button>
-            {showReason && (
-              <div className="mt-2 p-3 rounded-lg bg-primary/5 border border-primary/10 animate-fade-in">
+        {/* Music service options when expanded */}
+        {isExpanded && (
+          <div className="mt-4 pt-3 border-t border-primary/20 animate-fade-in space-y-4">
+            {/* Selection reason */}
+            {selectionReason && (
+              <div className="p-3 rounded-lg bg-primary/5 border border-primary/10">
                 <p className="text-xs text-muted-foreground leading-relaxed">
+                  <span className="text-primary font-medium">Por que essa música? </span>
                   {selectionReason}
                 </p>
               </div>
             )}
+            
+            <p className="text-xs text-muted-foreground text-center">
+              Escolha onde ouvir:
+            </p>
+            
+            <div className="flex gap-2">
+              {/* Spotify Button */}
+              <Button
+                variant="outline"
+                onClick={handleSpotifyClick}
+                className="flex-1 h-12 gap-2 bg-[#1DB954]/10 border-[#1DB954]/30 hover:bg-[#1DB954]/20 text-foreground"
+              >
+                <svg viewBox="0 0 24 24" className="h-5 w-5 fill-[#1DB954]">
+                  <path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/>
+                </svg>
+                <span className="text-sm font-medium">Spotify</span>
+                <ExternalLink className="h-3 w-3 opacity-50" />
+              </Button>
+
+              {/* YouTube Music Button */}
+              <Button
+                variant="outline"
+                onClick={handleYouTubeMusicClick}
+                className="flex-1 h-12 gap-2 bg-[#FF0000]/10 border-[#FF0000]/30 hover:bg-[#FF0000]/20 text-foreground"
+              >
+                <svg viewBox="0 0 24 24" className="h-5 w-5 fill-[#FF0000]">
+                  <path d="M12 0C5.376 0 0 5.376 0 12s5.376 12 12 12 12-5.376 12-12S18.624 0 12 0zm0 19.104c-3.924 0-7.104-3.18-7.104-7.104S8.076 4.896 12 4.896s7.104 3.18 7.104 7.104-3.18 7.104-7.104 7.104zm0-13.332c-3.432 0-6.228 2.796-6.228 6.228S8.568 18.228 12 18.228s6.228-2.796 6.228-6.228S15.432 5.772 12 5.772zM9.684 15.54V8.46L15.816 12l-6.132 3.54z"/>
+                </svg>
+                <span className="text-sm font-medium">YouTube</span>
+                <ExternalLink className="h-3 w-3 opacity-50" />
+              </Button>
+            </div>
           </div>
         )}
-
-        {/* Open in YouTube link */}
-        <div className="mt-3 pt-3 border-t border-primary/10">
-          <button
-            onClick={handleOpenExternal}
-            className="w-full text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center justify-center gap-1"
-          >
-            <span>Ouvir no YouTube Music</span>
-            <svg viewBox="0 0 24 24" className="h-3 w-3 fill-current">
-              <path d="M12 0C5.376 0 0 5.376 0 12s5.376 12 12 12 12-5.376 12-12S18.624 0 12 0zm0 19.104c-3.924 0-7.104-3.18-7.104-7.104S8.076 4.896 12 4.896s7.104 3.18 7.104 7.104-3.18 7.104-7.104 7.104zm0-13.332c-3.432 0-6.228 2.796-6.228 6.228S8.568 18.228 12 18.228s6.228-2.796 6.228-6.228S15.432 5.772 12 5.772zM9.684 15.54V8.46L15.816 12l-6.132 3.54z"/>
-            </svg>
-          </button>
-        </div>
       </div>
-      
-      {/* Hidden iframe for preloading - using data URI to avoid actual network request */}
-      {autoPreload && (
-        <iframe
-          ref={iframeRef}
-          className="hidden"
-          title="Music preload"
-          src="about:blank"
-          allow="autoplay"
-        />
-      )}
     </div>
   );
 };
