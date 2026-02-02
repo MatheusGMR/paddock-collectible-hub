@@ -142,7 +142,7 @@ const ProfilePage = () => {
 
       {activeTab === "posts" ? (
         gridPosts.length > 0 ? (
-          <PostGrid posts={gridPosts} />
+          <PostGrid posts={gridPosts} collectionItems={collection} />
         ) : (
           <div className="p-8 text-center text-foreground-secondary">
             <p>{t.profile.noPostsYet}</p>
