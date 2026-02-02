@@ -59,7 +59,8 @@ export async function getNewsArticles(options: {
     .order('fetched_at', { ascending: false })
     .range(offset, offset + limit);
   
-  if (category && category !== 'all') {
+  // Only filter by category if one is selected (null means "all")
+  if (category) {
     query = query.eq('category', category);
   }
   

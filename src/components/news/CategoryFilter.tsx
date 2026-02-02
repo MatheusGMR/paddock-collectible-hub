@@ -23,9 +23,7 @@ export const CategoryFilter = ({
     { code: null, label: t.news?.categories?.all || "Todos", icon: "🌐" },
     { code: "collectibles", label: t.news?.categories?.collectibles || "Colecionáveis", icon: "🎮" },
     { code: "motorsport", label: t.news?.categories?.motorsport || "Automobilismo", icon: "🏎️" },
-    { code: "aeromodeling", label: t.news?.categories?.aeromodeling || "Aeromodelismo", icon: "✈️" },
     { code: "cars", label: t.news?.categories?.cars || "Carros", icon: "🚗" },
-    { code: "planes", label: t.news?.categories?.planes || "Aviões", icon: "🛩️" },
   ];
 
   return (
