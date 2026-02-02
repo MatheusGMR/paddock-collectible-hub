@@ -10,9 +10,9 @@ interface OnboardingSlideProps {
 }
 
 export const OnboardingSlide = ({ title, description, slideIndex = 0 }: OnboardingSlideProps) => {
-  // Select banner based on slide index (slide 2 = index 2 uses video)
-  const bannerImage = slideIndex === 1 ? paddockBanner2 : paddockBanner1;
-  const isIndexSlide = slideIndex === 2;
+  // Select banner based on slide index (slide 1 = index slide with video, slide 2 uses banner 2)
+  const bannerImage = slideIndex === 2 ? paddockBanner2 : paddockBanner1;
+  const isIndexSlide = slideIndex === 1;
 
   return (
     <div className="flex flex-col items-center justify-between h-full px-4 sm:px-8 py-4 text-center">
