@@ -329,8 +329,8 @@ export const ptBR = {
     slide2Title: "Organize Sua Coleção",
     slide2Text: "Mantenha seu acervo catalogado com fotos, detalhes e histórico de aquisição",
     
-    slide3Title: "Saiba o Valor Real",
-    slide3Text: "Acompanhe a valorização dos seus itens com nosso índice exclusivo",
+    slide3Title: "Descubra o Índice de Raridade",
+    slide3Text: "Cada carrinho recebe uma pontuação exclusiva baseada em raridade, condição, fabricante e mais. Saiba exatamente o quão especial é sua coleção!",
     
     slide4Title: "Compre e Venda",
     slide4Text: "Encontre peças raras em marketplaces do mundo todo em um só lugar",
