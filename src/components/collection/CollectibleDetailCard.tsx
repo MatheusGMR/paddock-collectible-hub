@@ -189,12 +189,12 @@ export const CollectibleDetailCard = ({ item, open, onOpenChange }: CollectibleD
                 )}
                 
                 {/* Real Car Photos Carousel */}
-                {data.real_car_photos && data.real_car_photos.length > 0 && (
-                  <RealCarPhotoCarousel
-                    photos={data.real_car_photos}
-                    carName={`${data.real_car_brand} ${data.real_car_model}`}
-                  />
-                )}
+                <RealCarPhotoCarousel
+                  photos={data.real_car_photos || []}
+                  carName={`${data.real_car_brand} ${data.real_car_model}`}
+                  carBrand={data.real_car_brand}
+                  carModel={data.real_car_model}
+                />
               </div>
               
               {/* Bottom padding for safe area */}
