@@ -10,17 +10,17 @@ interface RealCarPhotoCarouselProps {
   carModel?: string;
 }
 
-// Generate search-based image URLs from various free sources
+// Generate search-based image URLs from Picsum (more reliable than Unsplash source)
 const generateFallbackImageUrls = (brand: string, model: string): string[] => {
-  const query = encodeURIComponent(`${brand} ${model} car`.toLowerCase().trim());
-  
-  // Use Unsplash source for reliable car images
+  // Using Picsum for reliable placeholder images with variety
+  // These generate different images based on the seed
+  const baseSeed = `${brand}-${model}`.replace(/\s+/g, '-').toLowerCase();
   return [
-    `https://source.unsplash.com/800x600/?${query},automobile`,
-    `https://source.unsplash.com/800x600/?${brand.toLowerCase()},car`,
-    `https://source.unsplash.com/800x600/?${model.toLowerCase()},vehicle`,
-    `https://source.unsplash.com/800x600/?classic,car`,
-    `https://source.unsplash.com/800x600/?sports,car`,
+    `https://picsum.photos/seed/${baseSeed}-1/800/500`,
+    `https://picsum.photos/seed/${baseSeed}-2/800/500`,
+    `https://picsum.photos/seed/${baseSeed}-3/800/500`,
+    `https://picsum.photos/seed/${baseSeed}-4/800/500`,
+    `https://picsum.photos/seed/${baseSeed}-5/800/500`,
   ];
 };
 
@@ -77,13 +77,20 @@ export const RealCarPhotoCarousel = ({
   const handleImageError = (index: number) => {
     setFailedImages(prev => new Set(prev).add(index));
     
-    // Try to replace with a fallback
+    // Try to replace with a Picsum fallback
     if (carBrand && carModel) {
-      const fallbackUrl = `https://source.unsplash.com/800x600/?${encodeURIComponent(carBrand)},car,${index}`;
+      const baseSeed = `${carBrand}-${carModel}-fallback-${index}`.replace(/\s+/g, '-').toLowerCase();
+      const fallbackUrl = `https://picsum.photos/seed/${baseSeed}/800/500`;
       setDisplayPhotos(prev => {
         const newPhotos = [...prev];
         newPhotos[index] = fallbackUrl;
         return newPhotos;
+      });
+      // Remove from failed so it can try again with fallback
+      setFailedImages(prev => {
+        const newFailed = new Set(prev);
+        newFailed.delete(index);
+        return newFailed;
       });
     }
   };

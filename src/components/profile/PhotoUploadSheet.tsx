@@ -39,6 +39,7 @@ interface AnalysisResult {
   };
   priceIndex?: PriceIndex;
   musicSuggestion?: string;
+  musicSelectionReason?: string;
   realCarPhotos?: string[];
   croppedImage?: string;
   isDuplicate?: boolean;
@@ -316,6 +317,7 @@ export const PhotoUploadSheet = ({
           rarity_tier: result.priceIndex?.tier || null,
           index_breakdown: result.priceIndex?.breakdown || null,
           music_suggestion: result.musicSuggestion || null,
+          music_selection_reason: result.musicSelectionReason || null,
           real_car_photos: result.realCarPhotos || null,
         },
         result.croppedImage

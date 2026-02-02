@@ -29,6 +29,7 @@ export interface CollectibleDetailItem {
     rarity_tier?: string | null;
     index_breakdown?: PriceIndexBreakdown | null;
     music_suggestion?: string | null;
+    music_selection_reason?: string | null;
     real_car_photos?: string[] | null;
   } | null;
 }
@@ -180,11 +181,13 @@ export const CollectibleDetailCard = ({ item, open, onOpenChange }: CollectibleD
                   </CollapsibleSection>
                 )}
                 
-                {/* Music Player - YouTube Embed */}
+                {/* Music Player */}
                 {data.music_suggestion && (
                   <MusicPlayer 
                     suggestion={data.music_suggestion} 
+                    selectionReason={data.music_selection_reason || undefined}
                     carBrand={data.real_car_brand}
+                    autoPreload
                   />
                 )}
                 
