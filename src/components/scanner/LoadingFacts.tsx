@@ -11,12 +11,36 @@ export function LoadingFacts({ isVideo = false }: LoadingFactsProps) {
   const [facts, setFacts] = useState<CollectibleFact[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isTransitioning, setIsTransitioning] = useState(false);
+  const [progress, setProgress] = useState(0);
   const { language } = useLanguage();
+
+  // Estimated processing time (photos ~5s, videos ~12s)
+  const estimatedTime = isVideo ? 12000 : 5000;
 
   useEffect(() => {
     // Get 5 random facts when component mounts
     setFacts(getRandomFacts(5));
   }, []);
+
+  // Progress bar animation
+  useEffect(() => {
+    setProgress(0);
+    
+    // Animate progress smoothly
+    const startTime = Date.now();
+    const updateProgress = () => {
+      const elapsed = Date.now() - startTime;
+      // Use easing function to slow down as it approaches 90%
+      // Never reaches 100% until actual completion
+      const rawProgress = elapsed / estimatedTime;
+      const easedProgress = 1 - Math.pow(1 - Math.min(rawProgress, 0.95), 2);
+      setProgress(Math.min(easedProgress * 95, 95));
+    };
+
+    const interval = setInterval(updateProgress, 100);
+    
+    return () => clearInterval(interval);
+  }, [estimatedTime]);
 
   useEffect(() => {
     if (facts.length === 0) return;
@@ -42,6 +66,14 @@ export function LoadingFacts({ isVideo = false }: LoadingFactsProps) {
 
   return (
     <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/70 backdrop-blur-sm z-20">
+      {/* Progress bar at top - subtle */}
+      <div className="absolute top-0 left-0 right-0 h-1 bg-white/10">
+        <div 
+          className="h-full bg-gradient-to-r from-primary/80 to-primary transition-all duration-300 ease-out"
+          style={{ width: `${progress}%` }}
+        />
+      </div>
+
       {/* Spinner */}
       <div className="relative mb-8">
         <div className="absolute inset-0 bg-primary/20 rounded-full blur-xl animate-pulse" />
