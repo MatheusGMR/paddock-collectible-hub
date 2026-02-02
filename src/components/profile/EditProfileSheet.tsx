@@ -232,8 +232,9 @@ export const EditProfileSheet = ({
       const response = await fetch(croppedImageBase64);
       const blob = await response.blob();
       
-      const fileName = `${userId}-${Date.now()}.jpg`;
-      const filePath = `avatars/${fileName}`;
+      // Path must start with userId to match storage policy: (auth.uid())::text = (storage.foldername(name))[1]
+      const fileName = `avatar-${Date.now()}.jpg`;
+      const filePath = `${userId}/${fileName}`;
 
       // Upload to storage
       const { error: uploadError } = await supabase.storage
