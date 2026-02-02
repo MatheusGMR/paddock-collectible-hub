@@ -279,11 +279,9 @@ Deno.serve(async (req) => {
       };
       
       const categoryQueries: Record<string, string> = {
-        collectibles: 'hot wheels diecast news 2024 2025',
-        motorsport: 'formula 1 racing news 2025',
-        cars: 'novos carros lançamentos brasil 2025',
-        aeromodeling: 'RC airplane drone model news',
-        planes: 'aviation aircraft news',
+        collectibles: 'hot wheels diecast colecionáveis miniaturas news 2024 2025',
+        motorsport: 'formula 1 automobilismo racing news 2025',
+        cars: 'novos carros lançamentos brasil testes 2025',
       };
       
       const query = sourceQueries[source.code] || categoryQueries[source.category] || `${source.category} news`;
