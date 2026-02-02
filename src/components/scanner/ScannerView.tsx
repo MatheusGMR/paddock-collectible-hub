@@ -855,42 +855,17 @@ export const ScannerView = () => {
     isPressedRef.current = false;
   }, []);
 
-  // Press handlers for CaptureButton
+  // Press handlers for CaptureButton - simplified to photo only (video disabled)
   const handlePressStart = useCallback(() => {
-    if (isScanning || !cameraActive) return;
-    
-    isPressedRef.current = true;
-    
-    // Start timer - if held > 500ms, start recording
-    pressTimerRef.current = setTimeout(() => {
-      if (isPressedRef.current) {
-        startRecording();
-      }
-    }, 500);
-  }, [isScanning, cameraActive, startRecording]);
+    // Video recording disabled - do nothing on press start
+  }, []);
 
   const handlePressEnd = useCallback(() => {
-    // Clear any pending press timer first
-    if (pressTimerRef.current) {
-      clearTimeout(pressTimerRef.current);
-      pressTimerRef.current = null;
-    }
+    if (isScanning || !cameraActive) return;
     
-    // Priority 1: If recording, stop immediately
-    if (isRecording) {
-      console.log("[Scanner] Stopping recording on press end");
-      stopRecording();
-      isPressedRef.current = false;
-      return;
-    }
-    
-    // Priority 2: Quick tap = photo (only if we were pressing and not recording)
-    if (isPressedRef.current) {
-      capturePhoto();
-    }
-    
-    isPressedRef.current = false;
-  }, [isRecording, capturePhoto, stopRecording]);
+    // Simple tap = capture photo (video recording disabled)
+    capturePhoto();
+  }, [isScanning, cameraActive, capturePhoto]);
 
   const handleAddToCollection = async (index: number) => {
     if (!user) {
@@ -1179,14 +1154,11 @@ export const ScannerView = () => {
                 
                 <div className="flex flex-col items-center gap-3">
                   <p className="text-[11px] text-white/50 text-center tracking-wide">
-                    {t.scanner.tapToCapture} • {t.scanner.holdToRecord}
+                    {t.scanner.tapToCapture}
                   </p>
                   <CaptureButton
-                    isRecording={isRecording}
-                    recordingDuration={recordingDuration}
                     disabled={isScanning}
-                    onPressStart={handlePressStart}
-                    onPressEnd={handlePressEnd}
+                    onClick={capturePhoto}
                   />
                 </div>
               </div>
