@@ -459,6 +459,47 @@ export type Database = {
         }
         Relationships: []
       }
+      scan_feedback: {
+        Row: {
+          created_at: string
+          error_correction: string | null
+          error_field: string | null
+          feedback_type: string
+          id: string
+          item_id: string | null
+          original_value: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          error_correction?: string | null
+          error_field?: string | null
+          feedback_type: string
+          id?: string
+          item_id?: string | null
+          original_value?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          error_correction?: string | null
+          error_field?: string | null
+          feedback_type?: string
+          id?: string
+          item_id?: string | null
+          original_value?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scan_feedback_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_collection: {
         Row: {
           acquired_at: string | null
