@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
 export interface FeedPost {
@@ -23,6 +23,8 @@ export interface FeedPost {
   createdAt: string;
 }
 
+const PAGE_SIZE = 10;
+
 // Format relative time
 const formatRelativeTime = (dateString: string): string => {
   const date = new Date(dateString);
@@ -39,14 +41,24 @@ const formatRelativeTime = (dateString: string): string => {
 export const useFeedPosts = () => {
   const [posts, setPosts] = useState<FeedPost[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [hasMore, setHasMore] = useState(true);
+  const [page, setPage] = useState(0);
 
-  const fetchPosts = async () => {
+  const fetchPosts = useCallback(async (pageNum: number, append: boolean = false) => {
     try {
-      setLoading(true);
+      if (append) {
+        setLoadingMore(true);
+      } else {
+        setLoading(true);
+      }
       setError(null);
 
-      // Fetch posts with user profiles and collection items
+      const from = pageNum * PAGE_SIZE;
+      const to = from + PAGE_SIZE - 1;
+
+      // Fetch posts with pagination
       const { data: postsData, error: postsError } = await supabase
         .from("posts")
         .select(`
@@ -60,12 +72,17 @@ export const useFeedPosts = () => {
           collection_item_id
         `)
         .order("created_at", { ascending: false })
-        .limit(20);
+        .range(from, to);
 
       if (postsError) throw postsError;
 
+      // Check if there's more data
+      if (!postsData || postsData.length < PAGE_SIZE) {
+        setHasMore(false);
+      }
+
       if (!postsData || postsData.length === 0) {
-        setPosts([]);
+        if (!append) setPosts([]);
         return;
       }
 
@@ -141,18 +158,45 @@ export const useFeedPosts = () => {
         };
       });
 
-      setPosts(mappedPosts);
+      if (append) {
+        setPosts(prev => [...prev, ...mappedPosts]);
+      } else {
+        setPosts(mappedPosts);
+      }
     } catch (err) {
       console.error("Error fetching posts:", err);
       setError("Erro ao carregar posts");
     } finally {
       setLoading(false);
+      setLoadingMore(false);
     }
-  };
-
-  useEffect(() => {
-    fetchPosts();
   }, []);
 
-  return { posts, loading, error, refetch: fetchPosts };
+  const loadMore = useCallback(() => {
+    if (!loadingMore && hasMore) {
+      const nextPage = page + 1;
+      setPage(nextPage);
+      fetchPosts(nextPage, true);
+    }
+  }, [loadingMore, hasMore, page, fetchPosts]);
+
+  const refetch = useCallback(() => {
+    setPage(0);
+    setHasMore(true);
+    fetchPosts(0, false);
+  }, [fetchPosts]);
+
+  useEffect(() => {
+    fetchPosts(0, false);
+  }, [fetchPosts]);
+
+  return { 
+    posts, 
+    loading, 
+    loadingMore,
+    error, 
+    hasMore,
+    loadMore,
+    refetch 
+  };
 };
