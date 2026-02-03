@@ -395,15 +395,93 @@ For REAL_CAR (full-size vehicle):
   "error": "only if identified is false"
 }
 
-PRICE INDEX SCORING GUIDELINES (for collectibles):
-- Rarity (35 max): Ultra Rare 30-35, Super Rare 24-29, Rare 18-23, Uncommon 10-17, Common 0-9
-- Condition (25 max): Mint 23-25, Near Mint 18-22, Good 12-17, Fair 0-11
-- Manufacturer (15 max): Premium (Kyosho, Mini GT, Auto World) 12-15, Mid-tier (Greenlight, M2, Johnny Lightning) 8-11, Standard (Hot Wheels, Matchbox, Majorette) 4-7, Budget (Generic) 0-3
-- Scale (10 max): Large (1:18, 1:24) 8-10, Medium (1:43) 5-7, Small (1:64) 2-4, Mini (1:87+) 0-1
-- Age (10 max): Vintage (30+ years) 8-10, Classic (15-30 years) 5-7, Modern (5-15 years) 2-4, Recent (0-5 years) 0-1
-- Origin (5 max): Japan 4-5, Thailand/USA 3, Malaysia 2, China 0-1
+PRICE INDEX SCORING GUIDELINES (CONTEXTO: MERCADO BRASILEIRO):
 
-TIER: ultra_rare 85-100, super_rare 70-84, rare 50-69, uncommon 30-49, common 1-29
+IMPORTANTE: A pontuação deve refletir a REALIDADE DO COLECIONADOR BRASILEIRO.
+- Miniaturas de carros brasileiros (Fiat, VW, Chevrolet BR) são MUITO RARAS porque poucos fabricantes as produzem
+- Modelos que não são vendidos oficialmente no Brasil têm disponibilidade limitada
+- Hot Wheels mainline é comum no Brasil, mas séries Premium/Super são raras
+- Fabricantes como Greenlight, M2, Auto World são MUITO difíceis de encontrar no Brasil (importação cara)
+
+CRITÉRIOS DE PONTUAÇÃO:
+
+1. RARIDADE NO MERCADO BRASILEIRO (40 max) - Peso aumentado por ser o fator mais crítico:
+   
+   ULTRA RARO (35-40): 
+   - Modelos de carros brasileiros (Fiat Pulse, Argo, Toro, Strada, Mobi; VW Gol, Saveiro, Nivus; Chevrolet Onix, Tracker, S10; Renault Kwid, Duster)
+   - Chase variants (Super Treasure Hunt, Green Machine, White Lightning, Gold Chase)
+   - Modelos exclusivos de outros mercados não vendidos no Brasil
+   - Séries descontinuadas há mais de 10 anos
+   - Edições de convenções ou exclusivos de lojas estrangeiras
+   
+   SUPER RARO (28-34):
+   - Hot Wheels Premium (Car Culture, Team Transport, Boulevard)
+   - Modelos de fabricantes premium não distribuídos no Brasil (Mini GT, Kyosho, Tomica Limited)
+   - Variantes de cor exclusivas de outros países
+   - Modelos de filmes/séries com baixa tiragem
+   
+   RARO (20-27):
+   - Greenlight, M2 Machines, Auto World, Johnny Lightning (requerem importação)
+   - Hot Wheels ID / Hot Wheels Unleashed exclusivos
+   - Majorette Premium, Matchbox Collectors
+   - Modelos de 5-10 anos atrás fora de linha
+   
+   INCOMUM (12-19):
+   - Hot Wheels mainline de anos anteriores (não mais em lojas)
+   - Matchbox mainline descontinuados
+   - Majorette standard de séries passadas
+   - Bburago, Maisto, Welly mid-tier
+   
+   COMUM (0-11):
+   - Hot Wheels mainline atual (encontrado em supermercados/lojas)
+   - Matchbox mainline atual
+   - Majorette standard atual
+   - Marcas genéricas sem licenciamento
+
+2. CONDIÇÃO (20 max):
+   - Mint/Lacrado na embalagem original: 18-20
+   - Near Mint/Quase perfeito: 14-17
+   - Bom/Pequenos desgastes: 8-13
+   - Regular/Desgaste visível: 0-7
+
+3. FABRICANTE (15 max):
+   - Ultra Premium (Kyosho, Mini GT, TSM, Spark, AutoArt): 13-15
+   - Premium (Greenlight, M2 Machines, Auto World, Johnny Lightning, Tomica Limited): 10-12
+   - Mid-tier (Majorette, Jada, Bburago 1:43): 6-9
+   - Standard (Hot Wheels, Matchbox, Majorette, Maisto, Welly): 3-5
+   - Budget/Genérico: 0-2
+
+4. ESCALA (10 max):
+   - Grande (1:18, 1:24): 8-10 (mais detalhes, maior valor)
+   - Média (1:43): 5-7
+   - Pequena (1:64): 2-4
+   - Mini (1:87+): 0-1
+
+5. IDADE (10 max):
+   - Vintage (30+ anos, ex: Corgi, Dinky clássicos): 8-10
+   - Clássico (15-30 anos): 5-7
+   - Moderno (5-15 anos): 2-4
+   - Recente (0-5 anos): 0-1
+
+6. PAÍS DE FABRICAÇÃO (5 max):
+   - Japão: 4-5
+   - Tailândia/EUA: 3
+   - Malásia/Vietnã: 2
+   - China: 0-1
+
+TIER FINAL:
+- ultra_rare: 85-100 (Relíquia! Peça de museu)
+- super_rare: 70-84 (Muito difícil de encontrar no Brasil)
+- rare: 50-69 (Requer busca/importação)
+- uncommon: 30-49 (Não está nas prateleiras, mas encontrável)
+- common: 1-29 (Fácil de achar em lojas brasileiras)
+
+EXEMPLOS PRÁTICOS (Brasil):
+- Fiat Pulse Hot Wheels: Ultra Rare (carro brasileiro, pouquíssimas miniaturas existem)
+- Ferrari 458 Hot Wheels mainline: Common (fácil de achar)
+- Greenlight Ford F-150: Rare (fabricante não vendido no Brasil)
+- Hot Wheels Super Treasure Hunt: Ultra Rare (chase variant)
+- Majorette Renault Duster: Super Rare (carro brasileiro em Majorette europeia)
 
 Only respond with valid JSON, no additional text or markdown.`;
 
