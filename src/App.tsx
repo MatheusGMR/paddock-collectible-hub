@@ -134,17 +134,21 @@ const SubscriptionFlow = ({ children }: { children: React.ReactNode }) => {
   }, [markUserOnboardingComplete, user]);
 
   const handleCheckoutBack = useCallback(() => {
-    // Go back to onboarding
+    // If was in onboarding, go back to onboarding
+    // Otherwise, just close checkout (user came from subscription gate)
     setShowEmbeddedCheckout(false);
-    setShowOnboarding(true);
-  }, []);
+    if (isOnboardingInProgress) {
+      setShowOnboarding(true);
+    }
+  }, [isOnboardingInProgress]);
 
-  const handleCheckoutComplete = useCallback(() => {
-    // Checkout completed - navigate to success page
+  const handleCheckoutComplete = useCallback(async () => {
+    // Checkout completed - refresh subscription status and navigate
     setShowEmbeddedCheckout(false);
     setIsOnboardingInProgress(false);
     markOnboardingComplete();
-    // Navigate will happen via return_url, but in case it doesn't:
+    
+    // Refresh subscription status before navigating
     window.location.href = "/subscription-success";
   }, [markOnboardingComplete]);
 
@@ -166,15 +170,10 @@ const SubscriptionFlow = ({ children }: { children: React.ReactNode }) => {
     }
   }, [startTrial, markOnboardingComplete, markUserOnboardingComplete, user]);
 
-  const handleSubscribe = useCallback(async () => {
-    setCheckoutLoading(true);
-    const url = await createCheckout();
-    setCheckoutLoading(false);
-    
-    if (url) {
-      window.location.href = url;
-    }
-  }, [createCheckout]);
+  const handleSubscribe = useCallback(() => {
+    // Show embedded checkout instead of redirecting
+    setShowEmbeddedCheckout(true);
+  }, []);
 
   // If not logged in, show app normally (will redirect to auth)
   if (!user) {
