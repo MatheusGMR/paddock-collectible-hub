@@ -26,9 +26,9 @@ export const PricingSlide = ({ onStartTrial, isLoading }: PricingSlideProps) => 
   };
 
   return (
-    <div className="flex flex-col h-full px-6 py-2">
+    <div className="flex flex-col h-full px-6 py-2 text-center">
       {/* Top Section - Challenge Banner */}
-      <div className="flex-1 flex flex-col items-center justify-center text-center min-h-0">
+      <div className="flex-1 flex flex-col items-center justify-center min-h-0">
         {/* Challenge Badge */}
         <motion.div
           initial={{ scale: 0, rotate: -12 }}
@@ -95,7 +95,7 @@ export const PricingSlide = ({ onStartTrial, isLoading }: PricingSlideProps) => 
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4 }}
-          className="text-xs text-muted-foreground mb-3 px-4"
+          className="text-xs text-muted-foreground mb-3"
         >
           {t.onboarding.orStandardTrial}
         </motion.div>
@@ -124,14 +124,13 @@ export const PricingSlide = ({ onStartTrial, isLoading }: PricingSlideProps) => 
         </motion.div>
       </div>
 
-      {/* Bottom Section - CTA only (always visible) */}
+      {/* Bottom Section - CTA (consistent with other slides) */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.7 }}
-        className="flex-shrink-0 w-full max-w-xs mx-auto space-y-3"
+        className="flex-shrink-0 py-4 w-full max-w-xs mx-auto"
       >
-        {/* CTA Button */}
         <Button
           onClick={handleAcceptAndContinue}
           disabled={isLoading || isRequesting}

@@ -20,7 +20,7 @@ export const OnboardingSlide = ({ title, description, slideIndex = 0 }: Onboardi
   const bannerImage = slideIndex === 2 ? paddockBanner2 : paddockBanner1;
 
   return (
-    <div className="flex flex-col items-center h-full px-4 sm:px-8 py-2 text-center">
+    <div className="flex flex-col h-full px-6 py-2 text-center">
       {/* Visual Content - Either banner image or video */}
       <div className="flex-1 flex items-center justify-center w-full min-h-0">
         {hasVideo ? (
@@ -33,7 +33,7 @@ export const OnboardingSlide = ({ title, description, slideIndex = 0 }: Onboardi
               damping: 15,
               delay: 0.2 
             }}
-            className="w-full max-w-sm"
+            className="w-full max-w-xs"
           >
             <div className="relative w-full rounded-2xl overflow-hidden shadow-xl border border-white/10">
               <video
@@ -56,9 +56,9 @@ export const OnboardingSlide = ({ title, description, slideIndex = 0 }: Onboardi
               damping: 15,
               delay: 0.2 
             }}
-            className="w-full max-w-md px-2"
+            className="w-full max-w-xs"
           >
-            <div className="relative w-full aspect-[4/3] rounded-2xl overflow-hidden">
+            <div className="relative w-full aspect-[4/3] rounded-2xl overflow-hidden shadow-xl border border-white/10">
               <img
                 src={bannerImage}
                 alt="Paddock Collection"
@@ -70,13 +70,13 @@ export const OnboardingSlide = ({ title, description, slideIndex = 0 }: Onboardi
       </div>
 
       {/* Text Content - Fixed spacing from visual */}
-      <div className="flex-shrink-0 flex flex-col items-center py-4">
+      <div className="flex-shrink-0 flex flex-col items-center py-4 w-full max-w-xs mx-auto">
         {/* Title */}
         <motion.h2
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4 }}
-          className="text-2xl sm:text-3xl font-bold text-foreground mb-2"
+          className="text-xl font-bold text-foreground mb-2"
         >
           {title}
         </motion.h2>
@@ -86,7 +86,7 @@ export const OnboardingSlide = ({ title, description, slideIndex = 0 }: Onboardi
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.5 }}
-          className="text-base sm:text-lg text-muted-foreground max-w-sm leading-relaxed"
+          className="text-base text-muted-foreground leading-relaxed"
         >
           {description}
         </motion.p>
