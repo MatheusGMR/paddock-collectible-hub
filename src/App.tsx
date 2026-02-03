@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, useNavigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useLocation, useNavigate } from "react-router-dom";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { SplashScreen } from "@/components/SplashScreen";
 import { DeepLinkHandler } from "@/components/DeepLinkHandler";
@@ -206,6 +206,24 @@ const AppContent = () => {
   const [initialAuthChecked, setInitialAuthChecked] = useState(false);
   const { user, loading } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // If we just returned from an OAuth provider, the URL can contain callback params.
+  // We must NOT redirect away (and drop query/hash) before the auth client exchanges them.
+  const hasOAuthCallbackParams = (() => {
+    try {
+      const sp = new URLSearchParams(location.search);
+      return (
+        sp.has("code") ||
+        sp.has("access_token") ||
+        sp.has("refresh_token") ||
+        location.hash.includes("access_token=") ||
+        location.hash.includes("refresh_token=")
+      );
+    } catch {
+      return false;
+    }
+  })();
 
   // After splash completes, mark it as done
   const handleSplashComplete = () => {
@@ -218,17 +236,23 @@ const AppContent = () => {
     if (!showSplash && !loading && !initialAuthChecked) {
       setInitialAuthChecked(true);
       if (!user) {
-        navigate("/auth", { replace: true });
+        // Avoid navigating if we're already on /auth (especially with ?code=...)
+        // and avoid dropping OAuth callback params by redirecting too early.
+        if (location.pathname !== "/auth" && !hasOAuthCallbackParams) {
+          navigate("/auth", { replace: true });
+        }
       }
     }
-  }, [showSplash, loading, user, navigate, initialAuthChecked]);
+  }, [showSplash, loading, user, navigate, initialAuthChecked, location.pathname, hasOAuthCallbackParams]);
 
   // Handle sign out - redirect to auth when user becomes null AFTER initial check
   useEffect(() => {
     if (initialAuthChecked && !loading && !user) {
-      navigate("/auth", { replace: true });
+      if (location.pathname !== "/auth" && !hasOAuthCallbackParams) {
+        navigate("/auth", { replace: true });
+      }
     }
-  }, [user, loading, initialAuthChecked, navigate]);
+  }, [user, loading, initialAuthChecked, navigate, location.pathname, hasOAuthCallbackParams]);
 
   return (
     <>
