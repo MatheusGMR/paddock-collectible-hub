@@ -350,14 +350,24 @@ export const ptBR = {
     slide4Text: "Descubra colecionadores e suas coleções, tenha informações sobre o mundo dos colecionáveis e o universo dos carros",
     
     // Pricing slide
-    pricingTitle: "Comece Grátis!",
+    pricingTitle: "Desafio do Colecionador",
     freeTrial: "7 dias grátis para experimentar tudo",
-    originalPrice: "R$ 9,90/mês",
-    discountedPrice: "R$ 3,90/mês",
-    discountBadge: "60% OFF",
+    originalPrice: "R$ 39,90/mês",
+    discountedPrice: "R$ 19,90/mês",
+    challengeBadge: "DESAFIO ESPECIAL",
     limitedTime: "Oferta por tempo limitado",
-    startTrial: "Começar Trial Grátis",
-    skipForNow: "Pular por enquanto",
+    startTrial: "Começar Agora",
+    
+    // Challenge pricing
+    carsToScan: "carrinhos escaneados",
+    firstMonthFree: "1º MÊS",
+    freeMonth: "GRÁTIS",
+    thenOnly: "Depois apenas",
+    perMonth: "/mês",
+    orStandardTrial: "Ou aproveite 7 dias grátis para testar, sem compromisso",
+    regularPrice: "Preço normal",
+    with50Cars: "Com 50 carrinhos",
+    trialInfo: "Teste grátis por 7 dias. Escaneie 50 carrinhos e ganhe o 1º mês grátis + 50% de desconto permanente!",
     
     // Features list
     feature1: "Scanner de carrinhos com IA",
