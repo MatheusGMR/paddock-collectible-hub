@@ -6,10 +6,11 @@ import { usePermissions } from "@/hooks/usePermissions";
 
 interface PricingSlideProps {
   onStartTrial: () => void;
+  onSkip?: () => void;
   isLoading?: boolean;
 }
 
-export const PricingSlide = ({ onStartTrial, isLoading }: PricingSlideProps) => {
+export const PricingSlide = ({ onStartTrial, onSkip, isLoading }: PricingSlideProps) => {
   const { t } = useLanguage();
   const { requestAllPermissions, isRequesting } = usePermissions();
 
@@ -124,12 +125,12 @@ export const PricingSlide = ({ onStartTrial, isLoading }: PricingSlideProps) => 
         </motion.div>
       </div>
 
-      {/* Bottom Section - CTA (consistent with other slides) */}
+      {/* Bottom Section - CTA + Skip (consistent with other slides) */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.7 }}
-        className="flex-shrink-0 py-4 w-full max-w-xs mx-auto"
+        className="flex-shrink-0 py-4 w-full max-w-xs mx-auto space-y-3"
       >
         <Button
           onClick={handleAcceptAndContinue}
@@ -138,6 +139,17 @@ export const PricingSlide = ({ onStartTrial, isLoading }: PricingSlideProps) => 
         >
           {isLoading || isRequesting ? t.common.loading : t.onboarding.acceptAndContinue}
         </Button>
+        
+        {onSkip && (
+          <Button
+            variant="ghost"
+            onClick={onSkip}
+            disabled={isLoading || isRequesting}
+            className="w-full text-muted-foreground hover:text-foreground"
+          >
+            {t.onboarding.skip}
+          </Button>
+        )}
       </motion.div>
     </div>
   );

@@ -13,6 +13,7 @@ import { SubscriptionProvider, useSubscription } from "@/contexts/SubscriptionCo
 import { GuidedTipsProvider, useGuidedTips } from "@/contexts/GuidedTipsContext";
 import { SpotlightOverlay } from "@/components/guided-tips/SpotlightOverlay";
 import { OnboardingCarousel } from "@/components/onboarding/OnboardingCarousel";
+import { EmbeddedCheckout } from "@/components/onboarding/EmbeddedCheckout";
 import { SubscriptionGate } from "@/components/onboarding/SubscriptionGate";
 import { ChallengeCelebrationModal } from "@/components/challenge/ChallengeCelebrationModal";
 import { usePageTracking } from "@/hooks/usePageTracking";
@@ -44,6 +45,7 @@ const SubscriptionFlow = ({ children }: { children: React.ReactNode }) => {
   const { markOnboardingComplete } = useGuidedTips();
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [showEmbeddedCheckout, setShowEmbeddedCheckout] = useState(false);
   const [isOnboardingInProgress, setIsOnboardingInProgress] = useState(false);
   const hasCheckedRef = useRef(false);
 
@@ -115,26 +117,36 @@ const SubscriptionFlow = ({ children }: { children: React.ReactNode }) => {
       hasCheckedRef.current = false;
       setIsOnboardingInProgress(false);
       setShowOnboarding(false);
+      setShowEmbeddedCheckout(false);
     }
   }, [user]);
 
-  const handleStartTrial = useCallback(async () => {
+  const handleStartTrial = useCallback(() => {
     if (!user) return;
     
-    // Mark onboarding as complete BEFORE creating checkout
+    // Mark onboarding as complete BEFORE showing checkout
     // This ensures user won't see onboarding again even if they abandon checkout
     markUserOnboardingComplete(user.id);
     
-    setCheckoutLoading(true);
-    const url = await createCheckout();
-    setCheckoutLoading(false);
-    
-    if (url) {
-      // Don't mark guided tips complete yet - only after successful subscription
-      setIsOnboardingInProgress(false);
-      window.location.href = url;
-    }
-  }, [createCheckout, markUserOnboardingComplete, user]);
+    // Show embedded checkout instead of redirecting
+    setShowOnboarding(false);
+    setShowEmbeddedCheckout(true);
+  }, [markUserOnboardingComplete, user]);
+
+  const handleCheckoutBack = useCallback(() => {
+    // Go back to onboarding
+    setShowEmbeddedCheckout(false);
+    setShowOnboarding(true);
+  }, []);
+
+  const handleCheckoutComplete = useCallback(() => {
+    // Checkout completed - navigate to success page
+    setShowEmbeddedCheckout(false);
+    setIsOnboardingInProgress(false);
+    markOnboardingComplete();
+    // Navigate will happen via return_url, but in case it doesn't:
+    window.location.href = "/subscription-success";
+  }, [markOnboardingComplete]);
 
   const handleSkipOnboarding = useCallback(async () => {
     if (!user) return;
@@ -173,6 +185,16 @@ const SubscriptionFlow = ({ children }: { children: React.ReactNode }) => {
   // But render children to avoid layout shifts
   if (authLoading || subLoading) {
     return <>{children}</>;
+  }
+
+  // Show embedded checkout
+  if (showEmbeddedCheckout) {
+    return (
+      <EmbeddedCheckout
+        onBack={handleCheckoutBack}
+        onComplete={handleCheckoutComplete}
+      />
+    );
   }
 
   // Show onboarding for new users

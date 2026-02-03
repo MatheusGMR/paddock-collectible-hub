@@ -104,6 +104,7 @@ export const OnboardingCarousel = ({ onStartTrial, onSkip, isLoading }: Onboardi
           <div className="flex-[0_0_100%] min-w-0 h-full">
             <PricingSlide
               onStartTrial={onStartTrial}
+              onSkip={onSkip}
               isLoading={isLoading}
             />
           </div>

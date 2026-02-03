@@ -45,6 +45,16 @@ serve(async (req) => {
     if (!user?.email) throw new Error("User not authenticated or email not available");
     logStep("User authenticated", { userId: user.id, email: user.email });
 
+    // Parse request body to check for embedded mode
+    let embedded = false;
+    try {
+      const body = await req.json();
+      embedded = body?.embedded === true;
+    } catch {
+      // No body or invalid JSON - default to redirect mode
+    }
+    logStep("Checkout mode", { embedded });
+
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
 
     // Check if user has completed the challenge (50 cars)
@@ -96,7 +106,7 @@ serve(async (req) => {
       logStep("Applying challenge rewards", { trialDays, couponId });
     }
 
-    // Create checkout session
+    // Build checkout session config
     const sessionConfig: Stripe.Checkout.SessionCreateParams = {
       customer: customerId,
       customer_email: customerId ? undefined : user.email,
@@ -114,12 +124,19 @@ serve(async (req) => {
           challenge_completed: challengeCompleted ? "true" : "false",
         },
       },
-      success_url: `${origin}/subscription-success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${origin}/`,
       metadata: {
         user_id: user.id,
       },
     };
+
+    // Configure based on embedded or redirect mode
+    if (embedded) {
+      sessionConfig.ui_mode = "embedded";
+      sessionConfig.return_url = `${origin}/subscription-success?session_id={CHECKOUT_SESSION_ID}`;
+    } else {
+      sessionConfig.success_url = `${origin}/subscription-success?session_id={CHECKOUT_SESSION_ID}`;
+      sessionConfig.cancel_url = `${origin}/`;
+    }
 
     // Add coupon/discount if challenge was completed
     if (couponId) {
@@ -131,6 +148,7 @@ serve(async (req) => {
     logStep("Checkout session created", { 
       sessionId: session.id, 
       url: session.url,
+      clientSecret: embedded ? "present" : "n/a",
       trialDays,
       hasCoupon: !!couponId
     });
@@ -148,10 +166,18 @@ serve(async (req) => {
       logStep("Marked challenge as rewarded in database");
     }
 
-    return new Response(JSON.stringify({ url: session.url }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: 200,
-    });
+    // Return appropriate response based on mode
+    if (embedded) {
+      return new Response(JSON.stringify({ clientSecret: session.client_secret }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      });
+    } else {
+      return new Response(JSON.stringify({ url: session.url }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      });
+    }
 
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
