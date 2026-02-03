@@ -6,6 +6,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { UserSearchSheet } from "@/components/social/UserSearchSheet";
 import { QRCodeSheet } from "@/components/social/QRCodeSheet";
 import { QRScannerSheet } from "@/components/social/QRScannerSheet";
+import paddockWordmark from "@/assets/paddock-wordmark-new.png";
 
 interface ProfileHeaderProps {
   user: {
@@ -31,9 +32,13 @@ export const ProfileHeader = ({ user, onEditProfile, onSettings }: ProfileHeader
   return (
     <>
       <div className="border-b border-border">
-        {/* Top Bar */}
+        {/* Top Bar with Paddock Logo */}
         <div className="flex items-center justify-between px-4 py-3">
-          <h1 className="text-lg font-semibold">{user.username}</h1>
+          <img 
+            src={paddockWordmark} 
+            alt="Paddock" 
+            className="h-5 object-contain"
+          />
           <div className="flex items-center gap-2">
             <button 
               onClick={() => setSearchOpen(true)}
@@ -62,13 +67,18 @@ export const ProfileHeader = ({ user, onEditProfile, onSettings }: ProfileHeader
         {/* Profile Info */}
         <div className="px-4 pb-4">
           <div className="flex items-start gap-6">
-            {/* Avatar */}
-            <Avatar className="h-20 w-20 ring-2 ring-primary/30">
-              <AvatarImage src={user.avatar} alt={user.username} />
-              <AvatarFallback className="bg-muted text-2xl font-semibold">
-                {user.username[0].toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
+            {/* Avatar with username below */}
+            <div className="flex flex-col items-center">
+              <Avatar className="h-20 w-20 ring-2 ring-primary/30">
+                <AvatarImage src={user.avatar} alt={user.username} />
+                <AvatarFallback className="bg-muted text-2xl font-semibold">
+                  {user.username[0].toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <p className="mt-2 text-sm font-semibold text-foreground">
+                {user.username}
+              </p>
+            </div>
 
             {/* Stats */}
             <div className="flex flex-1 justify-around pt-2">
