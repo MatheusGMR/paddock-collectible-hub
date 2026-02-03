@@ -137,13 +137,24 @@ Set "detectedType" to either "collectible" or "real_car" based on your analysis.
 IF TYPE IS "collectible" (TOY CAR):
 
 STEP 1 - IMAGE QUALITY VALIDATION:
-Check for these issues:
-1. COUNT how many collectible cars are visible (max 5)
-2. CHECK lighting (too dark/overexposed)
-3. CHECK distance (too far/too close)
-4. CHECK focus (blurry/obstructed)
 
-If issues found, return imageQuality.isValid = false with issues array.
+IMPORTANT: The purpose of validation is to ensure the AI CAN provide accurate analysis.
+- Only report imageQuality.isValid = false for issues that PREVENT analysis
+- Do NOT report "too_many_cars" if there are 5 or fewer cars visible
+- Do NOT report quality issues if the image is acceptable for analysis
+
+Check for these issues ONLY if they truly prevent analysis:
+1. COUNT how many SEPARATE/DISTINCT collectible cars are visible - NOT parts or angles of the same car
+   - ONLY set "too_many_cars" if there are MORE than 5 DISTINCT cars
+   - A single car visible from one angle = 1 car (not multiple)
+   - Parts of a car (wheels, hood, etc.) visible = still 1 car
+2. CHECK lighting (too dark/overexposed) - ONLY if details are truly invisible
+3. CHECK distance (too far to identify OR too close/cropped)
+4. CHECK focus (blurry/obstructed) - ONLY if details are unreadable
+
+DEFAULT BEHAVIOR: If the image shows 1-5 cars and is reasonably clear, set imageQuality.isValid = true and proceed with analysis.
+
+If and ONLY if there are genuine blocking issues, return imageQuality.isValid = false with issues array.
 
 STEP 2 - MANUFACTURER IDENTIFICATION (CRITICAL - BE EXTREMELY PRECISE):
 

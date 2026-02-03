@@ -362,12 +362,22 @@ export const ScannerView = () => {
         }
       } else {
         // Handle collectible detection (original flow)
-        // Check image quality first
+        // Check image quality first - but validate that the issues are real
         if (response.imageQuality && !response.imageQuality.isValid) {
-          setImageQualityError(response.imageQuality);
-          setAnalysisResults([]);
-          setIsScanning(false);
-          return;
+          // Filter out false positives: if we have items identified, ignore the quality error
+          const hasValidItems = response.items && response.items.length > 0 && response.identified;
+          
+          // Also check if the "too_many_cars" issue is a false positive
+          const tooManyIssue = response.imageQuality.issues?.find((i: { type: string; detectedCount?: number }) => i.type === "too_many_cars");
+          const isFalseTooMany = tooManyIssue && response.count && response.count <= 5;
+          
+          // Only show quality error if it's a real blocking issue
+          if (!hasValidItems && !isFalseTooMany) {
+            setImageQualityError(response.imageQuality);
+            setAnalysisResults([]);
+            setIsScanning(false);
+            return;
+          }
         }
 
         // Clear any previous quality errors
@@ -507,11 +517,22 @@ export const ScannerView = () => {
         }
       } else {
         // Handle collectible detection
+        // Check image quality first - but validate that the issues are real
         if (response.imageQuality && !response.imageQuality.isValid) {
-          setImageQualityError(response.imageQuality);
-          setAnalysisResults([]);
-          setIsScanning(false);
-          return;
+          // Filter out false positives: if we have items identified, ignore the quality error
+          const hasValidItems = response.items && response.items.length > 0 && response.identified;
+          
+          // Also check if the "too_many_cars" issue is a false positive
+          const tooManyIssue = response.imageQuality.issues?.find((i: { type: string; detectedCount?: number }) => i.type === "too_many_cars");
+          const isFalseTooMany = tooManyIssue && response.count && response.count <= 5;
+          
+          // Only show quality error if it's a real blocking issue
+          if (!hasValidItems && !isFalseTooMany) {
+            setImageQualityError(response.imageQuality);
+            setAnalysisResults([]);
+            setIsScanning(false);
+            return;
+          }
         }
 
         setImageQualityError(null);
