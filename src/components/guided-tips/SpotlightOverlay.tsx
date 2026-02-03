@@ -23,21 +23,13 @@ export const SpotlightOverlay = () => {
   } = useGuidedTips();
 
   const [spotlightPos, setSpotlightPos] = useState<SpotlightPosition | null>(null);
-  const [tooltipStyle, setTooltipStyle] = useState<React.CSSProperties>({});
 
   // Calculate spotlight position based on target element
-  // ALWAYS center tooltip on screen for consistent UX across all devices
-  const calculatePositions = useCallback(() => {
+  const calculateSpotlightPosition = useCallback(() => {
     if (!currentTip) return;
 
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight;
-    
-    // Safe margins
-    const safeMargin = 24;
-    
-    // Responsive tooltip width - ensure it fits within screen with margins
-    const maxTooltipWidth = Math.min(viewportWidth - safeMargin * 2, 320);
 
     // Calculate spotlight for target element (visual highlight only)
     if (currentTip.targetSelector) {
@@ -64,48 +56,39 @@ export const SpotlightOverlay = () => {
     } else {
       setSpotlightPos(null);
     }
-
-    // ALWAYS center tooltip on screen - simple and reliable
-    setTooltipStyle({
-      position: "fixed",
-      top: "50%",
-      left: "50%",
-      transform: "translate(-50%, -50%)",
-      width: `${maxTooltipWidth}px`,
-      maxWidth: `calc(100vw - ${safeMargin * 2}px)`,
-    });
   }, [currentTip]);
 
   // Recalculate on tip change or window resize
   useEffect(() => {
     if (currentTip) {
       // Small delay to ensure DOM is ready
-      const timer = setTimeout(calculatePositions, 100);
-      window.addEventListener("resize", calculatePositions);
+      const timer = setTimeout(calculateSpotlightPosition, 100);
+      window.addEventListener("resize", calculateSpotlightPosition);
       
       return () => {
         clearTimeout(timer);
-        window.removeEventListener("resize", calculatePositions);
+        window.removeEventListener("resize", calculateSpotlightPosition);
       };
     }
-  }, [currentTip, calculatePositions]);
+  }, [currentTip, calculateSpotlightPosition]);
 
   // Don't show tips during onboarding or if not active
   if (!isTipsActive || !currentTip || !isOnboardingComplete) return null;
 
   return (
     <AnimatePresence>
+      {/* Full-screen overlay with flexbox centering - NOT affected by scale animation */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-[100] pointer-events-auto"
+        className="fixed inset-0 z-[100] pointer-events-auto flex items-center justify-center px-6"
         onClick={(e) => {
           // Only allow clicks on the tooltip, block everything else
           e.stopPropagation();
         }}
       >
-        {/* Dark overlay with spotlight cutout using clip-path for better rendering */}
+        {/* Dark overlay with spotlight cutout */}
         {spotlightPos ? (
           <>
             {/* Top overlay */}
@@ -177,13 +160,12 @@ export const SpotlightOverlay = () => {
           </motion.div>
         )}
 
-        {/* Tooltip card - ensure it's always visible and interactive */}
+        {/* Tooltip card wrapper - uses flexbox parent for centering, card animates inside */}
         <motion.div
           initial={{ scale: 0.9, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           transition={{ delay: 0.1, type: "spring", stiffness: 300, damping: 25 }}
-          style={tooltipStyle}
-          className="bg-card border border-border rounded-2xl p-4 shadow-2xl overflow-visible z-[110]"
+          className="relative bg-card border border-border rounded-2xl p-4 shadow-2xl z-[110] w-full max-w-[320px] max-h-[70vh] overflow-auto"
         >
           {/* Skip button - always visible and clickable */}
           <button
@@ -231,7 +213,7 @@ export const SpotlightOverlay = () => {
                 nextTip();
               }}
               size="sm"
-              className="gap-1 flex-shrink-0 min-h-[40px] px-4"
+              className="gap-1 flex-shrink-0 min-h-[44px] px-4"
             >
               {currentTip.action || "Próximo"}
               {currentTipIndex < totalTipsInScreen - 1 && (

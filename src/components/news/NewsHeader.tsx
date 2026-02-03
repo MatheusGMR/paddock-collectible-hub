@@ -26,7 +26,7 @@ export const NewsHeader = ({
   const { t } = useLanguage();
 
   return (
-    <header className="sticky top-0 z-40 bg-background/95 backdrop-blur-lg border-b border-border">
+    <header className="sticky top-0 z-40 bg-background/95 backdrop-blur-lg border-b border-border pt-safe">
       {/* Search Bar */}
       <div className="p-4 flex gap-2">
         <div className="relative flex-1">

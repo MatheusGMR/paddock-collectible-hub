@@ -67,11 +67,13 @@ export default function ListingDetails() {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background">
-        <div className="sticky top-0 z-10 flex items-center gap-3 border-b border-border bg-background/95 px-4 py-3 backdrop-blur">
-          <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <Skeleton className="h-6 w-32" />
+        <div className="sticky top-0 z-10 border-b border-border bg-background/95 backdrop-blur pt-safe">
+          <div className="flex items-center gap-3 px-4 py-3">
+            <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <Skeleton className="h-6 w-32" />
+          </div>
         </div>
         <div className="p-4 space-y-4">
           <Skeleton className="aspect-square w-full rounded-xl" />
@@ -87,11 +89,13 @@ export default function ListingDetails() {
   if (error || !listing) {
     return (
       <div className="min-h-screen bg-background">
-        <div className="sticky top-0 z-10 flex items-center gap-3 border-b border-border bg-background/95 px-4 py-3 backdrop-blur">
-          <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <span className="font-medium">{t.errors.notFound}</span>
+        <div className="sticky top-0 z-10 border-b border-border bg-background/95 backdrop-blur pt-safe">
+          <div className="flex items-center gap-3 px-4 py-3">
+            <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <span className="font-medium">{t.errors.notFound}</span>
+          </div>
         </div>
         <div className="flex flex-col items-center justify-center p-8 text-center">
           <p className="text-muted-foreground">{error || t.errors.notFound}</p>
@@ -106,13 +110,15 @@ export default function ListingDetails() {
   return (
     <div className="min-h-screen bg-background pb-32">
       {/* Header */}
-      <div className="sticky top-0 z-10 flex items-center gap-3 border-b border-border bg-background/95 px-4 py-3 backdrop-blur">
-        <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
-          <ArrowLeft className="h-5 w-5" />
-        </Button>
-        <span className="font-medium text-foreground line-clamp-1">
-          {listing.title}
-        </span>
+      <div className="sticky top-0 z-10 border-b border-border bg-background/95 backdrop-blur pt-safe">
+        <div className="flex items-center gap-3 px-4 py-3">
+          <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <span className="font-medium text-foreground line-clamp-1">
+            {listing.title}
+          </span>
+        </div>
       </div>
 
       {/* Content */}
