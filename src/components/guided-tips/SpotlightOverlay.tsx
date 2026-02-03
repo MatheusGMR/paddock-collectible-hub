@@ -26,27 +26,20 @@ export const SpotlightOverlay = () => {
   const [tooltipStyle, setTooltipStyle] = useState<React.CSSProperties>({});
 
   // Calculate spotlight position based on target element
+  // ALWAYS center tooltip on screen for consistent UX across all devices
   const calculatePositions = useCallback(() => {
     if (!currentTip) return;
 
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight;
     
-    // Safe area insets for iPhone notch
-    const safeAreaTop = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--sat') || '0') || 
-                        (window.visualViewport ? Math.max(0, window.visualViewport.offsetTop) : 0) ||
-                        44; // Default notch height
-    const safeAreaBottom = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--sab') || '0') || 34;
-    
-    // Safe margins - larger on mobile to avoid edge clipping
-    const safeMargin = 16;
-    const topMargin = Math.max(safeMargin, safeAreaTop + 8);
-    const bottomMargin = Math.max(safeMargin, safeAreaBottom + 8);
+    // Safe margins
+    const safeMargin = 24;
     
     // Responsive tooltip width - ensure it fits within screen with margins
-    const maxTooltipWidth = Math.min(viewportWidth - safeMargin * 2, 300);
-    const tooltipHeight = 180; // Reduced for better fit on small screens
+    const maxTooltipWidth = Math.min(viewportWidth - safeMargin * 2, 320);
 
+    // Calculate spotlight for target element (visual highlight only)
     if (currentTip.targetSelector) {
       const element = document.querySelector(currentTip.targetSelector);
       if (element) {
@@ -65,77 +58,22 @@ export const SpotlightOverlay = () => {
           width: spotWidth,
           height: spotHeight,
         });
-
-        // Calculate tooltip position - prioritize visibility
-        let top = 0;
-        let left = safeMargin; // Default to left margin
-
-        // Center horizontally within safe margins
-        left = (viewportWidth - maxTooltipWidth) / 2;
-
-        switch (currentTip.targetPosition) {
-          case "top":
-            // Position above target, but check if there's space
-            top = rect.top - tooltipHeight - 20;
-            if (top < safeMargin) {
-              // Not enough space above, position below instead
-              top = rect.bottom + 20;
-            }
-            break;
-          case "bottom":
-            // Position below target
-            top = rect.bottom + 20;
-            if (top + tooltipHeight > viewportHeight - safeMargin) {
-              // Not enough space below, position above instead
-              top = rect.top - tooltipHeight - 20;
-            }
-            break;
-          case "left":
-          case "right":
-            // Position vertically centered relative to target
-            top = rect.top + rect.height / 2 - tooltipHeight / 2;
-            break;
-          default:
-            // Center on screen
-            top = (viewportHeight - tooltipHeight) / 2;
-        }
-
-        // Final clamp to ensure tooltip stays within viewport with safe areas
-        left = Math.max(safeMargin, Math.min(left, viewportWidth - maxTooltipWidth - safeMargin));
-        top = Math.max(topMargin, Math.min(top, viewportHeight - tooltipHeight - bottomMargin));
-
-        setTooltipStyle({
-          position: "fixed",
-          top: `${top}px`,
-          left: `${left}px`,
-          width: `${maxTooltipWidth}px`,
-        });
       } else {
-        // Target element not found - center the tooltip with safe area consideration
         setSpotlightPos(null);
-        const centerTop = Math.max(topMargin, (viewportHeight - tooltipHeight) / 2);
-        setTooltipStyle({
-          position: "fixed",
-          top: `${centerTop}px`,
-          left: "50%",
-          transform: "translateX(-50%)",
-          width: `${maxTooltipWidth}px`,
-          maxWidth: `calc(100vw - ${safeMargin * 2}px)`,
-        });
       }
     } else {
-      // Center position (no target element) with safe area consideration
       setSpotlightPos(null);
-      const centerTop = Math.max(topMargin, (viewportHeight - tooltipHeight) / 2);
-      setTooltipStyle({
-        position: "fixed",
-        top: `${centerTop}px`,
-        left: "50%",
-        transform: "translateX(-50%)",
-        width: `${maxTooltipWidth}px`,
-        maxWidth: `calc(100vw - ${safeMargin * 2}px)`,
-      });
     }
+
+    // ALWAYS center tooltip on screen - simple and reliable
+    setTooltipStyle({
+      position: "fixed",
+      top: "50%",
+      left: "50%",
+      transform: "translate(-50%, -50%)",
+      width: `${maxTooltipWidth}px`,
+      maxWidth: `calc(100vw - ${safeMargin * 2}px)`,
+    });
   }, [currentTip]);
 
   // Recalculate on tip change or window resize
