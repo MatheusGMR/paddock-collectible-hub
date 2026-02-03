@@ -32,8 +32,16 @@ export const SpotlightOverlay = () => {
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight;
     
+    // Safe area insets for iPhone notch
+    const safeAreaTop = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--sat') || '0') || 
+                        (window.visualViewport ? Math.max(0, window.visualViewport.offsetTop) : 0) ||
+                        44; // Default notch height
+    const safeAreaBottom = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--sab') || '0') || 34;
+    
     // Safe margins - larger on mobile to avoid edge clipping
     const safeMargin = 16;
+    const topMargin = Math.max(safeMargin, safeAreaTop + 8);
+    const bottomMargin = Math.max(safeMargin, safeAreaBottom + 8);
     
     // Responsive tooltip width - ensure it fits within screen with margins
     const maxTooltipWidth = Math.min(viewportWidth - safeMargin * 2, 320);
@@ -92,9 +100,9 @@ export const SpotlightOverlay = () => {
             top = (viewportHeight - tooltipHeight) / 2;
         }
 
-        // Final clamp to ensure tooltip stays within viewport
+        // Final clamp to ensure tooltip stays within viewport with safe areas
         left = Math.max(safeMargin, Math.min(left, viewportWidth - maxTooltipWidth - safeMargin));
-        top = Math.max(safeMargin, Math.min(top, viewportHeight - tooltipHeight - safeMargin));
+        top = Math.max(topMargin, Math.min(top, viewportHeight - tooltipHeight - bottomMargin));
 
         setTooltipStyle({
           position: "fixed",
@@ -103,25 +111,27 @@ export const SpotlightOverlay = () => {
           width: `${maxTooltipWidth}px`,
         });
       } else {
-        // Target element not found - center the tooltip
+        // Target element not found - center the tooltip with safe area consideration
         setSpotlightPos(null);
+        const centerTop = Math.max(topMargin, (viewportHeight - tooltipHeight) / 2);
         setTooltipStyle({
           position: "fixed",
-          top: "50%",
+          top: `${centerTop}px`,
           left: "50%",
-          transform: "translate(-50%, -50%)",
+          transform: "translateX(-50%)",
           width: `${maxTooltipWidth}px`,
           maxWidth: `calc(100vw - ${safeMargin * 2}px)`,
         });
       }
     } else {
-      // Center position (no target element)
+      // Center position (no target element) with safe area consideration
       setSpotlightPos(null);
+      const centerTop = Math.max(topMargin, (viewportHeight - tooltipHeight) / 2);
       setTooltipStyle({
         position: "fixed",
-        top: "50%",
+        top: `${centerTop}px`,
         left: "50%",
-        transform: "translate(-50%, -50%)",
+        transform: "translateX(-50%)",
         width: `${maxTooltipWidth}px`,
         maxWidth: `calc(100vw - ${safeMargin * 2}px)`,
       });
