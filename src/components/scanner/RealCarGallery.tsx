@@ -175,10 +175,11 @@ export const RealCarGallery = ({ photos, carName }: RealCarGalleryProps) => {
       <Dialog open={selectedIndex !== null} onOpenChange={() => setSelectedIndex(null)}>
         <DialogContent className="max-w-4xl w-full h-[90vh] p-0 bg-black/95 border-none">
           <div className="relative w-full h-full flex items-center justify-center">
-            {/* Close button */}
+            {/* Close button - positioned below notch */}
             <button
               onClick={() => setSelectedIndex(null)}
-              className="absolute top-4 right-4 z-10 p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
+              className="absolute right-4 z-10 p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
+              style={{ top: "calc(env(safe-area-inset-top, 0px) + 1rem)" }}
             >
               <X className="h-5 w-5 text-white" />
             </button>

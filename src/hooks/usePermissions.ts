@@ -75,10 +75,10 @@ export const usePermissions = () => {
     // Only request camera if not already granted
     if (!cameraGranted) {
       try {
-        // Request camera permission by getting a stream briefly
+        // Request camera permission by getting a stream briefly - NO AUDIO to avoid iOS issues
         const stream = await navigator.mediaDevices.getUserMedia({
           video: { facingMode: "environment" },
-          audio: true,
+          audio: false, // Don't request audio - causes permission issues on iOS
         });
         
         // Immediately stop the stream - we just needed permission

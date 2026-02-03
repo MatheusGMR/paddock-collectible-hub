@@ -76,15 +76,17 @@ const Notifications = () => {
   return (
     <div className="min-h-screen">
       {/* Header */}
-      <header className="sticky top-0 z-40 flex h-14 items-center justify-between border-b border-border bg-background/95 backdrop-blur-lg px-4">
-        <h1 className="text-lg font-semibold">{t.notifications.title}</h1>
-        <button
-          onClick={() => setMessagesOpen(true)}
-          className="p-2 text-foreground-secondary hover:text-primary transition-colors"
-          title="Mensagens"
-        >
-          <MessageCircle className="h-5 w-5" />
-        </button>
+      <header className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur-lg pt-safe">
+        <div className="flex h-14 items-center justify-between px-4">
+          <h1 className="text-lg font-semibold">{t.notifications.title}</h1>
+          <button
+            onClick={() => setMessagesOpen(true)}
+            className="p-2 text-foreground-secondary hover:text-primary transition-colors"
+            title="Mensagens"
+          >
+            <MessageCircle className="h-5 w-5" />
+          </button>
+        </div>
       </header>
 
       {/* Notification List */}

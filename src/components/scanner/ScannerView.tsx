@@ -210,7 +210,7 @@ export const ScannerView = () => {
             width: { ideal: 1280 },
             height: { ideal: 720 }
           },
-          audio: true // Enable audio for video recording
+          audio: false // No audio needed for photo capture - prevents iOS permission issues
         });
 
         console.log("[Scanner] Camera stream acquired (using pre-granted permission)");
@@ -222,13 +222,20 @@ export const ScannerView = () => {
         setCameraActive(true);
         setIsInitializing(false);
         
-      } catch (error) {
+      } catch (error: unknown) {
         console.error("[Scanner] Camera access error:", error);
         setCameraError(true);
         setIsInitializing(false);
+        
+        // Provide more specific error message for permission issues
+        const errorName = error instanceof Error ? error.name : "";
+        const isPermissionError = errorName === "NotAllowedError" || errorName === "PermissionDeniedError";
+        
         toast({
           title: t.common.error,
-          description: t.scanner.cameraError,
+          description: isPermissionError 
+            ? "Permissão de câmera negada. Vá em Ajustes > Privacidade > Câmera para habilitar."
+            : t.scanner.cameraError,
           variant: "destructive",
         });
       }
@@ -272,7 +279,7 @@ export const ScannerView = () => {
           width: { ideal: 1280 },
           height: { ideal: 720 }
         },
-        audio: true
+        audio: false // No audio needed
       });
 
       console.log("[Scanner] Camera stream acquired (manual)");
@@ -280,13 +287,19 @@ export const ScannerView = () => {
       setCameraActive(true);
       setIsInitializing(false);
       
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("[Scanner] Camera access error:", error);
       setCameraError(true);
       setIsInitializing(false);
+      
+      const errorName = error instanceof Error ? error.name : "";
+      const isPermissionError = errorName === "NotAllowedError" || errorName === "PermissionDeniedError";
+      
       toast({
         title: t.common.error,
-        description: t.scanner.cameraError,
+        description: isPermissionError 
+          ? "Permissão de câmera negada. Vá em Ajustes > Privacidade > Câmera para habilitar."
+          : t.scanner.cameraError,
         variant: "destructive",
       });
     }
@@ -1074,9 +1087,9 @@ export const ScannerView = () => {
           <div className="absolute inset-0 bg-white z-50 animate-fade-out-flash pointer-events-none" />
         )}
 
-        {/* Paddock watermark */}
+        {/* Paddock watermark - positioned below notch */}
         {cameraActive && !isScanning && !capturedImage && (
-          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 pointer-events-none">
+          <div className="absolute left-1/2 -translate-x-1/2 z-10 pointer-events-none" style={{ top: "calc(env(safe-area-inset-top, 0px) + 1rem)" }}>
             <PaddockLogo 
               variant="wordmark" 
               size={30} 
@@ -1087,16 +1100,16 @@ export const ScannerView = () => {
 
         {/* Auto-detect hint - no manual toggle needed */}
 
-        {/* Minimal corner guides - subtle like Instagram/TikTok */}
+        {/* Minimal corner guides - subtle like Instagram/TikTok - positioned below notch */}
         {cameraActive && !isScanning && (
           <div className="absolute inset-0 pointer-events-none">
             {/* Top left corner */}
-            <div className="absolute top-16 left-6 w-10 h-10">
+            <div className="absolute left-6 w-10 h-10" style={{ top: "calc(env(safe-area-inset-top, 0px) + 4rem)" }}>
               <div className="absolute top-0 left-0 w-full h-[2px] bg-white/40 rounded-full" />
               <div className="absolute top-0 left-0 h-full w-[2px] bg-white/40 rounded-full" />
             </div>
             {/* Top right corner */}
-            <div className="absolute top-16 right-6 w-10 h-10">
+            <div className="absolute right-6 w-10 h-10" style={{ top: "calc(env(safe-area-inset-top, 0px) + 4rem)" }}>
               <div className="absolute top-0 right-0 w-full h-[2px] bg-white/40 rounded-full" />
               <div className="absolute top-0 right-0 h-full w-[2px] bg-white/40 rounded-full" />
             </div>
@@ -1113,25 +1126,29 @@ export const ScannerView = () => {
           </div>
         )}
 
-        {/* Scanning animation overlay */}
+        {/* Scanning animation overlay - positioned below notch */}
         {isScanning && (
-          <div className="absolute inset-x-6 top-16 bottom-32 pointer-events-none overflow-hidden">
+          <div className="absolute inset-x-6 bottom-32 pointer-events-none overflow-hidden" style={{ top: "calc(env(safe-area-inset-top, 0px) + 4rem)" }}>
             <div className="absolute left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-primary to-transparent animate-scanner-line" />
           </div>
         )}
 
+        {/* Close button - positioned below notch */}
         <button
           onClick={handleClose}
-          className="absolute top-4 right-4 p-2 bg-background/50 backdrop-blur-sm rounded-full z-10"
+          className="absolute right-4 p-2 bg-background/50 backdrop-blur-sm rounded-full z-10"
+          style={{ top: "calc(env(safe-area-inset-top, 0px) + 1rem)" }}
         >
           <X className="h-6 w-6 text-foreground" />
         </button>
 
+        {/* Switch camera button - positioned below notch */}
         {cameraActive && !isRecording && (
           <button
             onClick={switchCamera}
             data-tip="flip-camera"
-            className="absolute top-4 left-4 p-2 bg-background/50 backdrop-blur-sm rounded-full z-10"
+            className="absolute left-4 p-2 bg-background/50 backdrop-blur-sm rounded-full z-10"
+            style={{ top: "calc(env(safe-area-inset-top, 0px) + 1rem)" }}
           >
             <SwitchCamera className="h-6 w-6 text-foreground" />
           </button>
