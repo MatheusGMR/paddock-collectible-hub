@@ -223,7 +223,10 @@ const UserProfilePage = () => {
         )
       ) : activeTab === "collection" ? (
         collection.length > 0 ? (
-          <CollectionList items={collection} />
+          <CollectionList 
+            items={collection} 
+            onItemDeleted={isOwnProfile ? loadProfile : undefined}
+          />
         ) : (
           <div className="p-8 text-center text-foreground-secondary">
             <p>{t.profile?.emptyCollection || "Coleção vazia"}</p>
