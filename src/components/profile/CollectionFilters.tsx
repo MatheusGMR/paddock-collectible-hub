@@ -1,7 +1,7 @@
-import { Factory, Globe, SortAsc } from "lucide-react";
+import { Factory, Globe, SortAsc, Car, Calendar } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export type CollectionSortOption = "name" | "manufacturer" | "country";
+export type CollectionSortOption = "name" | "brand" | "manufacturer" | "country" | "year";
 
 interface CollectionFiltersProps {
   activeSort: CollectionSortOption;
@@ -10,9 +10,11 @@ interface CollectionFiltersProps {
 
 export const CollectionFilters = ({ activeSort, onSortChange }: CollectionFiltersProps) => {
   const options: { key: CollectionSortOption; label: string; icon: React.ElementType }[] = [
-    { key: "name", label: "Nome", icon: SortAsc },
+    { key: "brand", label: "Marca", icon: Car },
     { key: "manufacturer", label: "Fabricante", icon: Factory },
     { key: "country", label: "País", icon: Globe },
+    { key: "year", label: "Ano", icon: Calendar },
+    { key: "name", label: "Nome", icon: SortAsc },
   ];
 
   return (
