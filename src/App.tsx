@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -42,7 +42,8 @@ const SubscriptionFlow = ({ children }: { children: React.ReactNode }) => {
   const { markOnboardingComplete } = useGuidedTips();
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
-  const [hasCheckedOnboarding, setHasCheckedOnboarding] = useState(false);
+  const [isOnboardingInProgress, setIsOnboardingInProgress] = useState(false);
+  const hasCheckedRef = useRef(false);
 
   // Check if user has completed onboarding before (persisted in localStorage)
   const hasCompletedOnboardingBefore = useCallback((userId: string): boolean => {
@@ -73,8 +74,14 @@ const SubscriptionFlow = ({ children }: { children: React.ReactNode }) => {
 
   // Show onboarding for new users - only check once
   useEffect(() => {
-    if (!authLoading && !subLoading && user && !hasCheckedOnboarding) {
-      setHasCheckedOnboarding(true);
+    // If onboarding is in progress, don't interrupt it
+    if (isOnboardingInProgress) return;
+    
+    // If we've already checked, don't check again
+    if (hasCheckedRef.current) return;
+    
+    if (!authLoading && !subLoading && user) {
+      hasCheckedRef.current = true;
       
       // Check if this specific user has completed onboarding before
       const alreadyCompleted = hasCompletedOnboardingBefore(user.id);
@@ -86,6 +93,7 @@ const SubscriptionFlow = ({ children }: { children: React.ReactNode }) => {
       } else if (isNewUser && status === "none") {
         // New user who hasn't completed onboarding
         console.log("[Onboarding] Showing onboarding for new user");
+        setIsOnboardingInProgress(true);
         setShowOnboarding(true);
       } else {
         // User has subscription record but hasn't been marked locally - mark now
@@ -94,12 +102,13 @@ const SubscriptionFlow = ({ children }: { children: React.ReactNode }) => {
         markOnboardingComplete();
       }
     }
-  }, [authLoading, subLoading, user, isNewUser, status, hasCheckedOnboarding, markOnboardingComplete, hasCompletedOnboardingBefore, markUserOnboardingComplete]);
+  }, [authLoading, subLoading, user, isNewUser, status, isOnboardingInProgress, markOnboardingComplete, hasCompletedOnboardingBefore, markUserOnboardingComplete]);
 
   // Reset onboarding check when user changes
   useEffect(() => {
     if (!user) {
-      setHasCheckedOnboarding(false);
+      hasCheckedRef.current = false;
+      setIsOnboardingInProgress(false);
       setShowOnboarding(false);
     }
   }, [user]);
@@ -115,6 +124,7 @@ const SubscriptionFlow = ({ children }: { children: React.ReactNode }) => {
       // Mark onboarding as complete before redirecting to checkout
       markUserOnboardingComplete(user.id);
       markOnboardingComplete();
+      setIsOnboardingInProgress(false);
       window.location.href = url;
     }
   }, [createCheckout, markOnboardingComplete, markUserOnboardingComplete, user]);
@@ -130,6 +140,7 @@ const SubscriptionFlow = ({ children }: { children: React.ReactNode }) => {
       // Mark onboarding as complete after starting trial
       markUserOnboardingComplete(user.id);
       markOnboardingComplete();
+      setIsOnboardingInProgress(false);
       setShowOnboarding(false);
     }
   }, [startTrial, markOnboardingComplete, markUserOnboardingComplete, user]);
