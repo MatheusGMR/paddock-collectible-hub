@@ -534,4 +534,18 @@ export const en: Translations = {
     scanAnother: "Scan another item",
     connectWithUsers: "Connect with Users",
   },
+
+  // Challenge
+  challenge: {
+    title: "50 Cars Challenge",
+    remaining: "remaining for free 1st month",
+    completed: "Challenge completed! 🎉",
+    congratulations: "Congratulations! 🎉",
+    challengeCompleted: "You completed the challenge!",
+    carsScanned: "cars scanned",
+    reward1: "1st month completely free",
+    reward2: "50% permanent discount",
+    newPrice: "From $39.90 for only $19.90/month",
+    claimReward: "Claim Reward",
+  },
 };

@@ -2,6 +2,7 @@ import { useEffect, useRef, useCallback } from "react";
 import { FeedHeader } from "@/components/feed/FeedHeader";
 import { PostCard } from "@/components/feed/PostCard";
 import { PullToRefreshIndicator } from "@/components/feed/PullToRefreshIndicator";
+import { ChallengeProgressBar } from "@/components/challenge/ChallengeProgressBar";
 import { useFeedPosts } from "@/hooks/useFeedPosts";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { useScreenTips } from "@/hooks/useScreenTips";
@@ -75,6 +76,9 @@ const Index = () => {
         pullDistance={pullDistance} 
         isRefreshing={isRefreshing} 
       />
+      
+      {/* Challenge progress bar */}
+      <ChallengeProgressBar />
       
       {loading && !isRefreshing ? (
         <div className="flex items-center justify-center py-20">
