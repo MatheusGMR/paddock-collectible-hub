@@ -1,70 +1,165 @@
 import { useState, useMemo } from "react";
-import { ChevronRight, ChevronDown } from "lucide-react";
+import { ChevronRight, ChevronDown, Calendar } from "lucide-react";
 import { CollectibleDetailCard, CollectibleDetailItem } from "@/components/collection/CollectibleDetailCard";
 import { CollectionFilters, CollectionSortOption } from "./CollectionFilters";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
+// Component for group icons (brand/manufacturer initials, country flags, year)
+const GroupIcon = ({ 
+  type, 
+  value, 
+  label 
+}: { 
+  type: "brand" | "manufacturer" | "country" | "year"; 
+  value: string; 
+  label: string;
+}) => {
+  if (type === "country" && value) {
+    // Use flag CDN for country flags
+    return (
+      <img 
+        src={`https://flagcdn.com/w40/${value}.png`}
+        alt={label}
+        className="w-7 h-5 object-cover rounded-sm shadow-sm"
+        onError={(e) => {
+          // Fallback to initials if flag doesn't load
+          e.currentTarget.style.display = 'none';
+          e.currentTarget.nextElementSibling?.classList.remove('hidden');
+        }}
+      />
+    );
+  }
+  
+  if (type === "year") {
+    return (
+      <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center">
+        <Calendar className="w-4 h-4 text-primary" />
+      </div>
+    );
+  }
+  
+  // Brand or manufacturer - show colored initials
+  const initials = label
+    .split(" ")
+    .map(word => word[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+    
+  return (
+    <div 
+      className="w-8 h-8 rounded-lg flex items-center justify-center text-white font-bold text-xs shadow-sm"
+      style={{ backgroundColor: value }}
+    >
+      {initials}
+    </div>
+  );
+};
+
 interface CollectionListProps {
   items: CollectibleDetailItem[];
   onItemDeleted?: () => void;
 }
 
-// Country flags and labels
-const countryData: Record<string, { flag: string; label: string }> = {
-  "Japan": { flag: "🇯🇵", label: "Japão" },
-  "Japão": { flag: "🇯🇵", label: "Japão" },
-  "USA": { flag: "🇺🇸", label: "EUA" },
-  "EUA": { flag: "🇺🇸", label: "EUA" },
-  "United States": { flag: "🇺🇸", label: "EUA" },
-  "Germany": { flag: "🇩🇪", label: "Alemanha" },
-  "Alemanha": { flag: "🇩🇪", label: "Alemanha" },
-  "Italy": { flag: "🇮🇹", label: "Itália" },
-  "Itália": { flag: "🇮🇹", label: "Itália" },
-  "UK": { flag: "🇬🇧", label: "Reino Unido" },
-  "United Kingdom": { flag: "🇬🇧", label: "Reino Unido" },
-  "Reino Unido": { flag: "🇬🇧", label: "Reino Unido" },
-  "France": { flag: "🇫🇷", label: "França" },
-  "França": { flag: "🇫🇷", label: "França" },
-  "Brazil": { flag: "🇧🇷", label: "Brasil" },
-  "Brasil": { flag: "🇧🇷", label: "Brasil" },
-  "China": { flag: "🇨🇳", label: "China" },
-  "Malaysia": { flag: "🇲🇾", label: "Malásia" },
-  "Malásia": { flag: "🇲🇾", label: "Malásia" },
-  "Thailand": { flag: "🇹🇭", label: "Tailândia" },
-  "Tailândia": { flag: "🇹🇭", label: "Tailândia" },
-  "South Korea": { flag: "🇰🇷", label: "Coreia do Sul" },
-  "Coreia do Sul": { flag: "🇰🇷", label: "Coreia do Sul" },
+// Country ISO codes and labels
+const countryData: Record<string, { code: string; label: string }> = {
+  "Japan": { code: "jp", label: "Japão" },
+  "Japão": { code: "jp", label: "Japão" },
+  "USA": { code: "us", label: "EUA" },
+  "EUA": { code: "us", label: "EUA" },
+  "United States": { code: "us", label: "EUA" },
+  "Germany": { code: "de", label: "Alemanha" },
+  "Alemanha": { code: "de", label: "Alemanha" },
+  "Italy": { code: "it", label: "Itália" },
+  "Itália": { code: "it", label: "Itália" },
+  "UK": { code: "gb", label: "Reino Unido" },
+  "United Kingdom": { code: "gb", label: "Reino Unido" },
+  "Reino Unido": { code: "gb", label: "Reino Unido" },
+  "France": { code: "fr", label: "França" },
+  "França": { code: "fr", label: "França" },
+  "Brazil": { code: "br", label: "Brasil" },
+  "Brasil": { code: "br", label: "Brasil" },
+  "China": { code: "cn", label: "China" },
+  "Malaysia": { code: "my", label: "Malásia" },
+  "Malásia": { code: "my", label: "Malásia" },
+  "Thailand": { code: "th", label: "Tailândia" },
+  "Tailândia": { code: "th", label: "Tailândia" },
+  "South Korea": { code: "kr", label: "Coreia do Sul" },
+  "Coreia do Sul": { code: "kr", label: "Coreia do Sul" },
+  "Sweden": { code: "se", label: "Suécia" },
+  "Suécia": { code: "se", label: "Suécia" },
+  "Spain": { code: "es", label: "Espanha" },
+  "Espanha": { code: "es", label: "Espanha" },
 };
 
-// Manufacturer logos (using emojis as fallback, could be replaced with actual logos)
-const manufacturerIcons: Record<string, string> = {
-  "Hot Wheels": "🔥",
-  "Matchbox": "📦",
-  "Tomica": "🎌",
-  "Majorette": "🇫🇷",
-  "Maisto": "⭐",
-  "Bburago": "🏎️",
-  "Jada Toys": "🎯",
-  "Auto World": "🌍",
-  "Greenlight": "💚",
-  "M2 Machines": "⚙️",
-  "Johnny Lightning": "⚡",
-  "Racing Champions": "🏁",
-  "Kyosho": "🗾",
-  "Minichamps": "🔬",
-  "AUTOart": "🎨",
-  "Norev": "🇫🇷",
-  "Schuco": "🇩🇪",
-  "Welly": "🌟",
-  "Siku": "🚛",
+// Manufacturer brand colors
+const manufacturerColors: Record<string, string> = {
+  "Hot Wheels": "#cc0000",
+  "Matchbox": "#00875a",
+  "Tomica": "#e31837",
+  "Majorette": "#0055a4",
+  "Maisto": "#1a1a1a",
+  "Bburago": "#ffd700",
+  "Jada Toys": "#7b2d8e",
+  "Auto World": "#1e4d2b",
+  "Greenlight": "#2d8b2d",
+  "M2 Machines": "#333333",
+  "Johnny Lightning": "#f5a623",
+  "Racing Champions": "#d32f2f",
+  "Kyosho": "#000080",
+  "Minichamps": "#4a4a4a",
+  "AUTOart": "#8b0000",
+  "Norev": "#003366",
+  "Schuco": "#cc6600",
+  "Welly": "#ff6600",
+  "Siku": "#ff0000",
+};
+
+// Car brand colors
+const carBrandColors: Record<string, string> = {
+  "BMW": "#0066b1",
+  "Mercedes-Benz": "#00adef",
+  "Mercedes": "#00adef",
+  "Audi": "#bb0a30",
+  "Volkswagen": "#001e50",
+  "Porsche": "#c00",
+  "Ferrari": "#dc0000",
+  "Lamborghini": "#ddb321",
+  "Ford": "#003478",
+  "Chevrolet": "#d1a227",
+  "Toyota": "#eb0a1e",
+  "Honda": "#cc0000",
+  "Nissan": "#c3002f",
+  "Mazda": "#101010",
+  "Subaru": "#003399",
+  "Mitsubishi": "#e60012",
+  "Dodge": "#ba0c2f",
+  "Jeep": "#1d4d1d",
+  "Tesla": "#cc0000",
+  "Aston Martin": "#006940",
+  "McLaren": "#ff8700",
+  "Bugatti": "#be0030",
+  "Rolls-Royce": "#680021",
+  "Bentley": "#333333",
+  "Jaguar": "#1a472a",
+  "Land Rover": "#005a2b",
+  "Mini": "#000000",
+  "Fiat": "#8b0000",
+  "Alfa Romeo": "#981e32",
+  "Maserati": "#0c2340",
+  "Volvo": "#003057",
+  "Saab": "#003366",
+  "Koenigsegg": "#000000",
+  "Pagani": "#1c1c1c",
 };
 
 interface GroupedItems {
   key: string;
   label: string;
-  icon?: string;
+  iconType: "brand" | "manufacturer" | "country" | "year";
+  iconValue: string; // color for brand/manufacturer, country code for country, year string for year
   items: CollectibleDetailItem[];
 }
 
@@ -145,29 +240,35 @@ export const CollectionList = ({ items, onItemDeleted }: CollectionListProps) =>
 
     // Convert to array and sort alphabetically
     const groupedArray: GroupedItems[] = Object.entries(groups).map(([key, groupItems]) => {
-      let icon: string | undefined;
+      let iconType: "brand" | "manufacturer" | "country" | "year";
+      let iconValue = "";
       let label = key;
       
       if (sortOption === "brand") {
-        icon = "🚗";
+        iconType = "brand";
+        iconValue = carBrandColors[key] || "#666666";
       } else if (sortOption === "manufacturer") {
-        icon = manufacturerIcons[key] || "📦";
+        iconType = "manufacturer";
+        iconValue = manufacturerColors[key] || "#666666";
       } else if (sortOption === "year") {
-        icon = "📅";
+        iconType = "year";
+        iconValue = key;
       } else {
+        iconType = "country";
         const country = countryData[key];
         if (country) {
-          icon = country.flag;
+          iconValue = country.code;
           label = country.label;
         } else {
-          icon = "🌍";
+          iconValue = "";
         }
       }
       
       return {
         key,
         label,
-        icon,
+        iconType,
+        iconValue,
         items: groupItems.sort((a, b) => {
           const nameA = `${a.item?.real_car_brand || ""} ${a.item?.real_car_model || ""}`.toLowerCase();
           const nameB = `${b.item?.real_car_brand || ""} ${b.item?.real_car_model || ""}`.toLowerCase();
@@ -200,7 +301,11 @@ export const CollectionList = ({ items, onItemDeleted }: CollectionListProps) =>
                 onClick={() => toggleGroup(group.key)}
                 className="w-full flex items-center gap-3 p-4 bg-muted/30 hover:bg-muted/50 transition-colors"
               >
-                <span className="text-xl">{group.icon}</span>
+                <GroupIcon 
+                  type={group.iconType} 
+                  value={group.iconValue} 
+                  label={group.label} 
+                />
                 <div className="flex-1 text-left">
                   <span className="font-semibold text-foreground">{group.label}</span>
                   <span className="text-foreground-secondary text-sm ml-2">
