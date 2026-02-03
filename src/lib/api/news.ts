@@ -45,7 +45,61 @@ export interface NewsSource {
 // Valid categories (excluding aeromodeling and planes)
 const VALID_CATEGORIES = ['collectibles', 'motorsport', 'cars'];
 
-// Fetch news articles from database with balanced distribution
+// Normalize title for duplicate detection
+function normalizeTitle(title: string): string {
+  return title
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '') // Remove accents
+    .replace(/[^a-z0-9\s]/g, '') // Remove special chars
+    .replace(/\s+/g, ' ')
+    .trim()
+    .split(' ')
+    .slice(0, 6) // Compare first 6 words
+    .join(' ');
+}
+
+// Check if two articles are duplicates
+function areDuplicates(a: NewsArticle, b: NewsArticle): boolean {
+  const normA = normalizeTitle(a.title);
+  const normB = normalizeTitle(b.title);
+  
+  // Check for significant overlap
+  if (normA === normB) return true;
+  
+  // Check if one contains the other (for shortened titles)
+  if (normA.includes(normB) || normB.includes(normA)) return true;
+  
+  // Check word overlap (if 70%+ words match, likely duplicate)
+  const wordsA = normA.split(' ');
+  const wordsB = normB.split(' ');
+  const commonWords = wordsA.filter(w => wordsB.includes(w) && w.length > 3);
+  const overlapRatio = commonWords.length / Math.min(wordsA.length, wordsB.length);
+  
+  return overlapRatio >= 0.7;
+}
+
+// Remove duplicate articles, keeping Portuguese version when available
+function deduplicateArticles(articles: NewsArticle[]): NewsArticle[] {
+  const seen: NewsArticle[] = [];
+  
+  for (const article of articles) {
+    const duplicate = seen.find(s => areDuplicates(s, article));
+    
+    if (!duplicate) {
+      seen.push(article);
+    } else if (article.language === 'pt' && duplicate.language !== 'pt') {
+      // Replace with Portuguese version
+      const idx = seen.indexOf(duplicate);
+      seen[idx] = article;
+    }
+    // If duplicate exists and current isn't Portuguese, skip it
+  }
+  
+  return seen;
+}
+
+// Fetch news articles from database with Portuguese priority and deduplication
 export async function getNewsArticles(options: {
   category?: string | null;
   language?: string;
@@ -53,62 +107,104 @@ export async function getNewsArticles(options: {
   offset?: number;
   search?: string;
 }): Promise<{ articles: NewsArticle[]; hasMore: boolean }> {
-  const { category, language, limit = 20, offset = 0, search } = options;
+  const { category, limit = 20, offset = 0, search } = options;
+  
+  // Fetch more articles to account for deduplication
+  const fetchLimit = limit * 2;
   
   // If a specific category is selected, fetch normally
   if (category) {
-    let query = supabase
+    // Fetch Portuguese articles first
+    let ptQuery = supabase
       .from('news_articles')
       .select('*')
       .eq('category', category)
+      .eq('language', 'pt')
       .order('published_at', { ascending: false, nullsFirst: false })
       .order('fetched_at', { ascending: false })
-      .range(offset, offset + limit);
-    
-    if (language && language !== 'all') {
-      query = query.eq('language', language);
-    }
+      .range(offset, offset + fetchLimit);
     
     if (search) {
-      query = query.or(`title.ilike.%${search}%,summary.ilike.%${search}%`);
+      ptQuery = ptQuery.or(`title.ilike.%${search}%,summary.ilike.%${search}%`);
     }
     
-    const { data, error } = await query;
+    // Fetch English articles as fallback
+    let enQuery = supabase
+      .from('news_articles')
+      .select('*')
+      .eq('category', category)
+      .eq('language', 'en')
+      .order('published_at', { ascending: false, nullsFirst: false })
+      .order('fetched_at', { ascending: false })
+      .range(offset, offset + fetchLimit);
     
-    if (error) {
-      console.error('Error fetching news:', error);
-      throw error;
+    if (search) {
+      enQuery = enQuery.or(`title.ilike.%${search}%,summary.ilike.%${search}%`);
     }
+    
+    const [ptResult, enResult] = await Promise.all([ptQuery, enQuery]);
+    
+    if (ptResult.error) {
+      console.error('Error fetching PT news:', ptResult.error);
+      throw ptResult.error;
+    }
+    
+    // Combine: Portuguese first, then English
+    const combined = [...(ptResult.data || []), ...(enResult.data || [])];
+    
+    // Remove duplicates
+    const deduplicated = deduplicateArticles(combined);
+    
+    // Sort by date, Portuguese first for same date
+    const sorted = deduplicated.sort((a, b) => {
+      const dateA = a.published_at ? new Date(a.published_at).getTime() : 0;
+      const dateB = b.published_at ? new Date(b.published_at).getTime() : 0;
+      
+      // If same day, prioritize Portuguese
+      if (Math.abs(dateA - dateB) < 86400000) { // Within 24h
+        if (a.language === 'pt' && b.language !== 'pt') return -1;
+        if (b.language === 'pt' && a.language !== 'pt') return 1;
+      }
+      
+      return dateB - dateA;
+    });
     
     return {
-      articles: data || [],
-      hasMore: (data?.length || 0) > limit,
+      articles: sorted.slice(0, limit),
+      hasMore: sorted.length > limit,
     };
   }
   
-  // For "all" category, fetch balanced from each category (33% each)
-  const perCategory = Math.ceil(limit / 3);
+  // For "all" category, fetch balanced from each category with PT priority
+  const perCategory = Math.ceil(fetchLimit / 3);
   const categoryOffset = Math.floor(offset / 3);
   
   const fetchCategory = async (cat: string) => {
-    let query = supabase
+    // Fetch Portuguese first
+    const ptQuery = supabase
       .from('news_articles')
       .select('*')
       .eq('category', cat)
+      .eq('language', 'pt')
       .order('published_at', { ascending: false, nullsFirst: false })
       .order('fetched_at', { ascending: false })
       .range(categoryOffset, categoryOffset + perCategory);
     
-    if (language && language !== 'all') {
-      query = query.eq('language', language);
-    }
+    // Fetch English as fallback
+    const enQuery = supabase
+      .from('news_articles')
+      .select('*')
+      .eq('category', cat)
+      .eq('language', 'en')
+      .order('published_at', { ascending: false, nullsFirst: false })
+      .order('fetched_at', { ascending: false })
+      .range(categoryOffset, categoryOffset + perCategory);
     
-    if (search) {
-      query = query.or(`title.ilike.%${search}%,summary.ilike.%${search}%`);
-    }
+    const [ptResult, enResult] = await Promise.all([ptQuery, enQuery]);
     
-    const { data } = await query;
-    return data || [];
+    // Combine and deduplicate
+    const combined = [...(ptResult.data || []), ...(enResult.data || [])];
+    return deduplicateArticles(combined);
   };
   
   // Fetch from all 3 categories in parallel
@@ -128,10 +224,20 @@ export async function getNewsArticles(options: {
     if (cars[i]) combined.push(cars[i]);
   }
   
-  // Sort by published date while maintaining some category balance
-  const sorted = combined.sort((a, b) => {
+  // Final deduplication across categories
+  const deduplicated = deduplicateArticles(combined);
+  
+  // Sort by date with Portuguese priority
+  const sorted = deduplicated.sort((a, b) => {
     const dateA = a.published_at ? new Date(a.published_at).getTime() : 0;
     const dateB = b.published_at ? new Date(b.published_at).getTime() : 0;
+    
+    // If same day, prioritize Portuguese
+    if (Math.abs(dateA - dateB) < 86400000) {
+      if (a.language === 'pt' && b.language !== 'pt') return -1;
+      if (b.language === 'pt' && a.language !== 'pt') return 1;
+    }
+    
     return dateB - dateA;
   });
   
