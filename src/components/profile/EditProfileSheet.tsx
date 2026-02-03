@@ -236,22 +236,29 @@ export const EditProfileSheet = ({
       const fileName = `avatar-${Date.now()}.jpg`;
       const filePath = `${userId}/${fileName}`;
 
-      // Upload to storage
+      // Upload to storage with upsert to handle existing files
       const { error: uploadError } = await supabase.storage
         .from("post-images")
         .upload(filePath, blob, {
           contentType: "image/jpeg",
+          upsert: true, // Allow overwriting existing files
         });
 
-      if (uploadError) throw uploadError;
+      if (uploadError) {
+        console.error("Upload error details:", uploadError);
+        throw uploadError;
+      }
 
-      // Get public URL
+      // Get public URL with cache-busting query param
       const { data: { publicUrl } } = supabase.storage
         .from("post-images")
         .getPublicUrl(filePath);
 
-      // Update form data - this will trigger auto-save
-      setFormData(prev => ({ ...prev, avatar_url: publicUrl }));
+      // Add cache-busting to URL to ensure new image is shown
+      const urlWithCacheBust = `${publicUrl}?t=${Date.now()}`;
+
+      // Update form data with cache-busted URL - this will trigger auto-save
+      setFormData(prev => ({ ...prev, avatar_url: urlWithCacheBust }));
       
       toast({
         title: t.common.success,

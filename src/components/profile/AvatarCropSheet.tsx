@@ -150,7 +150,16 @@ export const AvatarCropSheet = ({
 
   // Handle zoom
   const handleZoom = (newScale: number[]) => {
-    setScale(newScale[0]);
+    setScale(Math.max(0.5, Math.min(3, newScale[0])));
+  };
+
+  // Handle zoom buttons
+  const handleZoomIn = () => {
+    setScale(prev => Math.min(3, prev + 0.2));
+  };
+
+  const handleZoomOut = () => {
+    setScale(prev => Math.max(0.5, prev - 0.2));
   };
 
   // Handle rotation
@@ -211,8 +220,15 @@ export const AvatarCropSheet = ({
           </div>
 
           {/* Zoom Control */}
-          <div className="w-full max-w-xs flex items-center gap-4">
-            <ZoomOut className="h-5 w-5 text-muted-foreground" />
+          <div className="w-full max-w-xs flex items-center gap-3">
+            <button
+              type="button"
+              onClick={handleZoomOut}
+              className="p-2 rounded-full bg-muted hover:bg-muted/80 transition-colors active:scale-95"
+              aria-label="Diminuir zoom"
+            >
+              <ZoomOut className="h-5 w-5 text-foreground" />
+            </button>
             <Slider
               value={[scale]}
               onValueChange={handleZoom}
@@ -221,7 +237,14 @@ export const AvatarCropSheet = ({
               step={0.1}
               className="flex-1"
             />
-            <ZoomIn className="h-5 w-5 text-muted-foreground" />
+            <button
+              type="button"
+              onClick={handleZoomIn}
+              className="p-2 rounded-full bg-muted hover:bg-muted/80 transition-colors active:scale-95"
+              aria-label="Aumentar zoom"
+            >
+              <ZoomIn className="h-5 w-5 text-foreground" />
+            </button>
           </div>
 
           {/* Rotate Button */}
