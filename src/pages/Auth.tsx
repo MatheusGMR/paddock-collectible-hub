@@ -15,7 +15,9 @@ const getRedirectUri = () => {
   if (Capacitor.isNativePlatform()) {
     return "paddock://auth/callback";
   }
-  return window.location.origin;
+  // On web, return to /auth so we don't lose the OAuth callback params (code/state)
+  // due to the app auto-redirecting unauthenticated users.
+  return `${window.location.origin}/auth`;
 };
 
 // Check if running on native platform
