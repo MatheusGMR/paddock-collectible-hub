@@ -31,7 +31,7 @@ export const PricingSlide = ({ onStartTrial, isLoading }: PricingSlideProps) => 
   };
 
   return (
-    <div className="flex flex-col h-full px-6 py-4">
+    <div className="flex flex-col h-full px-6 py-2">
       {/* Top Section - Challenge Banner */}
       <div className="flex-1 flex flex-col items-center justify-center text-center min-h-0">
         {/* Challenge Badge */}

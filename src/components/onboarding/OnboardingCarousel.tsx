@@ -85,10 +85,10 @@ export const OnboardingCarousel = ({ onStartTrial, onSkip, isLoading }: Onboardi
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="fixed inset-0 z-50 bg-background flex flex-col"
+      className="fixed inset-0 z-50 bg-background flex flex-col pt-safe"
     >
-      {/* Header with Logo */}
-      <div className="flex items-center justify-center p-4">
+      {/* Header with Logo - with extra top padding for notch */}
+      <div className="flex items-center justify-center p-4 pt-2">
         <img src={paddockLogo} alt="Paddock" className="w-10 h-10" />
       </div>
 
@@ -136,8 +136,8 @@ export const OnboardingCarousel = ({ onStartTrial, onSkip, isLoading }: Onboardi
       </div>
 
       {/* Navigation Dots */}
-      <div className="p-6 pb-10">
-        <div className="flex justify-center gap-2">
+      <div className="p-6 pb-safe">
+        <div className="flex justify-center gap-2 pb-4">
           {Array.from({ length: totalSlides }).map((_, index) => (
             <button
               key={index}
