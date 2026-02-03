@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowLeft, UserPlus, UserMinus, Camera, Loader2, QrCode } from "lucide-react";
+import { ArrowLeft, UserPlus, UserMinus, Camera, Loader2, MessageCircle } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { ProfileTabs } from "@/components/profile/ProfileTabs";
@@ -23,6 +23,8 @@ import {
 } from "@/lib/database";
 import { useToast } from "@/hooks/use-toast";
 import { CollectionScannerSheet } from "@/components/social/CollectionScannerSheet";
+import { MessagesSheet } from "@/components/messages/MessagesSheet";
+import { getOrCreateConversation } from "@/lib/api/messages";
 import { trackInteraction } from "@/lib/analytics";
 
 const UserProfilePage = () => {
@@ -35,7 +37,9 @@ const UserProfilePage = () => {
   const [following, setFollowing] = useState(false);
   const [followLoading, setFollowLoading] = useState(false);
   const [scannerOpen, setScannerOpen] = useState(false);
-
+  const [messagesOpen, setMessagesOpen] = useState(false);
+  const [conversationId, setConversationId] = useState<string | null>(null);
+  const [loadingMessage, setLoadingMessage] = useState(false);
   const { user } = useAuth();
   const { t } = useLanguage();
   const { toast } = useToast();
@@ -125,6 +129,26 @@ const UserProfilePage = () => {
     }
   };
 
+  const handleOpenMessages = async () => {
+    if (!userId) return;
+    
+    setLoadingMessage(true);
+    try {
+      const convId = await getOrCreateConversation(userId);
+      setConversationId(convId);
+      setMessagesOpen(true);
+      trackInteraction("open_chat", `user_${userId}`, { target_user_id: userId });
+    } catch (error) {
+      console.error("Error opening messages:", error);
+      toast({
+        title: "Erro ao abrir mensagens",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingMessage(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -201,11 +225,22 @@ const UserProfilePage = () => {
             </Button>
             <Button
               variant="outline"
+              onClick={handleOpenMessages}
+              disabled={loadingMessage}
+              size="icon"
+            >
+              {loadingMessage ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <MessageCircle className="h-4 w-4" />
+              )}
+            </Button>
+            <Button
+              variant="outline"
               onClick={() => setScannerOpen(true)}
-              className="gap-2"
+              size="icon"
             >
               <Camera className="h-4 w-4" />
-              {t.social?.checkCollection || "Verificar"}
             </Button>
           </div>
         </div>
@@ -242,6 +277,18 @@ const UserProfilePage = () => {
         onOpenChange={setScannerOpen}
         targetUserId={userId!}
         targetUsername={profile.username}
+      />
+
+      {/* Messages Sheet */}
+      <MessagesSheet
+        open={messagesOpen}
+        onOpenChange={setMessagesOpen}
+        initialConversationId={conversationId}
+        initialOtherUser={profile ? {
+          user_id: userId!,
+          username: profile.username,
+          avatar_url: profile.avatar_url,
+        } : null}
       />
     </div>
   );
