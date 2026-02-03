@@ -536,15 +536,16 @@ export const ptBR = {
   // Challenge
   challenge: {
     title: "Desafio dos 50 Carrinhos",
-    remaining: "restantes para o 1º mês grátis",
+    remaining: "restantes para +30 dias grátis",
     completed: "Desafio concluído! 🎉",
     congratulations: "Parabéns! 🎉",
     challengeCompleted: "Você completou o desafio!",
     carsScanned: "carrinhos escaneados",
-    reward1: "1º mês totalmente grátis",
+    reward1: "+30 dias grátis (além do trial)",
     reward2: "50% de desconto permanente",
     newPrice: "De R$ 39,90 por apenas R$ 19,90/mês",
     claimReward: "Resgatar Recompensa",
+    bonusExplainer: "Adicional aos 7 dias de teste grátis",
   },
 };
 

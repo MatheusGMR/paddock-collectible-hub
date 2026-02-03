@@ -136,7 +136,7 @@ export const ChallengeCelebrationModal = () => {
             <div className="border-t border-border pt-3 space-y-2">
               <div className="flex items-center gap-2 text-sm">
                 <Check className="w-4 h-4 text-primary" />
-                <span className="text-foreground">{t.challenge?.reward1 || "1º mês totalmente grátis"}</span>
+                <span className="text-foreground">{t.challenge?.reward1 || "+30 dias grátis (além do trial)"}</span>
               </div>
               <div className="flex items-center gap-2 text-sm">
                 <Check className="w-4 h-4 text-primary" />
@@ -149,6 +149,11 @@ export const ChallengeCelebrationModal = () => {
                 </span>
               </div>
             </div>
+            
+            {/* Bonus explainer */}
+            <p className="text-xs text-muted-foreground/80 mt-3 text-center">
+              ✨ {t.challenge?.bonusExplainer || "Adicional aos 7 dias de teste grátis"}
+            </p>
           </motion.div>
 
           {/* CTA Button */}

@@ -30,7 +30,7 @@ export const ChallengeProgressBar = () => {
             <p className="text-[10px] text-muted-foreground">
               {isCompleted 
                 ? (t.challenge?.completed || "Desafio concluído! 🎉")
-                : `${remaining} ${t.challenge?.remaining || "restantes para o 1º mês grátis"}`}
+                : `${remaining} ${t.challenge?.remaining || "restantes para +30 dias grátis"}`}
             </p>
           </div>
         </div>
@@ -39,6 +39,11 @@ export const ChallengeProgressBar = () => {
           <span className="text-sm font-bold text-primary">{current}/{target}</span>
         </div>
       </div>
+      
+      {/* Bonus explainer */}
+      <p className="text-[9px] text-muted-foreground/70 mb-1.5 text-center">
+        ✨ {t.challenge?.bonusExplainer || "Adicional aos 7 dias de teste grátis"}
+      </p>
       
       {/* Progress bar */}
       <div className="h-2 bg-muted rounded-full overflow-hidden">
