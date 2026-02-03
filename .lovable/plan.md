@@ -1,110 +1,157 @@
 
 
-## O que eu revisei (e por que o problema pode ter continuado)
+# Plano: Corrigir Erros de UUID e Safe-Area no iOS
 
-Pelos arquivos atuais:
+## Diagnóstico dos Problemas
 
-- O app **tem suporte a safe-area** via CSS (`.pt-safe` em `src/index.css`) usando `env(safe-area-inset-top)`.
-- Várias telas já usam header com `pt-safe` (Feed, Notificações, Mercado/News, Admin, ListingDetails).
-- **O `/profile` é diferente**: o `ProfileHeader` (top bar com logo + botões) **não usa `pt-safe`** hoje — ele é só um `<div className="... px-4 py-3">`, então em iPhone com notch ele pode ficar “por baixo” do relógio/indicadores.
-- Além disso, o `AppLayout` aplica `pt-safe` no wrapper geral, mas **isso não é uma garantia para elementos “top bar”** (principalmente quando existem headers sticky/fixed). O caminho mais confiável é o próprio header/top bar aplicar o safe-area.
+### Problema 1: Erro de UUID nos Likes (Logs do Xcode)
+```
+Error checking like: {"code":"22P02","message":"invalid input syntax for type uuid: \"2\""}
+```
 
-Resultado provável: vocês corrigiram algumas telas, mas o **top bar do Perfil** continuou “cru”, então a sensação é “continua igual”.
+**Causa raiz identificada:**
+- O `PostCard` chama `hasLikedPost(post.id)` para verificar se o usuário curtiu o post
+- Quando não há posts reais no banco, o app exibe **mock posts** como fallback (IDs: "1", "2", "3", "4")
+- Esses IDs mock são strings numéricas simples, **não UUIDs válidos**
+- O banco de dados espera UUIDs no formato `xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx`
+- Ao tentar consultar `post_likes` com ID "2", o Postgres retorna erro 22P02
 
----
+**Código problemático (Index.tsx, linhas 59-65):**
+```typescript
+const displayPosts = posts.length > 0 ? posts : mockPosts.map(p => ({
+  ...p,
+  user: { ...p.user, id: undefined },
+  // post.id continua sendo "1", "2", "3", "4" - não é UUID!
+}));
+```
 
-## Objetivo do ajuste
-Garantir que **logo e botões do topo nunca entrem na área do status bar do iPhone**, mantendo o visual premium (background + blur) e sem efeitos colaterais nas outras telas.
-
----
-
-## Plano de ação (mudanças no app)
-
-### 1) Corrigir o topo do Perfil (principal causa)
-**Arquivo:** `src/components/profile/ProfileHeader.tsx`
-
-- Transformar o “Top Bar with Paddock Logo” em um verdadeiro **header sticky**, seguindo o mesmo padrão de `FeedHeader` / `Notifications`:
-  - `sticky top-0 z-40`
-  - `bg-background/95 backdrop-blur-lg border-b border-border`
-  - **`pt-safe`** para empurrar o conteúdo abaixo do status bar
-- Colocar o conteúdo do header dentro de um container com altura consistente:
-  - `div className="flex h-14 items-center justify-between px-4"`
-- O restante das infos do perfil (avatar, stats, bio, botão “Editar Perfil”) continua abaixo do header, como conteúdo normal.
-
-**Por que isso resolve:** o safe-area passa a estar exatamente no elemento que precisa respeitar o notch (logo e botões), não dependendo do padding do layout global.
-
----
-
-### 2) Padronizar a estratégia de safe-area para evitar “cada tela de um jeito”
-**Arquivos (provável):**
-- `src/components/layout/AppLayout.tsx`
-- (eventualmente) `src/pages/NotFound.tsx` (caso ele seja acessado dentro do layout)
-
-Hoje existe `pt-safe` no `AppLayout` e também nos headers de várias telas, o que pode gerar inconsistências (em algumas telas fica “duplicado”, em outras não resolve sticky/fixed do jeito esperado).
-
-Vou adotar uma estratégia única e previsível:
-
-**Opção recomendada (mais consistente para iPhone):**
-- Remover `pt-safe` do `AppLayout` (deixar o layout “neutro”).
-- Garantir que **toda tela que tem top bar/header** use `pt-safe` no próprio header (como já acontece na maioria).
-- Para telas sem header (ex.: 404), adicionar `pt-safe` no container principal daquela tela.
-
-Isso evita dependência de padding global e deixa a regra simples: “o que encosta no topo respeita o topo”.
+**Código que falha (PostCard.tsx, linhas 50-54):**
+```typescript
+useEffect(() => {
+  if (user && post.id) {
+    hasLikedPost(post.id).then(setLiked); // Chama API com ID "2" → ERRO
+  }
+}, [user, post.id]);
+```
 
 ---
 
-### 3) Hardening do CSS de safe-area (pequena melhoria preventiva)
-**Arquivo:** `src/index.css`
+### Problema 2: Safe-Area não funcionando no App Nativo
 
-- Ajustar os utilitários (`pt-safe`, etc.) para cobrir casos de iOS mais chatos/antigos com fallback melhor.
-- Exemplo do que faremos:
-  - garantir que o valor tenha fallback consistente (`0px`)
-  - (se necessário) adicionar suporte `constant(safe-area-inset-top)` como fallback legado (alguns iOS antigos)
+**Possíveis causas:**
+1. **Cache do WebView nativo** - O Capacitor pode estar servindo uma versão antiga do CSS
+2. **Configuração do Capacitor** - O arquivo `capacitor.config.json` não existe no projeto Lovable
+3. **Viewport/SafeArea do WKWebView** - Necessário configurar corretamente no iOS nativo
 
-Isso é uma melhoria de robustez; o principal fix é o header do Perfil.
-
----
-
-## Plano de validação (como vamos testar e garantir que ficou correto)
-
-### Checklist visual (iPhone)
-1. Abrir o app no iPhone (build novo) e testar:
-   - `/profile`: logo e botões **totalmente abaixo** do relógio/indicadores.
-   - `/` (Feed): header ok, sem “pular”/sem sobreposição ao scroll.
-   - `/notifications`: ok.
-   - `/mercado`: ok.
-2. Fazer scroll em cada tela e confirmar:
-   - headers sticky não “entram” no status bar.
-3. Confirmar que o background do topo fica correto (sem faixa “transparente estranha” no notch).
-
-### Se vocês estiverem usando app nativo (Capacitor)
-Depois que eu implementar as mudanças, para refletir no app instalado:
-- Exportar/atualizar o código no repositório
-- `git pull`
-- `npx cap sync`
-- gerar o build e reinstalar/atualizar no device
-
-(Se essa etapa for pulada, pode parecer “continua igual” mesmo com o código corrigido.)
+**Observação importante:** 
+O Capacitor precisa ser inicializado localmente após exportar o projeto para Git. Não existe `capacitor.config.json` no repositório do Lovable porque o Capacitor é configurado localmente após `npx cap init`.
 
 ---
 
-## Riscos e como vamos mitigar
-- **Risco:** mexer em safe-area global pode alterar espaçamento em outras telas.
-  - **Mitigação:** mudança mínima e localizada + validação nas 4 rotas principais.
-- **Risco:** telas sem header (404) ficarem muito “coladas” no topo.
-  - **Mitigação:** adicionar `pt-safe` apenas onde necessário.
+## Plano de Correção
+
+### Correção 1: Evitar chamadas de API para mock posts
+
+**Arquivo:** `src/components/feed/PostCard.tsx`
+
+**Alteração:** Verificar se o ID é um UUID válido antes de chamar `hasLikedPost()`
+
+```typescript
+// Função helper para validar UUID
+const isValidUUID = (id: string): boolean => {
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  return uuidRegex.test(id);
+};
+
+// No useEffect:
+useEffect(() => {
+  if (user && post.id && isValidUUID(post.id)) {
+    hasLikedPost(post.id).then(setLiked);
+  }
+}, [user, post.id]);
+```
+
+**Também aplicar a mesma validação:**
+- Na função `handleLike()` antes de chamar `likePost()`
 
 ---
 
-## Entregáveis (o que exatamente será alterado)
-- `ProfileHeader` com header sticky + `pt-safe` + layout igual aos demais headers
-- Estratégia de safe-area padronizada (ajuste no `AppLayout` + ajuste pontual onde faltar)
-- Pequeno hardening no utilitário CSS de safe-area
+### Correção 2: Documentar passos corretos para build iOS com safe-area
+
+O safe-area CSS está correto no código. O problema é provavelmente **cache do WebView** ou **configuração incorreta do viewport no iOS**.
+
+**Passos necessários após qualquer mudança de CSS:**
+
+1. `git pull` - baixar as últimas alterações
+2. `npm run build` - gerar novo bundle de produção
+3. `npx cap sync` - sincronizar o build com o projeto iOS
+4. No Xcode: **Product → Clean Build Folder** (⌘⇧K)
+5. Deletar o app do simulador/device
+6. Build and Run novamente
+
+**Verificação adicional no Xcode:**
+- Confirmar que o `index.html` tem a meta tag do viewport com `viewport-fit=cover`:
+  ```html
+  <meta name="viewport" content="viewport-fit=cover, width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  ```
 
 ---
 
-<lov-actions>
-  <lov-suggestion message="Depois do ajuste, teste o app no iPhone (com notch/Dynamic Island) e valide /profile, /, /notifications e /mercado, incluindo scroll, para garantir que nada entra na área do status bar.">Testar end-to-end no iPhone</lov-suggestion>
-  <lov-suggestion message="Criar um componente único de Header (ex.: <TopHeader/>) para reutilizar em todas as telas com padrão de safe-area, blur e altura h-14, evitando regressões futuras.">Padronizar Headers</lov-suggestion>
-</lov-actions>
+### Correção 3 (Opcional): Adicionar meta tag viewport-fit se não existir
+
+**Arquivo:** `index.html`
+
+Garantir que a meta tag viewport inclua `viewport-fit=cover` para que o iOS respeite os safe-area insets.
+
+---
+
+## Resumo das Alterações de Código
+
+| Arquivo | Alteração |
+|---------|-----------|
+| `src/components/feed/PostCard.tsx` | Adicionar validação de UUID antes de chamar APIs do banco |
+| `index.html` | Verificar/adicionar `viewport-fit=cover` na meta tag viewport |
+
+---
+
+## Impacto Esperado
+
+- ✅ Erros "invalid input syntax for type uuid" eliminados
+- ✅ Mock posts funcionam sem erros de console
+- ✅ Safe-area respeitado após clean build completo no Xcode
+
+---
+
+## Seção Técnica: Detalhes da Implementação
+
+### Validação de UUID (PostCard.tsx)
+
+```typescript
+// Antes do componente, adicionar função helper:
+const isValidUUID = (id: string): boolean => {
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  return uuidRegex.test(id);
+};
+
+// Linha ~50-54: Modificar useEffect
+useEffect(() => {
+  // Só consulta likes se for um UUID válido (posts reais, não mock)
+  if (user && post.id && isValidUUID(post.id)) {
+    hasLikedPost(post.id).then(setLiked);
+  }
+}, [user, post.id]);
+
+// Linha ~56-72: Modificar handleLike
+const handleLike = async () => {
+  // Não permitir like em mock posts
+  if (isLiking || !user || !isValidUUID(post.id)) return;
+  // ... resto do código
+};
+```
+
+### Meta Tag Viewport (index.html)
+
+```html
+<meta name="viewport" content="viewport-fit=cover, width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+```
 
