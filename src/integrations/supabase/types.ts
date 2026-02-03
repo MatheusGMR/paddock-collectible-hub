@@ -832,7 +832,11 @@ export type Database = {
       }
       user_subscriptions: {
         Row: {
+          challenge_completed_at: string | null
+          challenge_rewarded: boolean | null
+          challenge_target: number | null
           created_at: string
+          discount_applied: boolean | null
           id: string
           status: string
           stripe_customer_id: string | null
@@ -843,7 +847,11 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          challenge_completed_at?: string | null
+          challenge_rewarded?: boolean | null
+          challenge_target?: number | null
           created_at?: string
+          discount_applied?: boolean | null
           id?: string
           status?: string
           stripe_customer_id?: string | null
@@ -854,7 +862,11 @@ export type Database = {
           user_id: string
         }
         Update: {
+          challenge_completed_at?: string | null
+          challenge_rewarded?: boolean | null
+          challenge_target?: number | null
           created_at?: string
+          discount_applied?: boolean | null
           id?: string
           status?: string
           stripe_customer_id?: string | null

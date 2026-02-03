@@ -532,6 +532,20 @@ export const ptBR = {
     scanAnother: "Escanear outro item",
     connectWithUsers: "Conectar com Usuários",
   },
+
+  // Challenge
+  challenge: {
+    title: "Desafio dos 50 Carrinhos",
+    remaining: "restantes para o 1º mês grátis",
+    completed: "Desafio concluído! 🎉",
+    congratulations: "Parabéns! 🎉",
+    challengeCompleted: "Você completou o desafio!",
+    carsScanned: "carrinhos escaneados",
+    reward1: "1º mês totalmente grátis",
+    reward2: "50% de desconto permanente",
+    newPrice: "De R$ 39,90 por apenas R$ 19,90/mês",
+    claimReward: "Resgatar Recompensa",
+  },
 };
 
 export type Translations = typeof ptBR;

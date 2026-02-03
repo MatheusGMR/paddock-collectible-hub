@@ -13,6 +13,7 @@ import { GuidedTipsProvider, useGuidedTips } from "@/contexts/GuidedTipsContext"
 import { SpotlightOverlay } from "@/components/guided-tips/SpotlightOverlay";
 import { OnboardingCarousel } from "@/components/onboarding/OnboardingCarousel";
 import { SubscriptionGate } from "@/components/onboarding/SubscriptionGate";
+import { ChallengeCelebrationModal } from "@/components/challenge/ChallengeCelebrationModal";
 import { usePageTracking } from "@/hooks/usePageTracking";
 import Index from "./pages/Index";
 import Mercado from "./pages/Mercado";
@@ -268,6 +269,7 @@ const App = () => {
                 <BrowserRouter>
                   <AppContent />
                   <SpotlightOverlay />
+                  <ChallengeCelebrationModal />
                 </BrowserRouter>
               </TooltipProvider>
             </GuidedTipsProvider>
