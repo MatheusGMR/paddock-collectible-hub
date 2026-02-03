@@ -6,6 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useScreenTips } from "@/hooks/useScreenTips";
+import { useThemeColor } from "@/hooks/useThemeColor";
 import { addToCollection, checkDuplicateInCollection } from "@/lib/database";
 import { useNavigate } from "react-router-dom";
 import { CaptureButton } from "@/components/scanner/CaptureButton";
@@ -90,6 +91,9 @@ interface RealCarAnalysisResponse {
 const MAX_RECORDING_DURATION = 15; // seconds (reduced for AI processing)
 
 export const ScannerView = () => {
+  // Set notch/status bar to black for immersive camera experience
+  useThemeColor("scanner");
+  
   // Trigger guided tips for scanner screen
   useScreenTips("scanner", 1000);
   const [isScanning, setIsScanning] = useState(false);
