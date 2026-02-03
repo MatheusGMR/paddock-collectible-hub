@@ -1067,7 +1067,7 @@ export const ScannerView = () => {
           <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 pointer-events-none">
             <PaddockLogo 
               variant="wordmark" 
-              size={24} 
+              size={30} 
               className="opacity-30"
             />
           </div>
