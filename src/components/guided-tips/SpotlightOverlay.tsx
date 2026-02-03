@@ -44,8 +44,8 @@ export const SpotlightOverlay = () => {
     const bottomMargin = Math.max(safeMargin, safeAreaBottom + 8);
     
     // Responsive tooltip width - ensure it fits within screen with margins
-    const maxTooltipWidth = Math.min(viewportWidth - safeMargin * 2, 320);
-    const tooltipHeight = 200; // Approximate height with some buffer
+    const maxTooltipWidth = Math.min(viewportWidth - safeMargin * 2, 300);
+    const tooltipHeight = 180; // Reduced for better fit on small screens
 
     if (currentTip.targetSelector) {
       const element = document.querySelector(currentTip.targetSelector);
@@ -239,24 +239,27 @@ export const SpotlightOverlay = () => {
           </motion.div>
         )}
 
-        {/* Tooltip card */}
+        {/* Tooltip card - ensure it's always visible and interactive */}
         <motion.div
           initial={{ scale: 0.9, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           transition={{ delay: 0.1, type: "spring", stiffness: 300, damping: 25 }}
           style={tooltipStyle}
-          className="bg-card border border-border rounded-2xl p-4 shadow-2xl overflow-hidden"
+          className="bg-card border border-border rounded-2xl p-4 shadow-2xl overflow-visible z-[110]"
         >
-          {/* Skip button */}
+          {/* Skip button - always visible and clickable */}
           <button
-            onClick={skipAllTips}
-            className="absolute top-2 right-2 p-1.5 bg-muted rounded-full text-muted-foreground hover:text-foreground transition-colors z-10"
+            onClick={(e) => {
+              e.stopPropagation();
+              skipAllTips();
+            }}
+            className="absolute top-2 right-2 p-2 bg-muted rounded-full text-muted-foreground hover:text-foreground transition-colors z-20 min-w-[32px] min-h-[32px] flex items-center justify-center"
           >
             <X className="h-4 w-4" />
           </button>
 
           {/* Title */}
-          <h3 className="text-base sm:text-lg font-bold text-foreground mb-2 pr-8">
+          <h3 className="text-base sm:text-lg font-bold text-foreground mb-2 pr-10">
             {currentTip.title}
           </h3>
 
@@ -283,11 +286,14 @@ export const SpotlightOverlay = () => {
               ))}
             </div>
 
-            {/* Action button */}
+            {/* Action button - larger touch target */}
             <Button
-              onClick={nextTip}
+              onClick={(e) => {
+                e.stopPropagation();
+                nextTip();
+              }}
               size="sm"
-              className="gap-1 flex-shrink-0"
+              className="gap-1 flex-shrink-0 min-h-[40px] px-4"
             >
               {currentTip.action || "Próximo"}
               {currentTipIndex < totalTipsInScreen - 1 && (
