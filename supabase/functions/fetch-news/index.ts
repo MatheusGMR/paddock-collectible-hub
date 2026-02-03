@@ -45,24 +45,58 @@ function parseRSSXML(xml: string): RSSItem[] {
       return match ? match[1] : undefined;
     };
 
+    // Try multiple image sources in RSS
+    const enclosureUrl = getAttr('enclosure', 'url');
+    const mediaContentUrl = getAttr('media:content', 'url');
+    const mediaThumbnailUrl = getAttr('media:thumbnail', 'url');
+    const imageUrl = getAttr('image', 'url') || getTagContent('image');
+    const itunesImageUrl = getAttr('itunes:image', 'href');
+
     items.push({
       title: getTagContent('title'),
       description: getTagContent('description') || getTagContent('content:encoded'),
       link: getTagContent('link'),
       pubDate: getTagContent('pubDate') || getTagContent('dc:date'),
-      enclosure: { url: getAttr('enclosure', 'url') },
-      'media:content': { url: getAttr('media:content', 'url') },
-      'media:thumbnail': { url: getAttr('media:thumbnail', 'url') },
+      enclosure: { url: enclosureUrl },
+      'media:content': { url: mediaContentUrl },
+      'media:thumbnail': { url: mediaThumbnailUrl || imageUrl || itunesImageUrl },
     });
   }
   
   return items;
 }
 
-// Extract image from HTML content
+// Extract image from HTML content - improved version
 function extractImageFromHTML(html: string): string | null {
+  // Try standard img tags
   const imgMatch = html.match(/<img[^>]+src=["']([^"']+)["']/i);
-  return imgMatch ? imgMatch[1] : null;
+  if (imgMatch && isValidImageUrl(imgMatch[1])) {
+    return imgMatch[1];
+  }
+  
+  // Try figure/picture elements
+  const figureMatch = html.match(/<figure[^>]*>[\s\S]*?<img[^>]+src=["']([^"']+)["']/i);
+  if (figureMatch && isValidImageUrl(figureMatch[1])) {
+    return figureMatch[1];
+  }
+  
+  // Try data-src (lazy loading)
+  const dataSrcMatch = html.match(/<img[^>]+data-src=["']([^"']+)["']/i);
+  if (dataSrcMatch && isValidImageUrl(dataSrcMatch[1])) {
+    return dataSrcMatch[1];
+  }
+  
+  return null;
+}
+
+// Validate image URL
+function isValidImageUrl(url: string): boolean {
+  if (!url) return false;
+  // Exclude small icons, tracking pixels, etc.
+  const excluded = ['1x1', 'pixel', 'tracking', 'blank', 'spacer', 'avatar', 'icon', 'logo', 'favicon'];
+  const lowerUrl = url.toLowerCase();
+  return !excluded.some(ex => lowerUrl.includes(ex)) && 
+         (url.startsWith('http://') || url.startsWith('https://'));
 }
 
 // Clean HTML tags from text
@@ -76,6 +110,49 @@ function cleanHTML(html: string): string {
     .replace(/&quot;/g, '"')
     .replace(/&#39;/g, "'")
     .trim();
+}
+
+// Fetch og:image from article URL
+async function fetchOgImage(url: string): Promise<string | null> {
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+    
+    const response = await fetch(url, {
+      headers: { 'User-Agent': 'Paddock News Bot/1.0' },
+      signal: controller.signal,
+    });
+    clearTimeout(timeout);
+    
+    if (!response.ok) return null;
+    
+    const html = await response.text();
+    
+    // Try og:image
+    const ogMatch = html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i) ||
+                    html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i);
+    if (ogMatch && isValidImageUrl(ogMatch[1])) {
+      return ogMatch[1];
+    }
+    
+    // Try twitter:image
+    const twitterMatch = html.match(/<meta[^>]+name=["']twitter:image["'][^>]+content=["']([^"']+)["']/i) ||
+                         html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+name=["']twitter:image["']/i);
+    if (twitterMatch && isValidImageUrl(twitterMatch[1])) {
+      return twitterMatch[1];
+    }
+    
+    // Try first large image in article
+    const imgMatch = html.match(/<article[^>]*>[\s\S]*?<img[^>]+src=["']([^"']+)["']/i);
+    if (imgMatch && isValidImageUrl(imgMatch[1])) {
+      return imgMatch[1];
+    }
+    
+    return null;
+  } catch (error) {
+    console.log(`Failed to fetch og:image for ${url}:`, error);
+    return null;
+  }
 }
 
 async function fetchRSSFeed(source: {
@@ -99,19 +176,29 @@ async function fetchRSSFeed(source: {
     const xml = await response.text();
     const items = parseRSSXML(xml);
     
-    return items.slice(0, 10).map(item => {
-      const description = item.description || '';
-      const imageUrl = item.enclosure?.url || 
-                       item['media:content']?.url || 
-                       item['media:thumbnail']?.url ||
-                       extractImageFromHTML(description);
+    // Process items and try to get images
+    const processedItems: NewsArticle[] = [];
+    
+    for (const item of items.slice(0, 10)) {
+      if (!item.link) continue;
       
-      return {
+      const description = item.description || '';
+      let imageUrl = item.enclosure?.url || 
+                     item['media:content']?.url || 
+                     item['media:thumbnail']?.url ||
+                     extractImageFromHTML(description);
+      
+      // If no image found in RSS, try to fetch og:image from the article
+      if (!imageUrl || !isValidImageUrl(imageUrl)) {
+        imageUrl = await fetchOgImage(item.link);
+      }
+      
+      processedItems.push({
         title: item.title || 'Untitled',
         summary: cleanHTML(description).substring(0, 300),
         content: null,
         image_url: imageUrl,
-        source_url: item.link || '',
+        source_url: item.link,
         source_name: source.name,
         source_logo: source.logo_url || null,
         category: source.category,
@@ -119,8 +206,10 @@ async function fetchRSSFeed(source: {
         published_at: item.pubDate ? new Date(item.pubDate).toISOString() : null,
         language: source.language,
         tags: [],
-      };
-    }).filter(a => a.source_url);
+      });
+    }
+    
+    return processedItems;
   } catch (error) {
     console.error(`Error fetching RSS ${source.name}:`, error);
     return [];
