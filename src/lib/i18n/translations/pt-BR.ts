@@ -221,7 +221,7 @@ export const ptBR = {
     language: "Idioma",
     portuguese: "Português",
     english: "Inglês",
-    items: "itens",
+    items: "Máquinas",
     noPostsYet: "Nenhum post ainda",
     scanItemsToAdd: "Escaneie itens para adicionar à sua coleção",
     emptyCollection: "Sua coleção está vazia",

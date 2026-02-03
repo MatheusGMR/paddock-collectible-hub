@@ -187,7 +187,7 @@ const UserProfilePage = () => {
             </Avatar>
 
             <div className="flex flex-1 justify-around pt-2">
-              <StatItem value={stats.collection} label={t.profile?.items || "Itens"} />
+              <StatItem value={stats.collection} label={t.profile?.items || "Máquinas"} />
               <StatItem value={stats.followers} label={t.profile?.followers || "Seguidores"} />
               <StatItem value={stats.following} label={t.profile?.following || "Seguindo"} />
             </div>
