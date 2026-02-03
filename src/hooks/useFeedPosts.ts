@@ -21,6 +21,12 @@ export interface FeedPost {
     manufacturer: string | null;
   } | null;
   createdAt: string;
+  topComment: {
+    id: string;
+    content: string;
+    username: string;
+    likesCount: number;
+  } | null;
 }
 
 const PAGE_SIZE = 10;
@@ -130,10 +136,48 @@ export const useFeedPosts = () => {
         }
       }
 
+      // Fetch top comment for each post (most liked)
+      const postIds = postsData.map(p => p.id);
+      const { data: topComments } = await supabase
+        .from("post_comments")
+        .select("id, post_id, content, user_id, likes_count")
+        .in("post_id", postIds)
+        .order("likes_count", { ascending: false });
+
+      // Get unique commenter user IDs
+      const commenterIds = [...new Set(topComments?.map(c => c.user_id) || [])];
+      let commenterProfilesMap = new Map<string, { username: string }>();
+      
+      if (commenterIds.length > 0) {
+        const { data: commenterProfiles } = await supabase
+          .from("profiles")
+          .select("user_id, username")
+          .in("user_id", commenterIds);
+        
+        commenterProfilesMap = new Map(
+          commenterProfiles?.map(p => [p.user_id, { username: p.username }]) || []
+        );
+      }
+
+      // Build top comment map (only first/top comment per post)
+      const topCommentMap = new Map<string, { id: string; content: string; username: string; likesCount: number }>();
+      topComments?.forEach(comment => {
+        if (!topCommentMap.has(comment.post_id)) {
+          const commenter = commenterProfilesMap.get(comment.user_id);
+          topCommentMap.set(comment.post_id, {
+            id: comment.id,
+            content: comment.content,
+            username: commenter?.username || "Usuário",
+            likesCount: comment.likes_count,
+          });
+        }
+      });
+
       // Map posts to FeedPost format
       const mappedPosts: FeedPost[] = postsData.map(post => {
         const profile = profilesMap.get(post.user_id);
         const item = post.collection_item_id ? itemsMap.get(post.collection_item_id) : null;
+        const topComment = topCommentMap.get(post.id) || null;
 
         return {
           id: post.id,
@@ -155,6 +199,7 @@ export const useFeedPosts = () => {
             manufacturer: item.collectible_manufacturer,
           } : null,
           createdAt: formatRelativeTime(post.created_at),
+          topComment,
         };
       });
 

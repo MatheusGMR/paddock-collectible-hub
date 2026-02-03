@@ -29,6 +29,12 @@ interface PostCardProps {
       manufacturer?: string | null;
     } | null;
     createdAt: string;
+    topComment?: {
+      id: string;
+      content: string;
+      username: string;
+      likesCount: number;
+    } | null;
   };
 }
 
@@ -221,6 +227,28 @@ export const PostCard = ({ post }: PostCardProps) => {
             year: post.item.year || "",
             scale: post.item.scale || "1:64",
           }} />
+        </div>
+      )}
+
+      {/* Top Comment */}
+      {post.topComment && (
+        <div className="px-4 pb-2">
+          <p className="text-sm">
+            <span className="font-semibold">{post.topComment.username}</span>{" "}
+            <span className="text-foreground/80">{post.topComment.content}</span>
+          </p>
+        </div>
+      )}
+
+      {/* View all comments link */}
+      {post.comments > 1 && (
+        <div className="px-4 pb-2">
+          <button 
+            onClick={handleComment}
+            className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            Ver todos os {post.comments} comentários
+          </button>
         </div>
       )}
 
