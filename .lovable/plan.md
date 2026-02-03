@@ -1,121 +1,53 @@
 
-# Plano: Aprimorar Splash Screen Mobile com Efeito Premium
+
+# Plano: Atualizar Price ID para Produção
 
 ## Objetivo
-Replicar o efeito visual premium do preview web na splash screen móvel, adicionando um acabamento de fundo elegante com gradientes e brilho difuso atrás do logo.
+Substituir o price_id de teste pelo price_id de produção na Edge Function de assinatura.
 
 ---
 
-## Situação Atual
+## Alteração Necessária
 
-O `SplashScreen.tsx` atualmente possui:
-- Fundo sólido `#0E1117` (preto-azulado)
-- Logo Paddock centralizado com sombra sutil (`drop-shadow`)
-- Barra de progresso animada na parte inferior
+### Arquivo: `supabase/functions/create-subscription/index.ts`
 
-**O que falta:** O efeito de "glow" premium - gradientes radiais suaves que criam profundidade e sofisticação visual.
+**Linha 15 - Atualização do Price ID:**
+
+| Antes (Teste) | Depois (Produção) |
+|---------------|-------------------|
+| `price_1SuvHzP5JKEiOwRjVH443L2J` | `price_1SwrJfAmjEfh8Sz78f61BFur` |
 
 ---
 
-## Alterações Propostas
-
-### 1. Adicionar Gradientes de Fundo Premium
-
-Criar camadas de gradiente radial que emanam do centro (atrás do logo):
+## Detalhes da Configuração de Produção
 
 ```text
-┌─────────────────────────────────┐
-│                                 │
-│     ░░░░░░░░░░░░░░░░░░░░░      │
-│   ░░░░░▓▓▓▓▓▓▓▓▓▓▓░░░░░░░░░░   │
-│  ░░░░▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓░░░░░░░░░  │
-│ ░░░░▓▓▓▓▓▓▓███▓▓▓▓▓▓▓░░░░░░░░░ │
-│ ░░░░▓▓▓▓▓▓█LOGO█▓▓▓▓▓░░░░░░░░░ │
-│ ░░░░▓▓▓▓▓▓▓███▓▓▓▓▓▓▓░░░░░░░░░ │
-│  ░░░░▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓░░░░░░░░░  │
-│   ░░░░░▓▓▓▓▓▓▓▓▓▓▓░░░░░░░░░░   │
-│     ░░░░░░░░░░░░░░░░░░░░░      │
-│                                 │
-│           [═══════]             │
-└─────────────────────────────────┘
-    ░ = gradiente externo suave
-    ▓ = gradiente interno (glow azul)
-```
-
-### 2. Estrutura de Camadas
-
-**Camada 1 - Base:** Fundo sólido `#0E1117`
-
-**Camada 2 - Gradiente Principal:** Radial gradient azul ciano emanando do centro
-- Cor: `rgba(76, 195, 255, 0.15)` → transparente
-- Tamanho: ~60% da tela
-
-**Camada 3 - Gradiente Secundário:** Toque de azul escuro/roxo para profundidade
-- Cor: `rgba(30, 64, 175, 0.08)` → transparente  
-- Posição: ligeiramente deslocado para baixo
-
-**Camada 4 - Logo:** Com drop-shadow intensificado
-
-### 3. Animação Sutil (Opcional)
-
-Adicionar animação de "respiração" no glow principal:
-- Opacidade oscila suavemente entre 0.1 e 0.2
-- Transição de 3-4 segundos
-- Cria sensação de "vivo" e premium
-
----
-
-## Arquivo a Modificar
-
-`src/components/SplashScreen.tsx`
-
----
-
-## Detalhes Técnicos
-
-### Código dos Gradientes
-
-```css
-/* Gradiente principal - glow azul ciano */
-background: radial-gradient(
-  ellipse 50% 50% at 50% 45%,
-  rgba(76, 195, 255, 0.12) 0%,
-  rgba(76, 195, 255, 0.04) 40%,
-  transparent 70%
-);
-
-/* Gradiente secundário - profundidade azul escuro */
-background: radial-gradient(
-  ellipse 70% 60% at 50% 55%,
-  rgba(30, 64, 175, 0.08) 0%,
-  transparent 60%
-);
-```
-
-### Animação de Pulso
-
-```css
-@keyframes glow-pulse {
-  0%, 100% { opacity: 0.8; }
-  50% { opacity: 1; }
-}
+┌─────────────────────────────────────────┐
+│         Stripe Live Mode                │
+├─────────────────────────────────────────┤
+│  Produto: Paddock Premium               │
+│  Product ID: prod_Tugh2KsoW3RYZT        │
+│  Price ID: price_1SwrJfAmjEfh8Sz78f61BFur │
+│  Valor: R$ 19,90/mês                    │
+│  Moeda: BRL                             │
+│  Tipo: Recorrente (mensal)              │
+└─────────────────────────────────────────┘
 ```
 
 ---
 
-## Resultado Esperado
+## Impacto
 
-| Antes | Depois |
-|-------|--------|
-| Fundo plano e sólido | Fundo com profundidade e brilho |
-| Logo com sombra sutil | Logo com halo de luz difusa |
-| Visual básico | Visual premium alinhado com a identidade Paddock |
+- ✅ Checkout embedded funcionará com pagamentos reais
+- ✅ Assinaturas serão cobradas na conta Stripe de produção
+- ✅ 7 dias de trial gratuito mantido
+- ✅ Cupom de 50% para vencedores do desafio mantido
 
 ---
 
-## Compatibilidade
+## Próximos Passos Após Implementação
 
-- ✅ Funciona em iOS (Capacitor)
-- ✅ Funciona em Android (Capacitor)  
-- ✅ Funciona no preview web
-- ✅ Transição suave para a Launch Screen nativa do Xcode (ambas têm fundo escuro similar)
+1. Testar o fluxo de checkout completo
+2. Verificar se o Customer Portal está configurado no Stripe Live
+3. Confirmar que o webhook (se houver) está apontando para produção
+
