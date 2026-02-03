@@ -1,123 +1,48 @@
 
 
-# Diagnóstico: App Nativo Não Reflete Mudanças do Preview
+# Plano: Adicionar Indicador Visual de Versão para Debug
 
-## Causa Raiz Identificada
-
-O problema está na **configuração do Capacitor no seu ambiente local**. 
-
-De acordo com a memória do projeto (`architecture/ios-native-config`), existe uma configuração de `server.url` no `capacitor.config.ts` que é usada durante desenvolvimento para hot-reload:
-
-```json
-"server": {
-  "url": "https://ec821420-56a9-4147-adde-54a8d514aaac.lovableproject.com?forceHideBadge=true",
-  "cleartext": true
-}
-```
-
-**O que está acontecendo:**
-- Quando essa configuração está presente, o app nativo carrega o conteúdo diretamente da URL do Lovable (servidor remoto)
-- Isso é útil para desenvolvimento (hot-reload), mas **ignora completamente o bundle local**
-- Portanto, mesmo fazendo `npm run build` e `npx cap sync`, o app continua carregando a versão do servidor
-
-**Por que parece "diferente":**
-- O preview do Lovable mostra as mudanças imediatamente (é a versão mais recente do código)
-- O app nativo está carregando do servidor Lovable também, MAS pode haver:
-  - Cache do servidor de CDN
-  - Cache do próprio WKWebView iOS
-  - A versão publicada (live) vs versão de preview
+## Objetivo
+Adicionar um indicador visual temporário ("BUILD v2") no header do Profile para confirmar se o bundle local está sendo carregado corretamente no app nativo iOS.
 
 ---
 
-## Plano de Ação
+## Alteração
 
-### Solução Imediata (Para Testes)
+### Arquivo: `src/components/profile/ProfileHeader.tsx`
 
-Remover temporariamente a seção `server` do arquivo `capacitor.config.ts` no seu ambiente local:
+Adicionar um badge/texto visível ao lado do logo ou dos botões do header:
 
-**Antes:**
 ```typescript
-const config: CapacitorConfig = {
-  appId: 'app.lovable.ec82142056a94147adde54a8d514aaac',
-  appName: 'paddock-collectible-hub',
-  webDir: 'dist',
-  server: {
-    url: 'https://ec821420-56a9-4147-adde-54a8d514aaac.lovableproject.com?forceHideBadge=true',
-    cleartext: true
-  }
-};
+// No header, adicionar um indicador visual temporário
+<span className="text-xs font-bold text-red-500 bg-red-100 px-2 py-0.5 rounded">
+  BUILD v2
+</span>
 ```
 
-**Depois:**
-```typescript
-const config: CapacitorConfig = {
-  appId: 'app.lovable.ec82142056a94147adde54a8d514aaac',
-  appName: 'paddock-collectible-hub',
-  webDir: 'dist'
-  // server removido para usar bundle local
-};
-```
+**Posição sugerida:** Entre o logo do Paddock e os botões de ação (Search, QR, Settings), para ser bem visível.
 
 ---
 
-### Fluxo Completo de Build (Após Remover server.url)
+## Como Testar
 
-1. **No repositório local:**
-   ```bash
-   git pull origin main
-   npm install
-   npm run build
-   npx cap sync
-   ```
+Após a implementação:
 
-2. **No Xcode:**
-   - Product → Clean Build Folder (⌘⇧K)
-   - Deletar o app do iPhone/simulador
-   - Build and Run (⌘R)
+1. `git pull`
+2. `npm run build`
+3. `npx cap sync`
+4. No Xcode: Product → Clean Build Folder (⌘⇧K)
+5. Deletar o app do iPhone
+6. Build and Run
 
----
-
-### Entendendo as Duas Modalidades
-
-| Modo | Configuração | Uso |
-|------|--------------|-----|
-| **Desenvolvimento (hot-reload)** | `server.url` presente | Mudanças no Lovable aparecem instantaneamente no app |
-| **Produção (bundle local)** | `server` removido | App usa os arquivos compilados em `/dist` |
+**Resultado esperado:**
+- Se você VER "BUILD v2" em vermelho no topo do Profile → o bundle local está funcionando
+- Se você NÃO VER "BUILD v2" → o app ainda está carregando de outra fonte (cache, servidor remoto, etc.)
 
 ---
 
-## Por Que o Safe-Area Pode Ainda Não Funcionar
+## Próximos Passos (Após Confirmação)
 
-Mesmo após usar o bundle local, se o safe-area não funcionar:
-
-1. **Verificar o viewport no bundle gerado:**
-   - Abra o arquivo `dist/index.html` após rodar `npm run build`
-   - Confirme que contém: `viewport-fit=cover`
-
-2. **Verificar configuração nativa do Xcode:**
-   - No projeto iOS, verificar se o `Info.plist` ou storyboard não está sobrescrevendo o comportamento do WebView
-
-3. **WKWebView precisa de configuração específica:**
-   - O Capacitor 8+ já deve lidar com isso automaticamente, mas vale verificar
-
----
-
-## Recomendação Final
-
-Para produção/TestFlight/App Store:
-- **SEMPRE** remova a seção `server` do `capacitor.config.ts`
-- Use o bundle local para garantir que a versão correta está embarcada
-
-Para desenvolvimento diário:
-- Mantenha a seção `server` para ter hot-reload instantâneo
-- Mas lembre que isso carrega do servidor, não do bundle local
-
----
-
-## Resumo
-
-| Problema | Causa | Solução |
-|----------|-------|---------|
-| App não reflete mudanças | `server.url` no capacitor.config.ts | Remover a seção `server` e fazer build local |
-| Safe-area não funciona | CSS não chegando ao app | Após remover server.url, fazer clean build completo |
+- Se funcionar: removeremos o indicador e continuamos com os ajustes visuais
+- Se não funcionar: investigaremos mais a fundo a configuração do Capacitor/Xcode
 
