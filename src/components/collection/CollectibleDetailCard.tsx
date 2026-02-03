@@ -1,8 +1,19 @@
 import { useState } from "react";
-import { X, Car, Package, History, ChevronDown, ChevronUp } from "lucide-react";
+import { X, Car, Package, History, ChevronDown, ChevronUp, Trash2, Loader2 } from "lucide-react";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerClose } from "@/components/ui/drawer";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
+import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { IndexBadge } from "@/components/index/IndexBadge";
 import { IndexBreakdown } from "@/components/index/IndexBreakdown";
 import { PriceIndexBreakdown, getRarityTier } from "@/lib/priceIndex";
@@ -38,6 +49,7 @@ interface CollectibleDetailCardProps {
   item: CollectibleDetailItem | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onDelete?: (id: string) => Promise<void>;
 }
 
 interface CollapsibleSectionProps {
@@ -80,14 +92,28 @@ const DetailRow = ({ label, value }: { label: string; value: string | null | und
   );
 };
 
-export const CollectibleDetailCard = ({ item, open, onOpenChange }: CollectibleDetailCardProps) => {
+export const CollectibleDetailCard = ({ item, open, onOpenChange, onDelete }: CollectibleDetailCardProps) => {
   const [breakdownOpen, setBreakdownOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   
   if (!item?.item) return null;
   
   const { item: data } = item;
   const score = data.price_index ?? 0;
   const tier = data.rarity_tier ?? getRarityTier(score);
+
+  const handleDelete = async () => {
+    if (!onDelete) return;
+    setIsDeleting(true);
+    try {
+      await onDelete(item.id);
+      setDeleteDialogOpen(false);
+      onOpenChange(false);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   return (
     <>
@@ -200,6 +226,18 @@ export const CollectibleDetailCard = ({ item, open, onOpenChange }: CollectibleD
                 />
               </div>
               
+              {/* Delete Button */}
+              {onDelete && (
+                <Button
+                  variant="destructive"
+                  className="w-full"
+                  onClick={() => setDeleteDialogOpen(true)}
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Remover da Coleção
+                </Button>
+              )}
+              
               {/* Bottom padding for safe area */}
               <div className="h-8" />
             </div>
@@ -217,6 +255,36 @@ export const CollectibleDetailCard = ({ item, open, onOpenChange }: CollectibleD
           breakdown={data.index_breakdown}
         />
       )}
+      
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remover da Coleção</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja remover "{data.real_car_brand} {data.real_car_model}" da sua coleção? 
+              Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Removendo...
+                </>
+              ) : (
+                "Remover"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 };

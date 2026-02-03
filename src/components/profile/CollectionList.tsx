@@ -2,10 +2,13 @@ import { useState, useMemo } from "react";
 import { ChevronRight, ChevronDown } from "lucide-react";
 import { CollectibleDetailCard, CollectibleDetailItem } from "@/components/collection/CollectibleDetailCard";
 import { CollectionFilters, CollectionSortOption } from "./CollectionFilters";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 interface CollectionListProps {
   items: CollectibleDetailItem[];
+  onItemDeleted?: () => void;
 }
 
 // Country flags and labels
@@ -65,7 +68,7 @@ interface GroupedItems {
   items: CollectibleDetailItem[];
 }
 
-export const CollectionList = ({ items }: CollectionListProps) => {
+export const CollectionList = ({ items, onItemDeleted }: CollectionListProps) => {
   const [selectedItem, setSelectedItem] = useState<CollectibleDetailItem | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [sortOption, setSortOption] = useState<CollectionSortOption>("name");
@@ -74,6 +77,21 @@ export const CollectionList = ({ items }: CollectionListProps) => {
   const handleItemClick = (item: CollectibleDetailItem) => {
     setSelectedItem(item);
     setDrawerOpen(true);
+  };
+
+  const handleDeleteItem = async (id: string) => {
+    const { error } = await supabase
+      .from("user_collection")
+      .delete()
+      .eq("id", id);
+
+    if (error) {
+      toast.error("Erro ao remover item da coleção");
+      throw error;
+    }
+
+    toast.success("Item removido da coleção");
+    onItemDeleted?.();
   };
 
   const toggleGroup = (key: string) => {
@@ -213,6 +231,7 @@ export const CollectionList = ({ items }: CollectionListProps) => {
         item={selectedItem}
         open={drawerOpen}
         onOpenChange={setDrawerOpen}
+        onDelete={handleDeleteItem}
       />
     </>
   );
