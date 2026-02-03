@@ -10,19 +10,8 @@ interface RealCarPhotoCarouselProps {
   carModel?: string;
 }
 
-// Generate search-based image URLs from Picsum (more reliable than Unsplash source)
-const generateFallbackImageUrls = (brand: string, model: string): string[] => {
-  // Using Picsum for reliable placeholder images with variety
-  // These generate different images based on the seed
-  const baseSeed = `${brand}-${model}`.replace(/\s+/g, '-').toLowerCase();
-  return [
-    `https://picsum.photos/seed/${baseSeed}-1/800/500`,
-    `https://picsum.photos/seed/${baseSeed}-2/800/500`,
-    `https://picsum.photos/seed/${baseSeed}-3/800/500`,
-    `https://picsum.photos/seed/${baseSeed}-4/800/500`,
-    `https://picsum.photos/seed/${baseSeed}-5/800/500`,
-  ];
-};
+// Only use photos that are provided - no fallback to random images
+// The AI analysis should provide real car photos, if not available we simply don't show this section
 
 export const RealCarPhotoCarousel = ({ 
   photos, 
@@ -36,7 +25,7 @@ export const RealCarPhotoCarousel = ({
   const [failedImages, setFailedImages] = useState<Set<number>>(new Set());
   const [displayPhotos, setDisplayPhotos] = useState<string[]>([]);
 
-  // Use provided photos or generate fallbacks
+  // Only use valid provided photos - no fallbacks to random images
   useEffect(() => {
     if (photos && photos.length > 0) {
       // Filter out obviously invalid URLs
@@ -44,18 +33,15 @@ export const RealCarPhotoCarousel = ({
         url && 
         (url.startsWith('http://') || url.startsWith('https://')) &&
         !url.includes('example.com') &&
-        !url.includes('placeholder')
+        !url.includes('placeholder') &&
+        !url.includes('picsum.photos') // No random placeholder images
       );
       
-      if (validPhotos.length > 0) {
-        setDisplayPhotos(validPhotos);
-      } else if (carBrand && carModel) {
-        setDisplayPhotos(generateFallbackImageUrls(carBrand, carModel));
-      }
-    } else if (carBrand && carModel) {
-      setDisplayPhotos(generateFallbackImageUrls(carBrand, carModel));
+      setDisplayPhotos(validPhotos);
+    } else {
+      setDisplayPhotos([]);
     }
-  }, [photos, carBrand, carModel]);
+  }, [photos]);
 
   useEffect(() => {
     if (!api) return;
@@ -75,24 +61,8 @@ export const RealCarPhotoCarousel = ({
   };
 
   const handleImageError = (index: number) => {
+    // Simply mark as failed - no fallback to random images
     setFailedImages(prev => new Set(prev).add(index));
-    
-    // Try to replace with a Picsum fallback
-    if (carBrand && carModel) {
-      const baseSeed = `${carBrand}-${carModel}-fallback-${index}`.replace(/\s+/g, '-').toLowerCase();
-      const fallbackUrl = `https://picsum.photos/seed/${baseSeed}/800/500`;
-      setDisplayPhotos(prev => {
-        const newPhotos = [...prev];
-        newPhotos[index] = fallbackUrl;
-        return newPhotos;
-      });
-      // Remove from failed so it can try again with fallback
-      setFailedImages(prev => {
-        const newFailed = new Set(prev);
-        newFailed.delete(index);
-        return newFailed;
-      });
-    }
   };
 
   if (displayPhotos.length === 0) return null;
