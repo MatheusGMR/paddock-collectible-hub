@@ -31,9 +31,9 @@ export const ProfileHeader = ({ user, onEditProfile, onSettings }: ProfileHeader
   
   return (
     <>
-      <div className="border-b border-border">
-        {/* Top Bar with Paddock Logo */}
-        <div className="flex items-center justify-between px-4 py-3">
+      {/* Top Bar with Paddock Logo - sticky with safe-area */}
+      <header className="sticky top-0 z-40 bg-background/95 backdrop-blur-lg border-b border-border pt-safe">
+        <div className="flex h-14 items-center justify-between px-4">
           <img 
             src={paddockWordmark} 
             alt="Paddock" 
@@ -64,6 +64,9 @@ export const ProfileHeader = ({ user, onEditProfile, onSettings }: ProfileHeader
             </button>
           </div>
         </div>
+      </header>
+
+      <div className="border-b border-border">
 
         {/* Profile Info */}
         <div className="px-4 pb-4">
