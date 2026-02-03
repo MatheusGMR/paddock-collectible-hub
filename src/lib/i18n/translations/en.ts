@@ -538,14 +538,15 @@ export const en: Translations = {
   // Challenge
   challenge: {
     title: "50 Cars Challenge",
-    remaining: "remaining for free 1st month",
+    remaining: "remaining for +30 free days",
     completed: "Challenge completed! 🎉",
     congratulations: "Congratulations! 🎉",
     challengeCompleted: "You completed the challenge!",
     carsScanned: "cars scanned",
-    reward1: "1st month completely free",
+    reward1: "+30 free days (on top of trial)",
     reward2: "50% permanent discount",
     newPrice: "From $39.90 for only $19.90/month",
     claimReward: "Claim Reward",
+    bonusExplainer: "In addition to 7-day free trial",
   },
 };
