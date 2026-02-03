@@ -1,157 +1,123 @@
 
 
-# Plano: Corrigir Erros de UUID e Safe-Area no iOS
+# Diagnóstico: App Nativo Não Reflete Mudanças do Preview
 
-## Diagnóstico dos Problemas
+## Causa Raiz Identificada
 
-### Problema 1: Erro de UUID nos Likes (Logs do Xcode)
+O problema está na **configuração do Capacitor no seu ambiente local**. 
+
+De acordo com a memória do projeto (`architecture/ios-native-config`), existe uma configuração de `server.url` no `capacitor.config.ts` que é usada durante desenvolvimento para hot-reload:
+
+```json
+"server": {
+  "url": "https://ec821420-56a9-4147-adde-54a8d514aaac.lovableproject.com?forceHideBadge=true",
+  "cleartext": true
+}
 ```
-Error checking like: {"code":"22P02","message":"invalid input syntax for type uuid: \"2\""}
-```
 
-**Causa raiz identificada:**
-- O `PostCard` chama `hasLikedPost(post.id)` para verificar se o usuário curtiu o post
-- Quando não há posts reais no banco, o app exibe **mock posts** como fallback (IDs: "1", "2", "3", "4")
-- Esses IDs mock são strings numéricas simples, **não UUIDs válidos**
-- O banco de dados espera UUIDs no formato `xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx`
-- Ao tentar consultar `post_likes` com ID "2", o Postgres retorna erro 22P02
+**O que está acontecendo:**
+- Quando essa configuração está presente, o app nativo carrega o conteúdo diretamente da URL do Lovable (servidor remoto)
+- Isso é útil para desenvolvimento (hot-reload), mas **ignora completamente o bundle local**
+- Portanto, mesmo fazendo `npm run build` e `npx cap sync`, o app continua carregando a versão do servidor
 
-**Código problemático (Index.tsx, linhas 59-65):**
+**Por que parece "diferente":**
+- O preview do Lovable mostra as mudanças imediatamente (é a versão mais recente do código)
+- O app nativo está carregando do servidor Lovable também, MAS pode haver:
+  - Cache do servidor de CDN
+  - Cache do próprio WKWebView iOS
+  - A versão publicada (live) vs versão de preview
+
+---
+
+## Plano de Ação
+
+### Solução Imediata (Para Testes)
+
+Remover temporariamente a seção `server` do arquivo `capacitor.config.ts` no seu ambiente local:
+
+**Antes:**
 ```typescript
-const displayPosts = posts.length > 0 ? posts : mockPosts.map(p => ({
-  ...p,
-  user: { ...p.user, id: undefined },
-  // post.id continua sendo "1", "2", "3", "4" - não é UUID!
-}));
-```
-
-**Código que falha (PostCard.tsx, linhas 50-54):**
-```typescript
-useEffect(() => {
-  if (user && post.id) {
-    hasLikedPost(post.id).then(setLiked); // Chama API com ID "2" → ERRO
+const config: CapacitorConfig = {
+  appId: 'app.lovable.ec82142056a94147adde54a8d514aaac',
+  appName: 'paddock-collectible-hub',
+  webDir: 'dist',
+  server: {
+    url: 'https://ec821420-56a9-4147-adde-54a8d514aaac.lovableproject.com?forceHideBadge=true',
+    cleartext: true
   }
-}, [user, post.id]);
-```
-
----
-
-### Problema 2: Safe-Area não funcionando no App Nativo
-
-**Possíveis causas:**
-1. **Cache do WebView nativo** - O Capacitor pode estar servindo uma versão antiga do CSS
-2. **Configuração do Capacitor** - O arquivo `capacitor.config.json` não existe no projeto Lovable
-3. **Viewport/SafeArea do WKWebView** - Necessário configurar corretamente no iOS nativo
-
-**Observação importante:** 
-O Capacitor precisa ser inicializado localmente após exportar o projeto para Git. Não existe `capacitor.config.json` no repositório do Lovable porque o Capacitor é configurado localmente após `npx cap init`.
-
----
-
-## Plano de Correção
-
-### Correção 1: Evitar chamadas de API para mock posts
-
-**Arquivo:** `src/components/feed/PostCard.tsx`
-
-**Alteração:** Verificar se o ID é um UUID válido antes de chamar `hasLikedPost()`
-
-```typescript
-// Função helper para validar UUID
-const isValidUUID = (id: string): boolean => {
-  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-  return uuidRegex.test(id);
-};
-
-// No useEffect:
-useEffect(() => {
-  if (user && post.id && isValidUUID(post.id)) {
-    hasLikedPost(post.id).then(setLiked);
-  }
-}, [user, post.id]);
-```
-
-**Também aplicar a mesma validação:**
-- Na função `handleLike()` antes de chamar `likePost()`
-
----
-
-### Correção 2: Documentar passos corretos para build iOS com safe-area
-
-O safe-area CSS está correto no código. O problema é provavelmente **cache do WebView** ou **configuração incorreta do viewport no iOS**.
-
-**Passos necessários após qualquer mudança de CSS:**
-
-1. `git pull` - baixar as últimas alterações
-2. `npm run build` - gerar novo bundle de produção
-3. `npx cap sync` - sincronizar o build com o projeto iOS
-4. No Xcode: **Product → Clean Build Folder** (⌘⇧K)
-5. Deletar o app do simulador/device
-6. Build and Run novamente
-
-**Verificação adicional no Xcode:**
-- Confirmar que o `index.html` tem a meta tag do viewport com `viewport-fit=cover`:
-  ```html
-  <meta name="viewport" content="viewport-fit=cover, width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  ```
-
----
-
-### Correção 3 (Opcional): Adicionar meta tag viewport-fit se não existir
-
-**Arquivo:** `index.html`
-
-Garantir que a meta tag viewport inclua `viewport-fit=cover` para que o iOS respeite os safe-area insets.
-
----
-
-## Resumo das Alterações de Código
-
-| Arquivo | Alteração |
-|---------|-----------|
-| `src/components/feed/PostCard.tsx` | Adicionar validação de UUID antes de chamar APIs do banco |
-| `index.html` | Verificar/adicionar `viewport-fit=cover` na meta tag viewport |
-
----
-
-## Impacto Esperado
-
-- ✅ Erros "invalid input syntax for type uuid" eliminados
-- ✅ Mock posts funcionam sem erros de console
-- ✅ Safe-area respeitado após clean build completo no Xcode
-
----
-
-## Seção Técnica: Detalhes da Implementação
-
-### Validação de UUID (PostCard.tsx)
-
-```typescript
-// Antes do componente, adicionar função helper:
-const isValidUUID = (id: string): boolean => {
-  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-  return uuidRegex.test(id);
-};
-
-// Linha ~50-54: Modificar useEffect
-useEffect(() => {
-  // Só consulta likes se for um UUID válido (posts reais, não mock)
-  if (user && post.id && isValidUUID(post.id)) {
-    hasLikedPost(post.id).then(setLiked);
-  }
-}, [user, post.id]);
-
-// Linha ~56-72: Modificar handleLike
-const handleLike = async () => {
-  // Não permitir like em mock posts
-  if (isLiking || !user || !isValidUUID(post.id)) return;
-  // ... resto do código
 };
 ```
 
-### Meta Tag Viewport (index.html)
-
-```html
-<meta name="viewport" content="viewport-fit=cover, width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+**Depois:**
+```typescript
+const config: CapacitorConfig = {
+  appId: 'app.lovable.ec82142056a94147adde54a8d514aaac',
+  appName: 'paddock-collectible-hub',
+  webDir: 'dist'
+  // server removido para usar bundle local
+};
 ```
+
+---
+
+### Fluxo Completo de Build (Após Remover server.url)
+
+1. **No repositório local:**
+   ```bash
+   git pull origin main
+   npm install
+   npm run build
+   npx cap sync
+   ```
+
+2. **No Xcode:**
+   - Product → Clean Build Folder (⌘⇧K)
+   - Deletar o app do iPhone/simulador
+   - Build and Run (⌘R)
+
+---
+
+### Entendendo as Duas Modalidades
+
+| Modo | Configuração | Uso |
+|------|--------------|-----|
+| **Desenvolvimento (hot-reload)** | `server.url` presente | Mudanças no Lovable aparecem instantaneamente no app |
+| **Produção (bundle local)** | `server` removido | App usa os arquivos compilados em `/dist` |
+
+---
+
+## Por Que o Safe-Area Pode Ainda Não Funcionar
+
+Mesmo após usar o bundle local, se o safe-area não funcionar:
+
+1. **Verificar o viewport no bundle gerado:**
+   - Abra o arquivo `dist/index.html` após rodar `npm run build`
+   - Confirme que contém: `viewport-fit=cover`
+
+2. **Verificar configuração nativa do Xcode:**
+   - No projeto iOS, verificar se o `Info.plist` ou storyboard não está sobrescrevendo o comportamento do WebView
+
+3. **WKWebView precisa de configuração específica:**
+   - O Capacitor 8+ já deve lidar com isso automaticamente, mas vale verificar
+
+---
+
+## Recomendação Final
+
+Para produção/TestFlight/App Store:
+- **SEMPRE** remova a seção `server` do `capacitor.config.ts`
+- Use o bundle local para garantir que a versão correta está embarcada
+
+Para desenvolvimento diário:
+- Mantenha a seção `server` para ter hot-reload instantâneo
+- Mas lembre que isso carrega do servidor, não do bundle local
+
+---
+
+## Resumo
+
+| Problema | Causa | Solução |
+|----------|-------|---------|
+| App não reflete mudanças | `server.url` no capacitor.config.ts | Remover a seção `server` e fazer build local |
+| Safe-area não funciona | CSS não chegando ao app | Após remover server.url, fazer clean build completo |
 
