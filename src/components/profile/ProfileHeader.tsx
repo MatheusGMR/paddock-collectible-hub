@@ -37,7 +37,8 @@ export const ProfileHeader = ({ user, onEditProfile, onSettings }: ProfileHeader
           <img 
             src={paddockWordmark} 
             alt="Paddock" 
-            className="h-5 object-contain"
+            style={{ height: 30, width: "auto" }}
+            className="object-contain"
           />
           <div className="flex items-center gap-2">
             <button 
