@@ -91,14 +91,17 @@ const SubscriptionFlow = ({ children }: { children: React.ReactNode }) => {
       if (alreadyCompleted) {
         // User already completed onboarding, don't show again
         console.log("[Onboarding] User already completed onboarding before");
-        markOnboardingComplete();
+        // Only mark guided tips as complete if user has active subscription/trial
+        if (status === "trial" || status === "active") {
+          markOnboardingComplete();
+        }
       } else if (isNewUser && status === "none") {
         // New user who hasn't completed onboarding
         console.log("[Onboarding] Showing onboarding for new user");
         setIsOnboardingInProgress(true);
         setShowOnboarding(true);
-      } else {
-        // User has subscription record but hasn't been marked locally - mark now
+      } else if (status === "trial" || status === "active") {
+        // User has subscription record - mark as completed
         console.log("[Onboarding] User has subscription, marking onboarding complete");
         markUserOnboardingComplete(user.id);
         markOnboardingComplete();
@@ -118,29 +121,33 @@ const SubscriptionFlow = ({ children }: { children: React.ReactNode }) => {
   const handleStartTrial = useCallback(async () => {
     if (!user) return;
     
+    // Mark onboarding as complete BEFORE creating checkout
+    // This ensures user won't see onboarding again even if they abandon checkout
+    markUserOnboardingComplete(user.id);
+    
     setCheckoutLoading(true);
     const url = await createCheckout();
     setCheckoutLoading(false);
     
     if (url) {
-      // Mark onboarding as complete before redirecting to checkout
-      markUserOnboardingComplete(user.id);
-      markOnboardingComplete();
+      // Don't mark guided tips complete yet - only after successful subscription
       setIsOnboardingInProgress(false);
       window.location.href = url;
     }
-  }, [createCheckout, markOnboardingComplete, markUserOnboardingComplete, user]);
+  }, [createCheckout, markUserOnboardingComplete, user]);
 
   const handleSkipOnboarding = useCallback(async () => {
     if (!user) return;
+    
+    // Mark onboarding as complete first
+    markUserOnboardingComplete(user.id);
     
     setCheckoutLoading(true);
     const success = await startTrial();
     setCheckoutLoading(false);
     
     if (success) {
-      // Mark onboarding as complete after starting trial
-      markUserOnboardingComplete(user.id);
+      // Now mark guided tips as ready (user has trial)
       markOnboardingComplete();
       setIsOnboardingInProgress(false);
       setShowOnboarding(false);
