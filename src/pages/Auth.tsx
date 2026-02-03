@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { Capacitor } from "@capacitor/core";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { lovable } from "@/integrations/lovable/index";
@@ -8,6 +9,17 @@ import { Input } from "@/components/ui/input";
 import { PaddockLogo } from "@/components/icons/PaddockLogo";
 import { useToast } from "@/hooks/use-toast";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
+
+// Get the appropriate redirect URI based on platform
+const getRedirectUri = () => {
+  if (Capacitor.isNativePlatform()) {
+    return "paddock://auth/callback";
+  }
+  return window.location.origin;
+};
+
+// Check if running on native platform
+const isNativePlatform = Capacitor.isNativePlatform();
 
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -65,7 +77,7 @@ const Auth = () => {
     setAppleLoading(true);
     try {
       const { error } = await lovable.auth.signInWithOAuth("apple", {
-        redirect_uri: window.location.origin,
+        redirect_uri: getRedirectUri(),
       });
       if (error) throw error;
     } catch (error) {
@@ -82,7 +94,7 @@ const Auth = () => {
     setGoogleLoading(true);
     try {
       const { error } = await lovable.auth.signInWithOAuth("google", {
-        redirect_uri: window.location.origin,
+        redirect_uri: getRedirectUri(),
       });
       if (error) throw error;
     } catch (error) {
