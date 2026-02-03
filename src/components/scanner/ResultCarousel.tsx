@@ -131,7 +131,7 @@ export const ResultCarousel = ({
   // All items processed - show completion screen
   if (allProcessed) {
     return (
-      <div className="bg-card rounded-t-3xl p-6 safe-bottom animate-slide-up -mt-6 relative z-10">
+      <div className="bg-card rounded-t-3xl p-6 safe-bottom animate-slide-up-card -mt-6 relative z-10">
         <div className="flex flex-col items-center gap-4 py-6">
           <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center">
             <CheckCircle2 className="h-8 w-8 text-primary" />
@@ -171,7 +171,7 @@ export const ResultCarousel = ({
     .filter(({ originalIndex }) => !addedIndices.has(originalIndex));
 
   return (
-    <div className="bg-card rounded-t-3xl safe-bottom animate-slide-up -mt-6 relative z-10">
+    <div className="bg-card rounded-t-3xl safe-bottom animate-slide-up-card -mt-6 relative z-10">
       {/* Header with count */}
       {results.length > 1 && (
         <div className="flex items-center justify-between px-6 py-3 border-b border-border">
