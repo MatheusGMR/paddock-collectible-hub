@@ -34,12 +34,17 @@ export const ProfileHeader = ({ user, onEditProfile, onSettings }: ProfileHeader
       {/* Top Bar with Paddock Logo - sticky with safe-area */}
       <header className="sticky top-0 z-40 bg-background/95 backdrop-blur-lg border-b border-border pt-safe">
         <div className="flex h-14 items-center justify-between px-4">
-          <img 
-            src={paddockWordmark} 
-            alt="Paddock" 
-            style={{ height: 30, width: "auto" }}
-            className="object-contain"
-          />
+          <div className="flex items-center gap-2">
+            <img 
+              src={paddockWordmark} 
+              alt="Paddock" 
+              style={{ height: 30, width: "auto" }}
+              className="object-contain"
+            />
+            <span className="text-xs font-bold text-red-500 bg-red-100 px-2 py-0.5 rounded">
+              BUILD v2
+            </span>
+          </div>
           <div className="flex items-center gap-2">
             <button 
               onClick={() => setSearchOpen(true)}
