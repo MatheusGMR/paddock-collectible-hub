@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Crown, Check, Camera, Bell, Car, Gift, Sparkles } from "lucide-react";
+import { Crown, Check, Car, Gift, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -18,11 +18,6 @@ export const PricingSlide = ({ onStartTrial, isLoading }: PricingSlideProps) => 
     t.onboarding.feature2,
     t.onboarding.feature3,
     t.onboarding.feature4,
-  ];
-
-  const permissions = [
-    { icon: Camera, label: t.onboarding.cameraPermission || "Câmera" },
-    { icon: Bell, label: t.onboarding.notificationPermission || "Notificações" },
   ];
 
   const handleAcceptAndContinue = async () => {
@@ -129,37 +124,13 @@ export const PricingSlide = ({ onStartTrial, isLoading }: PricingSlideProps) => 
         </motion.div>
       </div>
 
-      {/* Bottom Section - Price, Permissions & CTAs (always visible) */}
+      {/* Bottom Section - CTA only (always visible) */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.7 }}
         className="flex-shrink-0 w-full max-w-xs mx-auto space-y-3"
       >
-        {/* Price Comparison */}
-        <div className="bg-card border border-border rounded-xl p-3 shadow-lg">
-          <div className="flex items-center justify-between">
-            <div className="text-left">
-              <p className="text-xs text-muted-foreground">{t.onboarding.regularPrice}</p>
-              <p className="text-sm text-muted-foreground line-through">R$ 39,90/mês</p>
-            </div>
-            <div className="text-right">
-              <p className="text-xs text-primary font-medium">{t.onboarding.with50Cars}</p>
-              <p className="text-lg font-bold text-foreground">R$ 19,90/mês</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Permissions - Inline */}
-        <div className="flex items-center justify-center gap-4 py-1">
-          {permissions.map((perm, index) => (
-            <div key={index} className="flex items-center gap-1">
-              <perm.icon className="w-3.5 h-3.5 text-muted-foreground" />
-              <span className="text-[11px] text-muted-foreground">{perm.label}</span>
-            </div>
-          ))}
-        </div>
-
         {/* CTA Button */}
         <Button
           onClick={handleAcceptAndContinue}
@@ -168,11 +139,6 @@ export const PricingSlide = ({ onStartTrial, isLoading }: PricingSlideProps) => 
         >
           {isLoading || isRequesting ? t.common.loading : t.onboarding.acceptAndContinue}
         </Button>
-
-        {/* Trial info */}
-        <p className="text-[10px] text-center text-muted-foreground">
-          {t.onboarding.trialInfo}
-        </p>
       </motion.div>
     </div>
   );
