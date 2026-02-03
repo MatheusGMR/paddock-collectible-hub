@@ -371,6 +371,14 @@ export const en: Translations = {
     with50Cars: "With 50 cars",
     trialInfo: "Free 7-day trial. Scan 50 cars and get your 1st month free + 50% permanent discount!",
     
+    // Success page
+    subscriptionSuccess: "Welcome to Paddock!",
+    subscriptionSuccessDesc: "Your subscription has been activated successfully. Enjoy all premium features!",
+    rememberChallenge: "Remember the challenge!",
+    challengeReminder: "Scan 50 cars to get your 1st month free and 50% permanent discount!",
+    startExploring: "Start Exploring",
+    autoRedirect: "You will be redirected automatically in 5 seconds...",
+    
     // Features list
     feature1: "AI-powered car scanner",
     feature2: "Unlimited digital collection",

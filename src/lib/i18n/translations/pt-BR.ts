@@ -369,6 +369,14 @@ export const ptBR = {
     with50Cars: "Com 50 carrinhos",
     trialInfo: "Teste grátis por 7 dias. Escaneie 50 carrinhos e ganhe o 1º mês grátis + 50% de desconto permanente!",
     
+    // Success page
+    subscriptionSuccess: "Bem-vindo ao Paddock!",
+    subscriptionSuccessDesc: "Sua assinatura foi ativada com sucesso. Aproveite todos os recursos premium!",
+    rememberChallenge: "Lembre-se do desafio!",
+    challengeReminder: "Escaneie 50 carrinhos para ganhar o 1º mês grátis e 50% de desconto permanente!",
+    startExploring: "Começar a Explorar",
+    autoRedirect: "Você será redirecionado automaticamente em 5 segundos...",
+    
     // Features list
     feature1: "Scanner de carrinhos com IA",
     feature2: "Coleção digital ilimitada",
