@@ -7,7 +7,7 @@ interface AppLayoutProps {
 
 export const AppLayout = ({ children }: AppLayoutProps) => {
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background pt-safe">
       <main className="pb-20">
         {children}
       </main>
