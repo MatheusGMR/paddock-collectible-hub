@@ -59,7 +59,11 @@ serve(async (req) => {
 
     if (subscription.challenge_rewarded) {
       logStep("Reward already claimed");
-      return new Response(JSON.stringify({ success: true, message: "Reward already claimed" }), {
+      return new Response(JSON.stringify({ 
+        success: true, 
+        message: "Reward already claimed",
+        already_claimed: true 
+      }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,
       });
@@ -69,25 +73,25 @@ serve(async (req) => {
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
 
-    // Get or create the 50% off coupon
-    let coupon;
+    // Ensure the 50% off coupon exists
     try {
-      coupon = await stripe.coupons.retrieve(CHALLENGE_COUPON_ID);
-      logStep("Found existing coupon", { couponId: coupon.id });
+      await stripe.coupons.retrieve(CHALLENGE_COUPON_ID);
+      logStep("Found existing coupon", { couponId: CHALLENGE_COUPON_ID });
     } catch {
       // Create coupon if it doesn't exist
-      coupon = await stripe.coupons.create({
+      await stripe.coupons.create({
         id: CHALLENGE_COUPON_ID,
         percent_off: 50,
         duration: "forever",
-        name: "Desafio 50 Carrinhos - 50% OFF",
+        name: "Desafio 50 Carrinhos - 50% OFF Permanente",
       });
-      logStep("Created new coupon", { couponId: coupon.id });
+      logStep("Created new coupon", { couponId: CHALLENGE_COUPON_ID });
     }
 
-    // If user has a Stripe customer ID, apply the discount
+    // If user has a Stripe customer ID and active subscription, apply discount
     if (subscription.stripe_customer_id) {
       const customerId = subscription.stripe_customer_id;
+      logStep("Found Stripe customer", { customerId });
       
       // Get active subscription
       const subscriptions = await stripe.subscriptions.list({
@@ -99,26 +103,45 @@ serve(async (req) => {
       if (subscriptions.data.length > 0) {
         const stripeSubscription = subscriptions.data[0];
         
-        // Apply coupon to subscription
-        await stripe.subscriptions.update(stripeSubscription.id, {
-          coupon: CHALLENGE_COUPON_ID,
-        });
-        logStep("Applied coupon to subscription", { subscriptionId: stripeSubscription.id });
+        // Check if coupon is already applied
+        if (!stripeSubscription.discount?.coupon) {
+          // Apply coupon to subscription
+          await stripe.subscriptions.update(stripeSubscription.id, {
+            coupon: CHALLENGE_COUPON_ID,
+          });
+          logStep("Applied coupon to subscription", { subscriptionId: stripeSubscription.id });
+        } else {
+          logStep("Subscription already has a discount applied");
+        }
 
         // Add a credit for the first month (effectively making it free)
-        // Calculate prorated amount for one month
-        const invoicePreview = await stripe.invoices.retrieveUpcoming({
-          customer: customerId,
-        });
-        
-        if (invoicePreview.amount_due > 0) {
-          // Create a credit note or adjust balance
-          await stripe.customers.update(customerId, {
-            balance: -invoicePreview.amount_due, // Negative balance = credit
+        try {
+          const invoicePreview = await stripe.invoices.retrieveUpcoming({
+            customer: customerId,
           });
-          logStep("Applied first month credit", { creditAmount: invoicePreview.amount_due });
+          
+          if (invoicePreview.amount_due > 0) {
+            // Apply credit equal to next invoice amount (1 month free)
+            const currentBalance = (await stripe.customers.retrieve(customerId) as Stripe.Customer).balance || 0;
+            const newBalance = currentBalance - invoicePreview.amount_due;
+            
+            await stripe.customers.update(customerId, {
+              balance: newBalance, // Negative balance = credit
+            });
+            logStep("Applied first month credit", { 
+              creditAmount: invoicePreview.amount_due,
+              newBalance 
+            });
+          }
+        } catch (invoiceError) {
+          // No upcoming invoice (trial still active), that's fine
+          logStep("No upcoming invoice to credit (probably still in trial)");
         }
+      } else {
+        logStep("No active subscription found - rewards will apply on next checkout");
       }
+    } else {
+      logStep("No Stripe customer yet - rewards will apply on checkout");
     }
 
     // Mark reward as claimed in database
@@ -139,7 +162,11 @@ serve(async (req) => {
 
     return new Response(JSON.stringify({ 
       success: true, 
-      message: "Reward claimed! First month free + 50% permanent discount applied." 
+      message: "Reward claimed! First month free + 50% permanent discount applied.",
+      rewards: {
+        first_month_free: true,
+        permanent_discount: 50,
+      }
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,

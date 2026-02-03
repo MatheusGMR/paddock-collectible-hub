@@ -14,6 +14,8 @@ const logStep = (step: string, details?: unknown) => {
 
 // Paddock Premium price ID
 const PREMIUM_PRICE_ID = "price_1SuvHzP5JKEiOwRjVH443L2J";
+// Coupon for 50% off challenge winners
+const CHALLENGE_COUPON_ID = "PADDOCK_50_OFF_CHALLENGE";
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -45,6 +47,16 @@ serve(async (req) => {
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
 
+    // Check if user has completed the challenge (50 cars)
+    const { data: subscription } = await supabaseClient
+      .from("user_subscriptions")
+      .select("challenge_completed_at, challenge_rewarded, discount_applied")
+      .eq("user_id", user.id)
+      .single();
+
+    const challengeCompleted = !!subscription?.challenge_completed_at;
+    logStep("Challenge status", { challengeCompleted, rewarded: subscription?.challenge_rewarded });
+
     // Check if customer already exists in Stripe
     const customers = await stripe.customers.list({ email: user.email, limit: 1 });
     let customerId: string | undefined;
@@ -57,8 +69,35 @@ serve(async (req) => {
     // Get origin for redirect URLs
     const origin = req.headers.get("origin") || "https://paddock-collectible-hub.lovable.app";
 
-    // Create checkout session with 7-day trial
-    const session = await stripe.checkout.sessions.create({
+    // Determine trial period and coupon based on challenge completion
+    let trialDays = 7; // Default trial
+    let couponId: string | undefined;
+
+    if (challengeCompleted) {
+      // Challenge completed: 30 days free (1st month) + 50% off coupon
+      trialDays = 30; // First month free
+      
+      // Ensure the coupon exists
+      try {
+        await stripe.coupons.retrieve(CHALLENGE_COUPON_ID);
+        logStep("Found existing challenge coupon");
+      } catch {
+        // Create coupon if it doesn't exist
+        await stripe.coupons.create({
+          id: CHALLENGE_COUPON_ID,
+          percent_off: 50,
+          duration: "forever",
+          name: "Desafio 50 Carrinhos - 50% OFF Permanente",
+        });
+        logStep("Created challenge coupon");
+      }
+      
+      couponId = CHALLENGE_COUPON_ID;
+      logStep("Applying challenge rewards", { trialDays, couponId });
+    }
+
+    // Create checkout session
+    const sessionConfig: Stripe.Checkout.SessionCreateParams = {
       customer: customerId,
       customer_email: customerId ? undefined : user.email,
       line_items: [
@@ -69,9 +108,10 @@ serve(async (req) => {
       ],
       mode: "subscription",
       subscription_data: {
-        trial_period_days: 7,
+        trial_period_days: trialDays,
         metadata: {
           user_id: user.id,
+          challenge_completed: challengeCompleted ? "true" : "false",
         },
       },
       success_url: `${origin}/subscription-success?session_id={CHECKOUT_SESSION_ID}`,
@@ -79,9 +119,34 @@ serve(async (req) => {
       metadata: {
         user_id: user.id,
       },
+    };
+
+    // Add coupon/discount if challenge was completed
+    if (couponId) {
+      sessionConfig.discounts = [{ coupon: couponId }];
+    }
+
+    const session = await stripe.checkout.sessions.create(sessionConfig);
+
+    logStep("Checkout session created", { 
+      sessionId: session.id, 
+      url: session.url,
+      trialDays,
+      hasCoupon: !!couponId
     });
 
-    logStep("Checkout session created", { sessionId: session.id, url: session.url });
+    // If challenge completed and not yet marked as rewarded, update it
+    if (challengeCompleted && !subscription?.challenge_rewarded) {
+      await supabaseClient
+        .from("user_subscriptions")
+        .update({
+          challenge_rewarded: true,
+          discount_applied: true,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("user_id", user.id);
+      logStep("Marked challenge as rewarded in database");
+    }
 
     return new Response(JSON.stringify({ url: session.url }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
