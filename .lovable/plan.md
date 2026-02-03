@@ -1,104 +1,102 @@
 
-# Plano: Corrigir Reinício Automático do Onboarding
 
-## Problema Identificado
+# Plano: Corrigir Erros de Launch Screen e App Icon para iOS
 
-O onboarding está reiniciando automaticamente durante a leitura porque:
+## Contexto do Problema
 
-1. **Verificação periódica de assinatura**: O `SubscriptionContext` executa `checkSubscription()` a cada 60 segundos (linha 154-156), o que altera os estados `status` e `isNewUser`
-2. **Dependências do useEffect**: O `useEffect` no `SubscriptionFlow` depende de `isNewUser` e `status`, fazendo com que seja re-executado quando esses valores mudam
-3. **Condição de corrida**: Durante o onboarding, se a verificação periódica retornar `isNewUser: true` e `status: "none"`, a condição pode disparar novamente mesmo com `hasCheckedOnboarding: true`
+Você recebeu dois erros de validação da App Store:
+1. **Launch Screen inválido** - Apps para iPad com Multitasking precisam de um LaunchScreen.storyboard configurado
+2. **App Icon com transparência** - O ícone não pode ter canal alpha
 
 ## Solução
 
-Garantir que uma vez iniciado o onboarding, ele não seja interrompido até ser explicitamente concluído.
+Esses ajustes são **configurações nativas do Xcode** que precisam ser feitas **localmente** no seu Mac após exportar o projeto do Lovable.
 
 ---
 
-## Alterações Técnicas
+## Passo a Passo
 
-### 1. Modificar `src/App.tsx` - Componente SubscriptionFlow
+### 1. Configurar o LaunchScreen.storyboard
 
-**Problema atual:**
-```typescript
-useEffect(() => {
-  if (!authLoading && !subLoading && user && !hasCheckedOnboarding) {
-    // ... lógica que pode ser re-executada
-  }
-}, [authLoading, subLoading, user, isNewUser, status, hasCheckedOnboarding, ...]);
+Abra o projeto iOS no Xcode (`ios/App/App.xcworkspace`) e edite o `LaunchScreen.storyboard`:
+
+```text
+┌─────────────────────────────────────────┐
+│                                         │
+│                                         │
+│            ┌───────────┐                │
+│            │     P     │  ← Logo        │
+│            │  Paddock  │    centralizado│
+│            └───────────┘                │
+│                                         │
+│    Background: #0E1117 (dark theme)     │
+│                                         │
+└─────────────────────────────────────────┘
 ```
 
-**Solução:**
-- Adicionar uma flag `isOnboardingInProgress` para bloquear re-verificações enquanto o onboarding está ativo
-- Mover a verificação de `hasCheckedOnboarding` para fora das dependências do efeito
-- Usar um `useRef` para evitar múltiplas execuções do mesmo efeito
+**No Xcode:**
+1. Abra `ios/App/App/LaunchScreen.storyboard`
+2. Selecione a View principal
+3. Background Color: `#0E1117` (preto do tema Paddock)
+4. Adicione um `UIImageView` centralizado
+5. Coloque o logo do Paddock (sem transparência excessiva)
+6. Constraints: centralizar horizontal e vertical
 
-```typescript
-const hasCheckedRef = useRef(false);
-const [isOnboardingInProgress, setIsOnboardingInProgress] = useState(false);
+### 2. Verificar o Info.plist
 
-useEffect(() => {
-  // Se já está no onboarding, não fazer nada
-  if (isOnboardingInProgress) return;
-  
-  // Se já verificou, não verificar novamente
-  if (hasCheckedRef.current) return;
-  
-  if (!authLoading && !subLoading && user) {
-    hasCheckedRef.current = true;
-    
-    const alreadyCompleted = hasCompletedOnboardingBefore(user.id);
-    
-    if (alreadyCompleted) {
-      markOnboardingComplete();
-    } else if (isNewUser && status === "none") {
-      setIsOnboardingInProgress(true);
-      setShowOnboarding(true);
-    } else {
-      markUserOnboardingComplete(user.id);
-      markOnboardingComplete();
-    }
-  }
-}, [authLoading, subLoading, user, isNewUser, status, ...]);
+Confirme que o `Info.plist` (`ios/App/App/Info.plist`) contém:
 
-// Reset ref quando usuário muda
-useEffect(() => {
-  if (!user) {
-    hasCheckedRef.current = false;
-    setIsOnboardingInProgress(false);
-    setShowOnboarding(false);
-  }
-}, [user]);
+```xml
+<key>UILaunchStoryboardName</key>
+<string>LaunchScreen</string>
 ```
 
-### 2. Proteção adicional no estado `showOnboarding`
+Se não existir, adicione esta entrada.
 
-Garantir que `showOnboarding` só seja alterado de `true` para `false` quando o usuário explicitamente completar ou pular o onboarding:
+### 3. Corrigir o App Icon (Remover Transparência)
 
-```typescript
-// Apenas essas funções podem desativar o onboarding:
-const handleSkipOnboarding = async () => {
-  // ... após sucesso
-  setIsOnboardingInProgress(false);
-  setShowOnboarding(false);
-};
+O ícone do Paddock atual (`paddock-logo.png`) pode ter canal alpha. Para corrigir:
 
-const handleStartTrial = async () => {
-  // ... após redirecionar para checkout
-  setIsOnboardingInProgress(false);
-};
+**Opção A - Via Preview (Mac):**
+1. Abra o ícone no Preview
+2. File → Export
+3. Desmarque "Alpha"
+4. Salve como PNG
+
+**Opção B - Via comando:**
+```bash
+# Remove alpha channel mantendo qualidade
+convert paddock-logo.png -background "#0E1117" -flatten -alpha off AppIcon-1024.png
 ```
+
+### 4. Atualizar o Asset Catalog
+
+No Xcode, atualize `ios/App/App/Assets.xcassets/AppIcon.appiconset`:
+
+1. Use o ícone sem transparência (1024x1024)
+2. Gere todos os tamanhos necessários (use https://appicon.co)
+3. Substitua os ícones no Asset Catalog
 
 ---
 
-## Resumo das Mudanças
+## Resumo das Ações Locais
 
-| Arquivo | Alteração |
-|---------|-----------|
-| `src/App.tsx` | Adicionar `useRef` para controle de verificação única e flag `isOnboardingInProgress` para bloquear re-verificações durante o fluxo |
+| Arquivo | Ação |
+|---------|------|
+| `LaunchScreen.storyboard` | Configurar com background #0E1117 e logo centralizado |
+| `Info.plist` | Confirmar `UILaunchStoryboardName` = `LaunchScreen` |
+| `AppIcon.appiconset` | Substituir ícones por versões sem canal alpha |
 
-## Resultado Esperado
+---
 
-- O onboarding só aparecerá uma vez para novos usuários
-- Uma vez iniciado, o onboarding não será interrompido ou reiniciado pela verificação periódica de assinatura
-- O fluxo só será encerrado quando o usuário completar ou pular explicitamente
+## Nota Importante
+
+Essas configurações são **nativas do Xcode** e precisam ser feitas localmente após:
+
+1. Exportar o projeto para GitHub
+2. Clonar localmente
+3. Executar `npm install` e `npx cap sync`
+4. Abrir no Xcode e fazer os ajustes acima
+
+Após as correções, faça um novo build e archive para reenviar à App Store.
+
