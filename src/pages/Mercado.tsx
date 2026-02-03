@@ -15,22 +15,22 @@ const Mercado = () => {
   const [articles, setArticles] = useState<NewsArticle[]>([]);
   const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(true);
-  const [isLoading, setIsLoading] = useState(true); // Start with loading true for immediate skeleton
+  const [isLoading, setIsLoading] = useState(false);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showPreferences, setShowPreferences] = useState(false);
   const { toast } = useToast();
   const { t } = useLanguage();
 
-  const ITEMS_PER_PAGE = 20;
+  const ITEMS_PER_PAGE = 10; // Reduced for faster initial load
 
   // Load articles from database
   const loadArticles = useCallback(
     async (reset = false, overrideCategory?: string | null) => {
-      if (isLoading) return;
+      if (isLoading && !reset) return;
       
       setIsLoading(true);
       const currentOffset = reset ? 0 : page * ITEMS_PER_PAGE;
-      // Use override category if provided, otherwise use state
       const categoryToUse = overrideCategory !== undefined ? overrideCategory : selectedCategory;
 
       try {
@@ -58,19 +58,15 @@ const Mercado = () => {
         });
       } finally {
         setIsLoading(false);
+        setIsInitialLoad(false);
       }
     },
     [searchQuery, selectedCategory, page, isLoading, toast, t]
   );
 
-  // Initial load
+  // Initial load - only fetch from database, don't refresh from sources
   useEffect(() => {
     loadArticles(true);
-    
-    // Trigger background refresh
-    refreshNews().catch((err) => {
-      console.log("Background refresh failed:", err);
-    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -143,7 +139,7 @@ const Mercado = () => {
       />
       <NewsFeed
         articles={articles}
-        isLoading={isLoading}
+        isLoading={isLoading || isInitialLoad}
         hasMore={hasMore}
         onLoadMore={handleLoadMore}
       />
