@@ -12,8 +12,8 @@ const logStep = (step: string, details?: unknown) => {
   console.log(`[CREATE-SUBSCRIPTION] ${step}${detailsStr}`);
 };
 
-// Paddock Premium price ID
-const PREMIUM_PRICE_ID = "price_1SuvHzP5JKEiOwRjVH443L2J";
+// Paddock Premium price ID (Production)
+const PREMIUM_PRICE_ID = "price_1SwrJfAmjEfh8Sz78f61BFur";
 // Coupon for 50% off challenge winners
 const CHALLENGE_COUPON_ID = "PADDOCK_50_OFF_CHALLENGE";
 
