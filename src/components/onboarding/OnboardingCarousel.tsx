@@ -88,18 +88,8 @@ export const OnboardingCarousel = ({ onStartTrial, onSkip, isLoading }: Onboardi
       className="fixed inset-0 z-50 bg-background flex flex-col"
     >
       {/* Header with Logo */}
-      <div className="flex items-center justify-between p-4">
+      <div className="flex items-center justify-center p-4">
         <img src={paddockLogo} alt="Paddock" className="w-10 h-10" />
-        
-        {!isPricingSlide && (
-          <Button
-            variant="ghost"
-            onClick={onSkip}
-            className="text-muted-foreground"
-          >
-            {t.onboarding.skip}
-          </Button>
-        )}
       </div>
 
       {/* Swipeable Carousel */}
@@ -114,7 +104,6 @@ export const OnboardingCarousel = ({ onStartTrial, onSkip, isLoading }: Onboardi
           <div className="flex-[0_0_100%] min-w-0 h-full">
             <PricingSlide
               onStartTrial={onStartTrial}
-              onSkip={onSkip}
               isLoading={isLoading}
             />
           </div>

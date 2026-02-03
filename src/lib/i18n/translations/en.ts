@@ -352,14 +352,24 @@ export const en: Translations = {
     slide4Text: "Discover collectors and their collections, get information about the world of collectibles and the car universe",
     
     // Pricing slide
-    pricingTitle: "Start Free!",
+    pricingTitle: "Collector's Challenge",
     freeTrial: "7 days free to try everything",
-    originalPrice: "$9.90/month",
-    discountedPrice: "$3.90/month",
-    discountBadge: "60% OFF",
+    originalPrice: "$39.90/month",
+    discountedPrice: "$19.90/month",
+    challengeBadge: "SPECIAL CHALLENGE",
     limitedTime: "Limited time offer",
-    startTrial: "Start Free Trial",
-    skipForNow: "Skip for now",
+    startTrial: "Start Now",
+    
+    // Challenge pricing
+    carsToScan: "cars scanned",
+    firstMonthFree: "1ST MONTH",
+    freeMonth: "FREE",
+    thenOnly: "Then only",
+    perMonth: "/month",
+    orStandardTrial: "Or enjoy 7 free days to test, no commitment",
+    regularPrice: "Regular price",
+    with50Cars: "With 50 cars",
+    trialInfo: "Free 7-day trial. Scan 50 cars and get your 1st month free + 50% permanent discount!",
     
     // Features list
     feature1: "AI-powered car scanner",
