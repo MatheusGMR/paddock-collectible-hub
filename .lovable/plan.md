@@ -1,77 +1,150 @@
 
+# Plano: Preparação para Submissão na App Store
 
-# Plano: Corrigir vite.config.ts para Capacitor + Lovable
+O app Paddock está rodando no iPhone físico. Agora vamos preparar tudo para a submissão na App Store.
 
-## Problema Identificado
+---
 
-O build do Vite está gerando caminhos absolutos:
-```html
-<script type="module" src="/assets/index-XXX.js"></script>
-```
+## Etapa 1: Gerar App Icons (Ícones do App)
 
-Quando deveria gerar caminhos relativos:
-```html
-<script type="module" src="assets/index-XXX.js"></script>
-```
+A Apple exige múltiplos tamanhos de ícone. Usando o logo existente (`paddock-logo.png`), você precisará gerar os seguintes tamanhos:
 
-## Causa
+| Tamanho | Uso |
+|---------|-----|
+| 1024x1024 | App Store |
+| 180x180 | iPhone (60pt @3x) |
+| 120x120 | iPhone (60pt @2x, 40pt @3x) |
+| 87x87 | iPhone (29pt @3x) |
+| 80x80 | iPhone (40pt @2x) |
+| 60x60 | iPhone (20pt @3x) |
+| 58x58 | iPhone (29pt @2x) |
+| 40x40 | iPhone (20pt @2x) |
 
-O `base: './'` precisa estar configurado, MAS a edição anterior removeu configurações necessárias do Lovable (como `server.port: 8080`).
+**Importante**: Todos os ícones devem ser **sem canal alfa (transparência)** - exatamente como já mencionado na memória do projeto.
 
-## Solução
+**Ferramenta recomendada**: [App Icon Generator](https://appicon.co/) - faça upload do logo 1024x1024 e ele gera todos os tamanhos.
 
-Atualizar o `vite.config.ts` com a configuração completa:
+---
+
+## Etapa 2: Configurar Launch Screen (Tela de Abertura)
+
+Conforme a memória do projeto, a Apple exige configuração via storyboard:
+
+1. No Xcode, abra `ios/App/App/Base.lproj/LaunchScreen.storyboard`
+2. Configure:
+   - **Fundo**: Cor `#0E1117` (o tema escuro do Paddock)
+   - **Logo**: Centralizado na tela
+3. Isso é necessário para atender aos requisitos de multitarefa do iPad
+
+---
+
+## Etapa 3: Remover Configuração de Desenvolvimento
+
+Antes de submeter, remova a configuração de hot-reload do `capacitor.config.ts`:
 
 ```typescript
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react-swc'
-import path from 'path'
-
-export default defineConfig({
-  base: './',
-  server: {
-    host: '::',
-    port: 8080,
-  },
-  plugins: [react()],
-  resolve: {
-    alias: {
-      '@': path.resolve(__dirname, './src'),
-    },
-  },
-})
+// REMOVER esta seção antes de submeter:
+"server": {
+  "url": "...",
+  "cleartext": true
+}
 ```
 
-## O que cada configuração faz
-
-| Configuração | Propósito |
-|--------------|-----------|
-| `base: './'` | **CRÍTICO** - Gera caminhos relativos para Capacitor/iOS |
-| `server.port: 8080` | Necessário para preview do Lovable |
-| `server.host: '::'` | Permite acesso de qualquer IP |
-| `resolve.alias` | Mantém imports com `@/` funcionando |
-
-## Passos Após a Correção
-
-1. **No Lovable**: Vou aplicar a correção
-2. **No seu Mac**: 
-   - `git pull` para pegar a atualização
-   - `npm run build`
-   - Verificar: `grep -E "script|link" dist/index.html`
-   - Deve mostrar `src="assets/..."` (sem `/` inicial)
-3. **Sincronizar iOS**:
-   - `npx cap sync ios`
-4. **No Xcode**:
-   - Product → Clean Build Folder
-   - Run ▶️
-
-## Resultado Esperado
-
-Após o build correto, o `dist/index.html` terá:
-```html
-<script type="module" src="assets/index-XXX.js"></script>
-<link rel="stylesheet" href="assets/index-XXX.css">
+Deixar apenas:
+```typescript
+const config: CapacitorConfig = {
+  appId: 'com.matheusgmr.paddock',
+  appName: 'Paddock',
+  webDir: 'dist'
+};
 ```
 
-E o app iOS carregará normalmente após o LaunchScreen.
+---
 
+## Etapa 4: Configurar App Store Connect
+
+No [App Store Connect](https://appstoreconnect.apple.com):
+
+1. **Criar novo app**:
+   - Bundle ID: `com.matheusgmr.paddock`
+   - Nome: Paddock
+   - Idioma principal: Português (Brasil) ou English
+
+2. **Informações obrigatórias**:
+   - Screenshots (6.7" e 5.5" obrigatórios)
+   - Descrição do app
+   - Palavras-chave
+   - Categoria: Social Networking ou Lifestyle
+   - Política de Privacidade URL
+   - Classificação etária
+
+3. **Screenshots necessárias**:
+   - iPhone 6.7" (1290 x 2796 px) - iPhone 15 Pro Max
+   - iPhone 5.5" (1242 x 2208 px) - iPhone 8 Plus
+
+---
+
+## Etapa 5: Build e Upload
+
+No terminal e Xcode:
+
+```bash
+# 1. Build de produção
+npm run build
+
+# 2. Sincronizar com iOS
+npx cap sync ios
+
+# 3. Abrir Xcode
+npx cap open ios
+```
+
+No Xcode:
+1. Selecione **Any iOS Device (arm64)** como destino
+2. **Product → Archive**
+3. Após o archive, clique em **Distribute App**
+4. Escolha **App Store Connect**
+5. Faça upload
+
+---
+
+## Etapa 6: Submeter para Revisão
+
+Após o upload:
+1. No App Store Connect, selecione o build
+2. Preencha todas as informações
+3. Submeta para revisão (geralmente 24-48h)
+
+---
+
+## Resumo de Ações Necessárias
+
+| Ação | Onde |
+|------|------|
+| Gerar ícones sem alfa | appicon.co + Xcode |
+| Configurar LaunchScreen | Xcode (storyboard) |
+| Remover server.url | capacitor.config.ts (local) |
+| Criar app no App Store Connect | appstoreconnect.apple.com |
+| Capturar screenshots | Simulador ou iPhone |
+| Archive e Upload | Xcode |
+
+---
+
+## Seção Técnica
+
+### Verificação do Bundle ID
+```bash
+# Confirmar que está correto no projeto iOS
+cat ios/App/App.xcodeproj/project.pbxproj | grep PRODUCT_BUNDLE_IDENTIFIER
+# Deve mostrar: com.matheusgmr.paddock
+```
+
+### Versão do App
+No Xcode, em **TARGETS → App → General**:
+- **Version**: 1.0.0 (ou sua versão)
+- **Build**: 1 (incrementar a cada upload)
+
+### Signing & Capabilities
+Em **TARGETS → App → Signing & Capabilities**:
+- Selecione seu Team (Apple Developer Account)
+- Ative **Automatically manage signing**
