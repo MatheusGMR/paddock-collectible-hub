@@ -1,102 +1,77 @@
 
 
-# Plano: Corrigir Erros de Launch Screen e App Icon para iOS
+# Plano: Corrigir vite.config.ts para Capacitor + Lovable
 
-## Contexto do Problema
+## Problema Identificado
 
-Você recebeu dois erros de validação da App Store:
-1. **Launch Screen inválido** - Apps para iPad com Multitasking precisam de um LaunchScreen.storyboard configurado
-2. **App Icon com transparência** - O ícone não pode ter canal alpha
+O build do Vite está gerando caminhos absolutos:
+```html
+<script type="module" src="/assets/index-XXX.js"></script>
+```
+
+Quando deveria gerar caminhos relativos:
+```html
+<script type="module" src="assets/index-XXX.js"></script>
+```
+
+## Causa
+
+O `base: './'` precisa estar configurado, MAS a edição anterior removeu configurações necessárias do Lovable (como `server.port: 8080`).
 
 ## Solução
 
-Esses ajustes são **configurações nativas do Xcode** que precisam ser feitas **localmente** no seu Mac após exportar o projeto do Lovable.
+Atualizar o `vite.config.ts` com a configuração completa:
 
----
+```typescript
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react-swc'
+import path from 'path'
 
-## Passo a Passo
-
-### 1. Configurar o LaunchScreen.storyboard
-
-Abra o projeto iOS no Xcode (`ios/App/App.xcworkspace`) e edite o `LaunchScreen.storyboard`:
-
-```text
-┌─────────────────────────────────────────┐
-│                                         │
-│                                         │
-│            ┌───────────┐                │
-│            │     P     │  ← Logo        │
-│            │  Paddock  │    centralizado│
-│            └───────────┘                │
-│                                         │
-│    Background: #0E1117 (dark theme)     │
-│                                         │
-└─────────────────────────────────────────┘
+export default defineConfig({
+  base: './',
+  server: {
+    host: '::',
+    port: 8080,
+  },
+  plugins: [react()],
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, './src'),
+    },
+  },
+})
 ```
 
-**No Xcode:**
-1. Abra `ios/App/App/LaunchScreen.storyboard`
-2. Selecione a View principal
-3. Background Color: `#0E1117` (preto do tema Paddock)
-4. Adicione um `UIImageView` centralizado
-5. Coloque o logo do Paddock (sem transparência excessiva)
-6. Constraints: centralizar horizontal e vertical
+## O que cada configuração faz
 
-### 2. Verificar o Info.plist
+| Configuração | Propósito |
+|--------------|-----------|
+| `base: './'` | **CRÍTICO** - Gera caminhos relativos para Capacitor/iOS |
+| `server.port: 8080` | Necessário para preview do Lovable |
+| `server.host: '::'` | Permite acesso de qualquer IP |
+| `resolve.alias` | Mantém imports com `@/` funcionando |
 
-Confirme que o `Info.plist` (`ios/App/App/Info.plist`) contém:
+## Passos Após a Correção
 
-```xml
-<key>UILaunchStoryboardName</key>
-<string>LaunchScreen</string>
+1. **No Lovable**: Vou aplicar a correção
+2. **No seu Mac**: 
+   - `git pull` para pegar a atualização
+   - `npm run build`
+   - Verificar: `grep -E "script|link" dist/index.html`
+   - Deve mostrar `src="assets/..."` (sem `/` inicial)
+3. **Sincronizar iOS**:
+   - `npx cap sync ios`
+4. **No Xcode**:
+   - Product → Clean Build Folder
+   - Run ▶️
+
+## Resultado Esperado
+
+Após o build correto, o `dist/index.html` terá:
+```html
+<script type="module" src="assets/index-XXX.js"></script>
+<link rel="stylesheet" href="assets/index-XXX.css">
 ```
 
-Se não existir, adicione esta entrada.
-
-### 3. Corrigir o App Icon (Remover Transparência)
-
-O ícone do Paddock atual (`paddock-logo.png`) pode ter canal alpha. Para corrigir:
-
-**Opção A - Via Preview (Mac):**
-1. Abra o ícone no Preview
-2. File → Export
-3. Desmarque "Alpha"
-4. Salve como PNG
-
-**Opção B - Via comando:**
-```bash
-# Remove alpha channel mantendo qualidade
-convert paddock-logo.png -background "#0E1117" -flatten -alpha off AppIcon-1024.png
-```
-
-### 4. Atualizar o Asset Catalog
-
-No Xcode, atualize `ios/App/App/Assets.xcassets/AppIcon.appiconset`:
-
-1. Use o ícone sem transparência (1024x1024)
-2. Gere todos os tamanhos necessários (use https://appicon.co)
-3. Substitua os ícones no Asset Catalog
-
----
-
-## Resumo das Ações Locais
-
-| Arquivo | Ação |
-|---------|------|
-| `LaunchScreen.storyboard` | Configurar com background #0E1117 e logo centralizado |
-| `Info.plist` | Confirmar `UILaunchStoryboardName` = `LaunchScreen` |
-| `AppIcon.appiconset` | Substituir ícones por versões sem canal alpha |
-
----
-
-## Nota Importante
-
-Essas configurações são **nativas do Xcode** e precisam ser feitas localmente após:
-
-1. Exportar o projeto para GitHub
-2. Clonar localmente
-3. Executar `npm install` e `npx cap sync`
-4. Abrir no Xcode e fazer os ajustes acima
-
-Após as correções, faça um novo build e archive para reenviar à App Store.
+E o app iOS carregará normalmente após o LaunchScreen.
 
