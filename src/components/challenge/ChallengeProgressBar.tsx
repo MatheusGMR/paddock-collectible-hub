@@ -40,11 +40,6 @@ export const ChallengeProgressBar = () => {
         </div>
       </div>
       
-      {/* Bonus explainer */}
-      <p className="text-[9px] text-muted-foreground/70 mb-1.5 text-center">
-        ✨ {t.challenge?.bonusExplainer || "Adicional aos 7 dias de teste grátis"}
-      </p>
-      
       {/* Progress bar */}
       <div className="h-2 bg-muted rounded-full overflow-hidden">
         <motion.div
