@@ -223,7 +223,7 @@ export const en: Translations = {
     language: "Language",
     portuguese: "Portuguese",
     english: "English",
-    items: "items",
+    items: "Machines",
     noPostsYet: "No posts yet",
     scanItemsToAdd: "Scan items to add to your collection",
     emptyCollection: "Your collection is empty",
