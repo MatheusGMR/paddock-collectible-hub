@@ -1,10 +1,12 @@
 import { Heart, MessageCircle, Send, Bookmark, MoreHorizontal, Info } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ItemBadge } from "./ItemBadge";
 import { trackInteraction } from "@/lib/analytics";
 import { cn } from "@/lib/utils";
+import { likePost, unlikePost, hasLikedPost } from "@/lib/api/notifications";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface PostCardProps {
   post: {
@@ -32,16 +34,48 @@ interface PostCardProps {
 
 export const PostCard = ({ post }: PostCardProps) => {
   const [liked, setLiked] = useState(false);
+  const [likeCount, setLikeCount] = useState(post.likes);
   const [saved, setSaved] = useState(false);
+  const [isLiking, setIsLiking] = useState(false);
   const navigate = useNavigate();
+  const { user } = useAuth();
 
-  const handleLike = () => {
+  // Check if user has liked this post on mount
+  useEffect(() => {
+    if (user && post.id) {
+      hasLikedPost(post.id).then(setLiked);
+    }
+  }, [user, post.id]);
+
+  const handleLike = async () => {
+    if (isLiking || !user) return;
+    
+    setIsLiking(true);
     const newLiked = !liked;
+    
+    // Optimistic update
     setLiked(newLiked);
-    trackInteraction("like_post", `post_${post.id}`, { 
-      action: newLiked ? "like" : "unlike",
-      post_id: post.id 
-    });
+    setLikeCount(prev => newLiked ? prev + 1 : prev - 1);
+    
+    try {
+      if (newLiked) {
+        // Like and create notification for post owner
+        await likePost(post.id, post.user.id || "");
+      } else {
+        await unlikePost(post.id);
+      }
+      
+      trackInteraction("like_post", `post_${post.id}`, { 
+        action: newLiked ? "like" : "unlike",
+        post_id: post.id 
+      });
+    } catch (error) {
+      // Revert on error
+      setLiked(!newLiked);
+      setLikeCount(prev => newLiked ? prev - 1 : prev + 1);
+    } finally {
+      setIsLiking(false);
+    }
   };
 
   const handleSave = () => {
@@ -144,7 +178,7 @@ export const PostCard = ({ post }: PostCardProps) => {
       {/* Likes */}
       <div className="px-4">
         <p className="text-sm font-semibold">
-          {(post.likes + (liked ? 1 : 0)).toLocaleString()} likes
+          {likeCount.toLocaleString()} likes
         </p>
       </div>
 
