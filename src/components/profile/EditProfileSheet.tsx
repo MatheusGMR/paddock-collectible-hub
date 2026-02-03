@@ -50,6 +50,10 @@ export const EditProfileSheet = ({
   const [lastSaved, setLastSaved] = useState<ProfileData | null>(null);
   const [showSavedIndicator, setShowSavedIndicator] = useState(false);
   
+  // Track if user is actively typing (to prevent save during typing)
+  const [isTyping, setIsTyping] = useState(false);
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
   // Username validation state
   const [isCheckingUsername, setIsCheckingUsername] = useState(false);
   const [usernameError, setUsernameError] = useState<string | null>(null);
@@ -59,11 +63,45 @@ export const EditProfileSheet = ({
   const [showCropSheet, setShowCropSheet] = useState(false);
   const [imageToCrop, setImageToCrop] = useState<string | null>(null);
 
-  // Debounce form data for auto-save
-  const debouncedFormData = useDebounce(formData, 1000);
+  // Debounce form data for auto-save - increased to 3.5 seconds for better typing experience
+  const debouncedFormData = useDebounce(formData, 3500);
   
   // Debounce username for validation
   const debouncedUsername = useDebounce(formData.username, 500);
+  
+  // Handle typing state - prevents save while user is actively typing
+  const handleFieldChange = useCallback((field: keyof ProfileData, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+    setIsTyping(true);
+    
+    // Clear existing timeout
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+    }
+    
+    // Set new timeout - mark typing as done after 3.5 seconds of inactivity
+    typingTimeoutRef.current = setTimeout(() => {
+      setIsTyping(false);
+    }, 3500);
+  }, []);
+  
+  // Save on blur (when user clicks outside the field)
+  const handleFieldBlur = useCallback(() => {
+    // Clear typing state immediately on blur
+    setIsTyping(false);
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+    }
+  }, []);
+  
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Reset form data when profile changes
   useEffect(() => {
@@ -131,9 +169,12 @@ export const EditProfileSheet = ({
     }
   }, [debouncedUsername, profile.username, userId, open, t.profile.usernameRequired, t.profile.usernameTaken]);
 
-  // Auto-save when debounced data changes
+  // Auto-save when debounced data changes AND user is not actively typing
   useEffect(() => {
     const autoSave = async () => {
+      // Skip if user is still typing
+      if (isTyping) return;
+      
       // Skip if no changes or invalid data
       if (!debouncedFormData.username.trim()) return;
       if (debouncedFormData.phone && !validatePhone(debouncedFormData.phone)) return;
@@ -179,10 +220,10 @@ export const EditProfileSheet = ({
       }
     };
 
-    if (open) {
+    if (open && !isTyping) {
       autoSave();
     }
-  }, [debouncedFormData, open, onSave, profile, lastSaved, usernameError, isCheckingUsername]);
+  }, [debouncedFormData, open, onSave, profile, lastSaved, usernameError, isCheckingUsername, isTyping]);
 
   const handleAvatarClick = () => {
     fileInputRef.current?.click();
@@ -355,7 +396,8 @@ export const EditProfileSheet = ({
                 <Input
                   id="username"
                   value={formData.username}
-                  onChange={(e) => setFormData(prev => ({ ...prev, username: e.target.value }))}
+                  onChange={(e) => handleFieldChange("username", e.target.value)}
+                  onBlur={handleFieldBlur}
                   placeholder={t.auth.username}
                   maxLength={30}
                   className={usernameError ? "border-destructive pr-10" : usernameValid ? "border-primary pr-10" : "pr-10"}
@@ -389,7 +431,8 @@ export const EditProfileSheet = ({
               <Textarea
                 id="bio"
                 value={formData.bio || ""}
-                onChange={(e) => setFormData(prev => ({ ...prev, bio: e.target.value }))}
+                onChange={(e) => handleFieldChange("bio", e.target.value)}
+                onBlur={handleFieldBlur}
                 placeholder={t.profile.bioPlaceholder}
                 maxLength={150}
                 rows={3}
@@ -405,7 +448,8 @@ export const EditProfileSheet = ({
               <Input
                 id="city"
                 value={formData.city || ""}
-                onChange={(e) => setFormData(prev => ({ ...prev, city: e.target.value }))}
+                onChange={(e) => handleFieldChange("city", e.target.value)}
+                onBlur={handleFieldBlur}
                 placeholder={t.profile.cityPlaceholder}
                 maxLength={50}
               />
@@ -418,7 +462,8 @@ export const EditProfileSheet = ({
                 id="phone"
                 type="tel"
                 value={formData.phone || ""}
-                onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
+                onChange={(e) => handleFieldChange("phone", e.target.value)}
+                onBlur={handleFieldBlur}
                 placeholder={t.profile.phonePlaceholder}
                 maxLength={20}
               />
