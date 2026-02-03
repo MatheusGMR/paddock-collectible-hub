@@ -8,6 +8,12 @@ import { cn } from "@/lib/utils";
 import { likePost, unlikePost, hasLikedPost } from "@/lib/api/notifications";
 import { useAuth } from "@/contexts/AuthContext";
 
+// Helper to validate UUID format (prevents API calls with mock post IDs like "1", "2")
+const isValidUUID = (id: string): boolean => {
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  return uuidRegex.test(id);
+};
+
 interface PostCardProps {
   post: {
     id: string;
@@ -46,15 +52,16 @@ export const PostCard = ({ post }: PostCardProps) => {
   const navigate = useNavigate();
   const { user } = useAuth();
 
-  // Check if user has liked this post on mount
+  // Check if user has liked this post on mount (only for real posts with valid UUIDs)
   useEffect(() => {
-    if (user && post.id) {
+    if (user && post.id && isValidUUID(post.id)) {
       hasLikedPost(post.id).then(setLiked);
     }
   }, [user, post.id]);
 
   const handleLike = async () => {
-    if (isLiking || !user) return;
+    // Don't allow liking mock posts (non-UUID IDs)
+    if (isLiking || !user || !isValidUUID(post.id)) return;
     
     setIsLiking(true);
     const newLiked = !liked;
