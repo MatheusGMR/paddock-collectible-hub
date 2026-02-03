@@ -71,7 +71,7 @@ interface GroupedItems {
 export const CollectionList = ({ items, onItemDeleted }: CollectionListProps) => {
   const [selectedItem, setSelectedItem] = useState<CollectibleDetailItem | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [sortOption, setSortOption] = useState<CollectionSortOption>("name");
+  const [sortOption, setSortOption] = useState<CollectionSortOption>("brand");
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
 
   const handleItemClick = (item: CollectibleDetailItem) => {
@@ -126,8 +126,12 @@ export const CollectionList = ({ items, onItemDeleted }: CollectionListProps) =>
     items.forEach(item => {
       let key: string;
       
-      if (sortOption === "manufacturer") {
+      if (sortOption === "brand") {
+        key = item.item?.real_car_brand || "Outros";
+      } else if (sortOption === "manufacturer") {
         key = item.item?.collectible_manufacturer || "Outros";
+      } else if (sortOption === "year") {
+        key = item.item?.real_car_year || "Sem ano";
       } else {
         // Country - use origin field
         key = item.item?.collectible_origin || "Outros";
@@ -139,13 +143,17 @@ export const CollectionList = ({ items, onItemDeleted }: CollectionListProps) =>
       groups[key].push(item);
     });
 
-    // Convert to array and sort
+    // Convert to array and sort alphabetically
     const groupedArray: GroupedItems[] = Object.entries(groups).map(([key, groupItems]) => {
       let icon: string | undefined;
       let label = key;
       
-      if (sortOption === "manufacturer") {
+      if (sortOption === "brand") {
+        icon = "🚗";
+      } else if (sortOption === "manufacturer") {
         icon = manufacturerIcons[key] || "📦";
+      } else if (sortOption === "year") {
+        icon = "📅";
       } else {
         const country = countryData[key];
         if (country) {
@@ -166,7 +174,7 @@ export const CollectionList = ({ items, onItemDeleted }: CollectionListProps) =>
           return nameA.localeCompare(nameB, "pt-BR");
         }),
       };
-    }).sort((a, b) => b.items.length - a.items.length); // Sort by count
+    }).sort((a, b) => a.label.localeCompare(b.label, "pt-BR")); // Sort alphabetically A-Z
 
     return { grouped: true, groups: groupedArray };
   }, [items, sortOption]);
