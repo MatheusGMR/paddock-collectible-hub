@@ -5,12 +5,12 @@ export interface IndexBreakdownItem {
 }
 
 export interface PriceIndexBreakdown {
-  rarity: IndexBreakdownItem;
-  condition: IndexBreakdownItem;
-  manufacturer: IndexBreakdownItem;
-  scale: IndexBreakdownItem;
-  age: IndexBreakdownItem;
-  origin: IndexBreakdownItem;
+  rarity: IndexBreakdownItem; // max: 45 - Brazilian market availability
+  condition: IndexBreakdownItem; // max: 20
+  manufacturer: IndexBreakdownItem; // max: 15
+  scale: IndexBreakdownItem; // max: 10
+  age: IndexBreakdownItem; // max: 10
+  origin?: IndexBreakdownItem; // deprecated - kept for backwards compatibility
 }
 
 export interface PriceIndex {

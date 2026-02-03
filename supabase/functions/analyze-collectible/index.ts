@@ -353,17 +353,16 @@ For COLLECTIBLE (toy car):
         "notes": "Additional notes including how manufacturer was identified"
       },
       "priceIndex": {
-        "score": 1-100,
-        "tier": "common|uncommon|rare|super_rare|ultra_rare",
-        "breakdown": {
-          "rarity": { "score": 0-35, "max": 35, "reason": "..." },
-          "condition": { "score": 0-25, "max": 25, "reason": "..." },
-          "manufacturer": { "score": 0-15, "max": 15, "reason": "..." },
-          "scale": { "score": 0-10, "max": 10, "reason": "..." },
-          "age": { "score": 0-10, "max": 10, "reason": "..." },
-          "origin": { "score": 0-5, "max": 5, "reason": "..." }
-        }
-      },
+356:         "score": 1-100,
+357:         "tier": "common|uncommon|rare|super_rare|ultra_rare",
+358:         "breakdown": {
+359:           "rarity": { "score": 0-45, "max": 45, "reason": "Explicar disponibilidade NO BRASIL, ignorar outros países" },
+360:           "condition": { "score": 0-20, "max": 20, "reason": "..." },
+361:           "manufacturer": { "score": 0-15, "max": 15, "reason": "..." },
+362:           "scale": { "score": 0-10, "max": 10, "reason": "..." },
+363:           "age": { "score": 0-10, "max": 10, "reason": "..." }
+364:         }
+365:       },
       "musicSuggestion": "Song Title - Artist (Year)",
       "musicSelectionReason": "Brief explanation of why this song was chosen",
       "realCarPhotos": ["url1", "url2", "url3", "url4", "url5"]
@@ -395,93 +394,124 @@ For REAL_CAR (full-size vehicle):
   "error": "only if identified is false"
 }
 
-PRICE INDEX SCORING GUIDELINES (CONTEXTO: MERCADO BRASILEIRO):
+PRICE INDEX SCORING GUIDELINES - EXCLUSIVAMENTE PARA O MERCADO BRASILEIRO:
 
-IMPORTANTE: A pontuação deve refletir a REALIDADE DO COLECIONADOR BRASILEIRO.
-- Miniaturas de carros brasileiros (Fiat, VW, Chevrolet BR) são MUITO RARAS porque poucos fabricantes as produzem
-- Modelos que não são vendidos oficialmente no Brasil têm disponibilidade limitada
-- Hot Wheels mainline é comum no Brasil, mas séries Premium/Super são raras
-- Fabricantes como Greenlight, M2, Auto World são MUITO difíceis de encontrar no Brasil (importação cara)
+⚠️ REGRA CRÍTICA: IGNORE a disponibilidade do item em QUALQUER outro país.
+A pontuação deve refletir EXCLUSIVAMENTE a realidade do COLECIONADOR BRASILEIRO.
 
-CRITÉRIOS DE PONTUAÇÃO:
+PRINCÍPIO FUNDAMENTAL:
+Se um item é comum na Europa, Ásia ou EUA, mas DIFÍCIL de obter no Brasil → ele É RARO para nós.
+Se um item é raro globalmente mas FÁCIL de achar no Brasil → ele NÃO é tão raro para nós.
 
-1. RARIDADE NO MERCADO BRASILEIRO (40 max) - Peso aumentado por ser o fator mais crítico:
+PERGUNTE-SE SEMPRE: "Um colecionador em São Paulo, Curitiba ou Recife consegue comprar isso facilmente?"
+
+CRITÉRIOS DE PONTUAÇÃO (Total: 100 pontos):
+
+1. RARIDADE NO MERCADO BRASILEIRO (45 max) - FATOR MAIS CRÍTICO:
    
-   ULTRA RARO (35-40): 
-   - Modelos de carros brasileiros (Fiat Pulse, Argo, Toro, Strada, Mobi; VW Gol, Saveiro, Nivus; Chevrolet Onix, Tracker, S10; Renault Kwid, Duster)
-   - Chase variants (Super Treasure Hunt, Green Machine, White Lightning, Gold Chase)
-   - Modelos exclusivos de outros mercados não vendidos no Brasil
-   - Séries descontinuadas há mais de 10 anos
-   - Edições de convenções ou exclusivos de lojas estrangeiras
+   ⚠️ IGNORE a disponibilidade em outros países. FOQUE APENAS no Brasil.
    
-   SUPER RARO (28-34):
-   - Hot Wheels Premium (Car Culture, Team Transport, Boulevard)
-   - Modelos de fabricantes premium não distribuídos no Brasil (Mini GT, Kyosho, Tomica Limited)
-   - Variantes de cor exclusivas de outros países
-   - Modelos de filmes/séries com baixa tiragem
+   ULTRA RARO NO BRASIL (38-45): 
+   - Modelos de CARROS BRASILEIROS (muito poucos fabricantes fazem):
+     * Fiat: Pulse, Argo, Toro, Strada, Mobi, Uno, Palio, Siena, Fiorino
+     * VW Brasil: Gol, Saveiro, Nivus, Polo (versão BR), Fox, Voyage
+     * Chevrolet BR: Onix, Tracker, S10, Montana, Spin, Cobalt, Prisma
+     * Renault: Kwid, Duster, Sandero, Logan, Oroch, Captur
+     * Toyota Brasil: Corolla Cross, Hilux SW4, Yaris (versão BR)
+     * Outros BR: Troller, Willys, FNM, Puma, Miura, Santa Matilde
+   - Chase variants (STH, Green Machine, White Lightning, Gold Chase)
+   - Modelos de países que NÃO EXPORTAM para o Brasil:
+     * Carros RUSSOS (Lada, GAZ, UAZ, Moskvitch, ZAZ) - praticamente impossíveis no BR
+     * Carros CHINESES sem presença BR (BYD antigos, Great Wall, Chery antigos)
+     * Carros INDIANOS (Maruti, Tata, Mahindra)
+     * Carros do LESTE EUROPEU (Skoda antigos, Dacia antiga, FSO, Trabant, Wartburg)
+   - Miniaturas de fabricantes SEM distribuição no Brasil
+   - Exclusivos de convenções estrangeiras (SDCC, Japan Expo, etc.)
    
-   RARO (20-27):
-   - Greenlight, M2 Machines, Auto World, Johnny Lightning (requerem importação)
-   - Hot Wheels ID / Hot Wheels Unleashed exclusivos
-   - Majorette Premium, Matchbox Collectors
+   SUPER RARO NO BRASIL (30-37):
+   - Hot Wheels Premium (Car Culture, Team Transport, Boulevard) - chegam em poucas lojas
+   - Modelos de fabricantes premium não distribuídos oficialmente no Brasil:
+     * Mini GT, Kyosho 1:64, Tomica Limited Vintage
+     * Greenlight (requer importação), M2 Machines (requer importação)
+     * Auto World, Johnny Lightning
+   - Carros JAPONESES do mercado interno (JDM exclusivos não exportados):
+     * Kei cars (Suzuki Jimny antigo, Honda Beat, Autozam AZ-1)
+     * Versões JDM de carros (Skyline R32-R34, Silvia, 180SX, etc.)
+   - Carros EUROPEUS raros no BR (Peugeot esportivos, Renault Sport, Seat, Skoda moderno)
+   - Variantes de cor exclusivas de outros mercados
+   
+   RARO NO BRASIL (22-29):
+   - Matchbox Premium/Collectors
+   - Majorette Premium
+   - Hot Wheels ID / RLC (Collectors membership)
    - Modelos de 5-10 anos atrás fora de linha
+   - Carros americanos muscle menos populares no BR (AMC, Plymouth, Oldsmobile)
    
-   INCOMUM (12-19):
+   INCOMUM NO BRASIL (12-21):
    - Hot Wheels mainline de anos anteriores (não mais em lojas)
    - Matchbox mainline descontinuados
    - Majorette standard de séries passadas
    - Bburago, Maisto, Welly mid-tier
+   - Carros populares globais mas com poucas miniaturas (Corolla, Civic antigos)
    
-   COMUM (0-11):
-   - Hot Wheels mainline atual (encontrado em supermercados/lojas)
+   COMUM NO BRASIL (0-11):
+   - Hot Wheels mainline atual (supermercados, lojas de brinquedo)
    - Matchbox mainline atual
    - Majorette standard atual
-   - Marcas genéricas sem licenciamento
+   - Carros icônicos com MUITAS miniaturas: Ferrari, Lamborghini, Mustang, Camaro
+   - Marcas genéricas/sem licenciamento
 
 2. CONDIÇÃO (20 max):
-   - Mint/Lacrado na embalagem original: 18-20
-   - Near Mint/Quase perfeito: 14-17
-   - Bom/Pequenos desgastes: 8-13
-   - Regular/Desgaste visível: 0-7
+   - Mint/Lacrado na embalagem original selada: 18-20
+   - Near Mint/Embalagem aberta mas item perfeito: 14-17
+   - Bom/Pequenos desgastes, sem embalagem: 8-13
+   - Regular/Desgaste visível, pintura danificada: 0-7
 
 3. FABRICANTE (15 max):
-   - Ultra Premium (Kyosho, Mini GT, TSM, Spark, AutoArt): 13-15
-   - Premium (Greenlight, M2 Machines, Auto World, Johnny Lightning, Tomica Limited): 10-12
-   - Mid-tier (Majorette, Jada, Bburago 1:43): 6-9
-   - Standard (Hot Wheels, Matchbox, Majorette, Maisto, Welly): 3-5
-   - Budget/Genérico: 0-2
+   - Ultra Premium (AutoArt, CMC, Kyosho 1:18, Spark): 13-15
+   - Premium (Mini GT, Tomica Limited, Greenlight, M2, Auto World): 10-12
+   - Mid-tier (Majorette, Jada, Bburago 1:43, Schuco): 6-9
+   - Standard (Hot Wheels, Matchbox, Maisto, Welly): 3-5
+   - Budget/Genérico/Sem marca: 0-2
 
 4. ESCALA (10 max):
-   - Grande (1:18, 1:24): 8-10 (mais detalhes, maior valor)
+   - Grande e detalhada (1:18, 1:24): 8-10
    - Média (1:43): 5-7
    - Pequena (1:64): 2-4
-   - Mini (1:87+): 0-1
+   - Mini/Micro (1:87, 1:144): 0-1
 
-5. IDADE (10 max):
-   - Vintage (30+ anos, ex: Corgi, Dinky clássicos): 8-10
+5. IDADE E NOSTALGIA (10 max):
+   - Vintage (30+ anos, Corgi, Dinky, Solido clássico): 8-10
    - Clássico (15-30 anos): 5-7
    - Moderno (5-15 anos): 2-4
    - Recente (0-5 anos): 0-1
 
-6. PAÍS DE FABRICAÇÃO (5 max):
-   - Japão: 4-5
-   - Tailândia/EUA: 3
-   - Malásia/Vietnã: 2
-   - China: 0-1
+TIER FINAL (baseado na soma):
+- ultra_rare: 85-100 → "Relíquia! Peça de museu brasileiro"
+- super_rare: 70-84 → "Muito difícil de encontrar no Brasil"
+- rare: 50-69 → "Requer busca ativa ou importação"
+- uncommon: 30-49 → "Não está nas prateleiras, mas encontrável online"
+- common: 1-29 → "Fácil de achar em lojas brasileiras"
 
-TIER FINAL:
-- ultra_rare: 85-100 (Relíquia! Peça de museu)
-- super_rare: 70-84 (Muito difícil de encontrar no Brasil)
-- rare: 50-69 (Requer busca/importação)
-- uncommon: 30-49 (Não está nas prateleiras, mas encontrável)
-- common: 1-29 (Fácil de achar em lojas brasileiras)
+EXEMPLOS PRÁTICOS COM CONTEXTO BRASILEIRO:
 
-EXEMPLOS PRÁTICOS (Brasil):
-- Fiat Pulse Hot Wheels: Ultra Rare (carro brasileiro, pouquíssimas miniaturas existem)
-- Ferrari 458 Hot Wheels mainline: Common (fácil de achar)
-- Greenlight Ford F-150: Rare (fabricante não vendido no Brasil)
-- Hot Wheels Super Treasure Hunt: Ultra Rare (chase variant)
-- Majorette Renault Duster: Super Rare (carro brasileiro em Majorette europeia)
+❌ ERRO: "Lada Niva miniatura - Comum (popular na Rússia)"
+✅ CORRETO: "Lada Niva miniatura - Ultra Raro (carro russo, impossível achar no Brasil)"
+
+❌ ERRO: "Peugeot 205 GTi - Comum (popular na França)"  
+✅ CORRETO: "Peugeot 205 GTi - Raro (carro europeu antigo, poucas miniaturas chegam ao BR)"
+
+❌ ERRO: "Suzuki Jimny - Incomum (comum no Japão)"
+✅ CORRETO: "Suzuki Jimny - Super Raro (JDM, Tomica não é vendida oficialmente no BR)"
+
+EXEMPLOS CORRETOS:
+- Fiat Pulse Hot Wheels: Ultra Raro (carro brasileiro, pouquíssimas miniaturas existem)
+- Ferrari 458 Hot Wheels mainline: Comum (fácil de achar em qualquer loja)
+- Greenlight Ford F-150: Raro (Greenlight não é vendido no Brasil)
+- Hot Wheels Super Treasure Hunt: Ultra Raro (chase variant, 1 a cada 50+ caixas)
+- Majorette Renault Duster: Super Raro (carro brasileiro feito por fabricante europeu)
+- Lada 2107 (qualquer fabricante): Ultra Raro (carro russo, inexistente no mercado BR)
+- Tomica Toyota Century: Super Raro (JDM exclusivo, Tomica não distribui no BR)
 
 Only respond with valid JSON, no additional text or markdown.`;
 
