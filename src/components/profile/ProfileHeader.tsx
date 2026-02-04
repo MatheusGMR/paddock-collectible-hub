@@ -68,7 +68,7 @@ export const ProfileHeader = ({ user, onEditProfile, onSettings }: ProfileHeader
         </div>
       </header>
 
-      <div className="border-b border-border bg-black">
+      <div className="border-b border-border bg-background">
 
         {/* Profile Info */}
         <div className="px-4 pb-6 pt-6">
