@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 
 export interface FeedPost {
   id: string;
@@ -27,6 +28,7 @@ export interface FeedPost {
     username: string;
     likesCount: number;
   } | null;
+  isFromFollowing?: boolean;
 }
 
 const PAGE_SIZE = 10;
@@ -51,8 +53,32 @@ export const useFeedPosts = () => {
   const [error, setError] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(true);
   const [page, setPage] = useState(0);
+  const [followingIds, setFollowingIds] = useState<string[]>([]);
+  const { user } = useAuth();
 
-  const fetchPosts = useCallback(async (pageNum: number, append: boolean = false) => {
+  // Fetch the list of users the current user is following
+  const fetchFollowingIds = useCallback(async () => {
+    if (!user?.id) {
+      setFollowingIds([]);
+      return [];
+    }
+
+    const { data, error } = await supabase
+      .from("follows")
+      .select("following_id")
+      .eq("follower_id", user.id);
+
+    if (error) {
+      console.error("Error fetching following:", error);
+      return [];
+    }
+
+    const ids = data?.map(f => f.following_id) || [];
+    setFollowingIds(ids);
+    return ids;
+  }, [user?.id]);
+
+  const fetchPosts = useCallback(async (pageNum: number, append: boolean = false, followingUserIds: string[] = []) => {
     try {
       if (append) {
         setLoadingMore(true);
@@ -64,7 +90,7 @@ export const useFeedPosts = () => {
       const from = pageNum * PAGE_SIZE;
       const to = from + PAGE_SIZE - 1;
 
-      // Fetch posts with pagination
+      // Fetch all posts with pagination
       const { data: postsData, error: postsError } = await supabase
         .from("posts")
         .select(`
@@ -92,8 +118,21 @@ export const useFeedPosts = () => {
         return;
       }
 
+      // Sort posts: followed users first, then by date
+      const sortedPosts = [...postsData].sort((a, b) => {
+        const aIsFollowing = followingUserIds.includes(a.user_id);
+        const bIsFollowing = followingUserIds.includes(b.user_id);
+        
+        // Prioritize posts from followed users
+        if (aIsFollowing && !bIsFollowing) return -1;
+        if (!aIsFollowing && bIsFollowing) return 1;
+        
+        // Within same category, sort by date (most recent first)
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      });
+
       // Get unique user IDs
-      const userIds = [...new Set(postsData.map(p => p.user_id))];
+      const userIds = [...new Set(sortedPosts.map(p => p.user_id))];
       
       // Fetch profiles for all users
       const { data: profiles } = await supabase
@@ -106,7 +145,7 @@ export const useFeedPosts = () => {
       );
 
       // Get collection item IDs that are not null
-      const collectionItemIds = postsData
+      const collectionItemIds = sortedPosts
         .filter(p => p.collection_item_id)
         .map(p => p.collection_item_id!);
 
@@ -137,7 +176,7 @@ export const useFeedPosts = () => {
       }
 
       // Fetch top comment for each post (most liked)
-      const postIds = postsData.map(p => p.id);
+      const postIds = sortedPosts.map(p => p.id);
       const { data: topComments } = await supabase
         .from("post_comments")
         .select("id, post_id, content, user_id, likes_count")
@@ -174,10 +213,11 @@ export const useFeedPosts = () => {
       });
 
       // Map posts to FeedPost format
-      const mappedPosts: FeedPost[] = postsData.map(post => {
+      const mappedPosts: FeedPost[] = sortedPosts.map(post => {
         const profile = profilesMap.get(post.user_id);
         const item = post.collection_item_id ? itemsMap.get(post.collection_item_id) : null;
         const topComment = topCommentMap.get(post.id) || null;
+        const isFromFollowing = followingUserIds.includes(post.user_id);
 
         return {
           id: post.id,
@@ -200,6 +240,7 @@ export const useFeedPosts = () => {
           } : null,
           createdAt: formatRelativeTime(post.created_at),
           topComment,
+          isFromFollowing,
         };
       });
 
@@ -221,19 +262,25 @@ export const useFeedPosts = () => {
     if (!loadingMore && hasMore) {
       const nextPage = page + 1;
       setPage(nextPage);
-      fetchPosts(nextPage, true);
+      fetchPosts(nextPage, true, followingIds);
     }
-  }, [loadingMore, hasMore, page, fetchPosts]);
+  }, [loadingMore, hasMore, page, fetchPosts, followingIds]);
 
-  const refetch = useCallback(() => {
+  const refetch = useCallback(async () => {
     setPage(0);
     setHasMore(true);
-    fetchPosts(0, false);
-  }, [fetchPosts]);
+    const ids = await fetchFollowingIds();
+    fetchPosts(0, false, ids);
+  }, [fetchPosts, fetchFollowingIds]);
 
+  // Initial load
   useEffect(() => {
-    fetchPosts(0, false);
-  }, [fetchPosts]);
+    const init = async () => {
+      const ids = await fetchFollowingIds();
+      fetchPosts(0, false, ids);
+    };
+    init();
+  }, [fetchFollowingIds, fetchPosts]);
 
   return { 
     posts, 

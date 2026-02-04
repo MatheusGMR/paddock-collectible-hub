@@ -41,6 +41,7 @@ interface PostCardProps {
       username: string;
       likesCount: number;
     } | null;
+    isFromFollowing?: boolean;
   };
 }
 
@@ -128,13 +129,23 @@ export const PostCard = ({ post }: PostCardProps) => {
           className="flex items-center gap-3 cursor-pointer"
           onClick={handleUserClick}
         >
-          <Avatar className="h-9 w-9 ring-2 ring-primary/20">
+          <Avatar className={cn(
+            "h-9 w-9 ring-2",
+            post.isFromFollowing ? "ring-primary" : "ring-primary/20"
+          )}>
             <AvatarImage src={post.user.avatar} alt={post.user.username} />
             <AvatarFallback className="bg-muted text-foreground">
               {post.user.username[0]?.toUpperCase() || "U"}
             </AvatarFallback>
           </Avatar>
-          <span className="text-sm font-medium">{post.user.username}</span>
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium">{post.user.username}</span>
+            {post.isFromFollowing && (
+              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
+                Seguindo
+              </span>
+            )}
+          </div>
         </div>
         <button className="p-2 text-foreground-secondary hover:text-foreground transition-colors">
           <MoreHorizontal className="h-5 w-5" />
