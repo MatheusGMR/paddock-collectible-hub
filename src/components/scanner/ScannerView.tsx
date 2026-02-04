@@ -8,6 +8,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { useGuidedTips } from "@/contexts/GuidedTipsContext";
 import { useThemeColor } from "@/hooks/useThemeColor";
 import { addToCollection, checkDuplicateInCollection } from "@/lib/database";
+import { uploadCollectionImage, isBase64DataUri } from "@/lib/uploadImage";
 import { useNavigate } from "react-router-dom";
 import { CaptureButton } from "@/components/scanner/CaptureButton";
 import { ResultCarousel } from "@/components/scanner/ResultCarousel";
@@ -1690,6 +1691,27 @@ export const ScannerView = () => {
     if (!result) return;
 
     try {
+      // Determine which image to use
+      const imageToSave = analysisResults.length === 1 
+        ? (capturedImage || result.croppedImage)
+        : (result.croppedImage || capturedImage);
+
+      // Upload image to storage if it's a base64 data URI
+      let imageUrl: string | undefined;
+      if (imageToSave && isBase64DataUri(imageToSave)) {
+        console.log("[Scanner] Uploading image to storage...");
+        const uploadedUrl = await uploadCollectionImage(user.id, imageToSave);
+        if (uploadedUrl) {
+          imageUrl = uploadedUrl;
+          console.log("[Scanner] Image uploaded successfully:", imageUrl);
+        } else {
+          console.warn("[Scanner] Image upload failed, saving without image");
+        }
+      } else if (imageToSave) {
+        // It's already a URL, use it directly
+        imageUrl = imageToSave;
+      }
+
       await addToCollection(
         user.id,
         {
@@ -1712,11 +1734,7 @@ export const ScannerView = () => {
           music_selection_reason: result.musicSelectionReason || null,
           real_car_photos: result.realCarPhotos || null,
         },
-        // For single car photos, use original image (better quality)
-        // For multiple cars, use cropped image to isolate each car
-        analysisResults.length === 1 
-          ? (capturedImage || result.croppedImage || undefined)
-          : (result.croppedImage || capturedImage || undefined)
+        imageUrl
       );
 
       toast({
