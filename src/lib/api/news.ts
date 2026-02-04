@@ -114,12 +114,13 @@ export async function getNewsArticles(options: {
   
   // If a specific category is selected, fetch normally
   if (category) {
-    // Fetch Portuguese articles first
+    // Fetch Portuguese articles first - only with images
     let ptQuery = supabase
       .from('news_articles')
       .select('*')
       .eq('category', category)
       .eq('language', 'pt')
+      .not('image_url', 'is', null)
       .order('published_at', { ascending: false, nullsFirst: false })
       .order('fetched_at', { ascending: false })
       .range(offset, offset + fetchLimit);
@@ -128,12 +129,13 @@ export async function getNewsArticles(options: {
       ptQuery = ptQuery.or(`title.ilike.%${search}%,summary.ilike.%${search}%`);
     }
     
-    // Fetch English articles as fallback
+    // Fetch English articles as fallback - only with images
     let enQuery = supabase
       .from('news_articles')
       .select('*')
       .eq('category', category)
       .eq('language', 'en')
+      .not('image_url', 'is', null)
       .order('published_at', { ascending: false, nullsFirst: false })
       .order('fetched_at', { ascending: false })
       .range(offset, offset + fetchLimit);
@@ -181,22 +183,24 @@ export async function getNewsArticles(options: {
   const categoryOffset = Math.floor(offset / 3);
   
   const fetchCategory = async (cat: string) => {
-    // Fetch Portuguese first
+    // Fetch Portuguese first - only with images
     const ptQuery = supabase
       .from('news_articles')
       .select('*')
       .eq('category', cat)
       .eq('language', 'pt')
+      .not('image_url', 'is', null)
       .order('published_at', { ascending: false, nullsFirst: false })
       .order('fetched_at', { ascending: false })
       .range(categoryOffset, categoryOffset + perCategory);
     
-    // Fetch English as fallback
+    // Fetch English as fallback - only with images
     const enQuery = supabase
       .from('news_articles')
       .select('*')
       .eq('category', cat)
       .eq('language', 'en')
+      .not('image_url', 'is', null)
       .order('published_at', { ascending: false, nullsFirst: false })
       .order('fetched_at', { ascending: false })
       .range(categoryOffset, categoryOffset + perCategory);
