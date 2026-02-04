@@ -71,6 +71,10 @@ export const PostGrid = ({ posts, collectionItems = [], onPinToggle }: PostGridP
                 alt=""
                 className="w-full h-full object-cover"
                 loading="lazy"
+                onError={(e) => {
+                  // Fallback for broken images
+                  e.currentTarget.src = "/placeholder.svg";
+                }}
               />
               
               {/* Index Badge - top left */}

@@ -7,6 +7,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { supabase } from "@/integrations/supabase/client";
 import { addToCollection, checkDuplicateInCollection } from "@/lib/database";
+import { uploadCollectionImage, isBase64DataUri } from "@/lib/uploadImage";
 import { ResultCarousel } from "@/components/scanner/ResultCarousel";
 import { ImageQualityError, ImageQualityIssue } from "@/components/scanner/ImageQualityError";
 import { RealCarResults } from "@/components/scanner/RealCarResults";
@@ -298,6 +299,24 @@ export const PhotoUploadSheet = ({
     const result = analysisResults[index];
     
     try {
+      // Upload image to storage if it's a base64 data URI
+      let imageUrl: string | undefined;
+      const imageToSave = result.croppedImage;
+      
+      if (imageToSave && isBase64DataUri(imageToSave)) {
+        console.log("[PhotoUpload] Uploading image to storage...");
+        const uploadedUrl = await uploadCollectionImage(user.id, imageToSave);
+        if (uploadedUrl) {
+          imageUrl = uploadedUrl;
+          console.log("[PhotoUpload] Image uploaded successfully:", imageUrl);
+        } else {
+          console.warn("[PhotoUpload] Image upload failed, saving without image");
+        }
+      } else if (imageToSave) {
+        // It's already a URL, use it directly
+        imageUrl = imageToSave;
+      }
+
       await addToCollection(
         user.id,
         {
@@ -320,7 +339,7 @@ export const PhotoUploadSheet = ({
           music_selection_reason: result.musicSelectionReason || null,
           real_car_photos: result.realCarPhotos || null,
         },
-        result.croppedImage
+        imageUrl
       );
 
       setAddedIndices((prev) => new Set(prev).add(index));
