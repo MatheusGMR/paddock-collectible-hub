@@ -65,7 +65,7 @@ const HighlightedImage = ({ originalImage, croppedImage, boundingBox, carName, c
   // If no bounding box available, show cropped image or original without highlight
   if (!boundingBox) {
     return (
-      <div className="relative w-full aspect-square rounded-2xl overflow-hidden bg-gradient-to-b from-muted to-muted/50">
+      <div className="relative w-full aspect-square rounded-t-[20px] rounded-b-2xl overflow-hidden bg-gradient-to-b from-muted to-muted/50">
         <img
           src={croppedImage || originalImage}
           alt={carName}
@@ -81,7 +81,7 @@ const HighlightedImage = ({ originalImage, croppedImage, boundingBox, carName, c
   }
 
   return (
-    <div className="relative w-full aspect-square rounded-2xl overflow-hidden bg-black">
+    <div className="relative w-full aspect-square rounded-t-[20px] rounded-b-2xl overflow-hidden bg-black">
       {/* Full original image - cropped to square */}
       <img
         src={originalImage}
@@ -143,15 +143,15 @@ const HighlightedImage = ({ originalImage, croppedImage, boundingBox, carName, c
 };
 
 // Collapsible section component - same pattern as profile
+// defaultOpen is always false for scanner results (closed by default)
 interface CollapsibleSectionProps {
   title: string;
   icon: React.ReactNode;
-  defaultOpen?: boolean;
   children: React.ReactNode;
 }
 
-const CollapsibleSection = ({ title, icon, defaultOpen = false, children }: CollapsibleSectionProps) => {
-  const [isOpen, setIsOpen] = useState(defaultOpen);
+const CollapsibleSection = ({ title, icon, children }: CollapsibleSectionProps) => {
+  const [isOpen, setIsOpen] = useState(false);
   
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen}>
@@ -294,7 +294,7 @@ export const ResultCarousel = ({
   const { result, originalIndex } = currentItem;
 
   return (
-    <div className="bg-card rounded-t-3xl safe-bottom animate-slide-up-card relative z-10">
+    <div className="bg-card rounded-t-[28px] safe-bottom animate-slide-up-card relative z-10 overflow-hidden">
       {/* Header with count */}
       {results.length > 1 && (
         <div className="flex items-center justify-between px-4 py-3 border-b border-border">
@@ -309,8 +309,8 @@ export const ResultCarousel = ({
         </div>
       )}
 
-      {/* Single item view - vertical scroll only */}
-      <div className="relative">
+      {/* Single item view - vertical scroll only, no horizontal scroll */}
+      <div className="relative overflow-hidden">
         {/* Navigation arrows for multiple items */}
         {remainingResults.length > 1 && (
           <>
@@ -331,10 +331,10 @@ export const ResultCarousel = ({
           </>
         )}
 
-        {/* Current item - vertical scroll only */}
+        {/* Current item - vertical scroll only, locked horizontal */}
         <div
           className={cn(
-            "px-4 pt-4 pb-2 transition-all duration-300",
+            "px-4 pt-4 pb-2 transition-all duration-300 overflow-x-hidden",
             justAddedIndex === originalIndex && "opacity-0 scale-95"
           )}
         >
@@ -384,13 +384,12 @@ export const ResultCarousel = ({
               </div>
             )}
 
-            {/* Collapsible Sections - same structure as profile */}
+            {/* Collapsible Sections - all closed by default */}
             <div className="space-y-3">
               {/* Real Car Data */}
               <CollapsibleSection 
                 title="Dados do Carro Real" 
                 icon={<Car className="h-4 w-4 text-primary" />}
-                defaultOpen
               >
                 <div className="space-y-0">
                   <DetailRow label="Marca" value={result.realCar.brand} />
@@ -403,7 +402,6 @@ export const ResultCarousel = ({
               <CollapsibleSection 
                 title="Dados do Colecionável" 
                 icon={<Package className="h-4 w-4 text-primary" />}
-                defaultOpen
               >
                 <div className="space-y-0">
                   <DetailRow label="Fabricante" value={result.collectible.manufacturer} />
