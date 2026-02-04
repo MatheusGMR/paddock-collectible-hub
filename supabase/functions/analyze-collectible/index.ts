@@ -146,25 +146,29 @@ Set "detectedType" to either "collectible" or "real_car" based on your analysis.
 
 IF TYPE IS "collectible" (TOY CAR):
 
-STEP 1 - IMAGE QUALITY VALIDATION:
+STEP 1 - IMAGE QUALITY VALIDATION (BE VERY CONSERVATIVE WITH REJECTIONS):
 
-IMPORTANT: The purpose of validation is to ensure the AI CAN provide accurate analysis.
-- Only report imageQuality.isValid = false for issues that PREVENT analysis
-- Do NOT report "too_many_cars" if there are 5 or fewer cars visible
-- Do NOT report quality issues if the image is acceptable for analysis
+⚠️ CRITICAL: Your DEFAULT should be to ACCEPT the image and proceed with analysis.
+Only reject if analysis is genuinely IMPOSSIBLE due to severe issues.
 
-Check for these issues ONLY if they truly prevent analysis:
-1. COUNT how many SEPARATE/DISTINCT collectible cars are visible - NOT parts or angles of the same car
-   - ONLY set "too_many_cars" if there are MORE than 5 DISTINCT cars
-   - A single car visible from one angle = 1 car (not multiple)
-   - Parts of a car (wheels, hood, etc.) visible = still 1 car
-2. CHECK lighting (too dark/overexposed) - ONLY if details are truly invisible
-3. CHECK distance (too far to identify OR too close/cropped)
-4. CHECK focus (blurry/obstructed) - ONLY if details are unreadable
+COUNTING CARS - EXTREMELY IMPORTANT:
+- COUNT ONLY completely separate, distinct miniature car OBJECTS
+- ONE car photographed from ANY angle = 1 car (NOT multiple)
+- Parts of the same car visible (wheels, hood, side) = still 1 car total
+- Reflections or shadows of a car do NOT count as additional cars
+- A car and its packaging/blister = 1 car
+- ONLY set "too_many_cars" if you can clearly see MORE THAN 5 SEPARATE PHYSICAL CAR OBJECTS
 
-DEFAULT BEHAVIOR: If the image shows 1-5 cars and is reasonably clear, set imageQuality.isValid = true and proceed with analysis.
+REJECTION CRITERIA (apply ONLY when truly necessary):
+1. "too_many_cars": ONLY if there are MORE than 5 COMPLETELY SEPARATE miniature cars
+   - If there's 1 car with visible reflections = 1 car, NOT multiple
+   - If there's 1 car with parts visible at edges = 1 car, NOT multiple
+2. "poor_lighting": ONLY if you literally cannot see ANY details
+3. "too_far" or "too_close": ONLY if you cannot identify the car at all
+4. "blurry": ONLY if details are completely unreadable
 
-If and ONLY if there are genuine blocking issues, return imageQuality.isValid = false with issues array.
+DEFAULT BEHAVIOR: If you can see 1-5 cars reasonably well, set imageQuality.isValid = true and PROCEED.
+When in doubt, ACCEPT and ANALYZE. False rejection is worse than attempting analysis.
 
 STEP 2 - MANUFACTURER IDENTIFICATION (CRITICAL - BE EXTREMELY PRECISE):
 
