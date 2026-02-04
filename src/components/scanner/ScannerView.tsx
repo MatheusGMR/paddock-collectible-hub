@@ -1809,19 +1809,9 @@ export const ScannerView = () => {
           <div className="absolute inset-0 bg-gradient-to-b from-background-secondary to-background opacity-50" />
         )}
         
-        {/* Native fallback background - full black with centered instructions (only if camera-preview failed) */}
+        {/* Native fallback - just black background, camera opens automatically */}
         {useNativeFallback && !useCameraPreview && !capturedImage && !isScanning && (
-          <div className="absolute inset-0 bg-black flex flex-col items-center justify-center gap-4 px-8">
-            <div className="w-20 h-20 rounded-full bg-white/10 flex items-center justify-center">
-              <CameraIcon className="h-10 w-10 text-white/60" />
-            </div>
-            <p className="text-white/80 text-center font-medium">
-              Toque no botão para abrir a câmera
-            </p>
-            <p className="text-white/40 text-center text-sm">
-              A foto será capturada pela câmera nativa do seu dispositivo
-            </p>
-          </div>
+          <div className="absolute inset-0 bg-black" />
         )}
 
         <canvas ref={canvasRef} className="hidden" />
