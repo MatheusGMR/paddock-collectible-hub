@@ -218,17 +218,20 @@ export const MusicPlayer = ({
           )}
         </div>
 
-        {/* Hidden YouTube Player iframe - Audio only, no visible frame */}
+        {/* YouTube Player iframe - Minimal visible size to enable audio playback on iOS */}
+        {/* iOS blocks audio from completely hidden/off-screen iframes */}
         {playerState === 'playing' && youtubeVideoId && (
-          <div className="sr-only" aria-hidden="true">
+          <div className="relative w-full h-1 overflow-hidden rounded bg-muted/20 mb-4">
             <iframe
               ref={iframeRef}
               src={getPlayerUrl(youtubeVideoId)}
-              className="w-0 h-0 border-0 absolute -left-[9999px]"
+              className="absolute top-0 left-0 w-full h-[200px] opacity-0 pointer-events-none"
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
               onLoad={handleIframeLoad}
               onError={handleIframeError}
             />
+            {/* Visual progress bar effect */}
+            <div className="absolute inset-0 bg-gradient-to-r from-primary/50 via-primary to-primary/50 animate-pulse" />
           </div>
         )}
 
