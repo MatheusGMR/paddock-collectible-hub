@@ -1,3 +1,4 @@
+import { useCallback, useMemo } from "react";
 import { Capacitor } from "@capacitor/core";
 import { Camera, CameraResultType, CameraSource } from "@capacitor/camera";
 
@@ -8,23 +9,16 @@ export interface NativeCameraResult {
 
 /**
  * Hook for using native camera on iOS/Android via Capacitor
- * Falls back to this when getUserMedia fails on native platforms
+ * Returns stable references to prevent re-render loops
  */
 export const useNativeCamera = () => {
   const isNative = Capacitor.isNativePlatform();
 
-  /**
-   * Check if native camera is available
-   */
-  const isAvailable = (): boolean => {
+  const isAvailable = useCallback((): boolean => {
     return isNative;
-  };
+  }, [isNative]);
 
-  /**
-   * Take a photo using native camera
-   * Returns base64 encoded image
-   */
-  const takePhoto = async (): Promise<NativeCameraResult | null> => {
+  const takePhoto = useCallback(async (): Promise<NativeCameraResult | null> => {
     if (!isNative) {
       console.log("[NativeCamera] Not on native platform");
       return null;
@@ -58,12 +52,9 @@ export const useNativeCamera = () => {
       console.error("[NativeCamera] Error taking photo:", error);
       return null;
     }
-  };
+  }, [isNative]);
 
-  /**
-   * Pick a photo from gallery using native picker
-   */
-  const pickFromGallery = async (): Promise<NativeCameraResult | null> => {
+  const pickFromGallery = useCallback(async (): Promise<NativeCameraResult | null> => {
     if (!isNative) {
       console.log("[NativeCamera] Not on native platform");
       return null;
@@ -95,12 +86,9 @@ export const useNativeCamera = () => {
       console.error("[NativeCamera] Error picking photo:", error);
       return null;
     }
-  };
+  }, [isNative]);
 
-  /**
-   * Check and request camera permissions
-   */
-  const checkPermissions = async (): Promise<boolean> => {
+  const checkPermissions = useCallback(async (): Promise<boolean> => {
     if (!isNative) return false;
 
     try {
@@ -122,13 +110,14 @@ export const useNativeCamera = () => {
       console.error("[NativeCamera] Error checking permissions:", error);
       return false;
     }
-  };
+  }, [isNative]);
 
-  return {
+  // Return stable object reference using useMemo
+  return useMemo(() => ({
     isNative,
     isAvailable,
     takePhoto,
     pickFromGallery,
     checkPermissions,
-  };
+  }), [isNative, isAvailable, takePhoto, pickFromGallery, checkPermissions]);
 };

@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from "react";
-import { X, RotateCcw, Camera, SwitchCamera, Loader2, ImageIcon } from "lucide-react";
+import { X, RotateCcw, Camera as CameraIcon, SwitchCamera, Loader2, ImageIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -20,6 +20,7 @@ import { PaddockLogo } from "@/components/icons/PaddockLogo";
 import { trackInteraction, trackEvent } from "@/lib/analytics";
 import { useNativeCamera } from "@/hooks/useNativeCamera";
 import { Capacitor } from "@capacitor/core";
+import { Camera as CapacitorCamera } from "@capacitor/camera";
 interface AnalysisResult {
   boundingBox?: BoundingBox;
   realCar: {
@@ -187,9 +188,14 @@ export const ScannerView = () => {
   }, [cameraActive]);
 
   // Auto-start camera on mount - use native camera by default on iOS/Android
+  // IMPORTANT: Empty dependency array to run only once on mount
   useEffect(() => {
+    let mounted = true;
+    
     const initCamera = async () => {
-      console.log("[Scanner] Initializing camera...");
+      if (!mounted) return;
+      
+      console.log("[Scanner] Initializing camera (once)...");
       console.log("[Scanner] Platform:", Capacitor.getPlatform(), "isNative:", Capacitor.isNativePlatform());
       setIsInitializing(true);
       setCameraError(false);
@@ -201,40 +207,47 @@ export const ScannerView = () => {
         console.log("[Scanner] Native platform detected, using native camera directly");
         
         try {
-          const hasPermission = await nativeCamera.checkPermissions();
-          console.log("[Scanner] Native camera permission:", hasPermission);
+          // Use CapacitorCamera directly from Capacitor to avoid hook dependency issues
+          const permissions = await CapacitorCamera.checkPermissions();
+          if (!mounted) return;
           
-          if (hasPermission) {
+          console.log("[Scanner] Native camera permission state:", permissions.camera);
+          
+          // If granted or prompt, we can use native camera
+          if (permissions.camera === 'granted' || permissions.camera === 'prompt' || permissions.camera === 'prompt-with-rationale') {
             setUseNativeFallback(true);
             setCameraActive(false);
             setCameraError(false);
             setIsInitializing(false);
+            console.log("[Scanner] Ready for native camera capture");
             return;
-          } else {
-            // Request permission via native API
-            console.log("[Scanner] Requesting native camera permission...");
-            const granted = await nativeCamera.checkPermissions();
-            
-            if (granted) {
-              setUseNativeFallback(true);
-              setCameraActive(false);
-              setCameraError(false);
+          }
+          
+          // Permission denied - show error
+          if (permissions.camera === 'denied') {
+            console.log("[Scanner] Camera permission denied");
+            if (mounted) {
+              setCameraError(true);
               setIsInitializing(false);
-              return;
+              toast({
+                title: t.common.error,
+                description: "Permissão de câmera negada. Vá em Ajustes > Paddock > Câmera para habilitar.",
+                variant: "destructive",
+              });
             }
+            return;
           }
         } catch (error) {
           console.error("[Scanner] Native camera check error:", error);
+          if (mounted) {
+            // Still allow native fallback even on error - permission will be requested on capture
+            setUseNativeFallback(true);
+            setCameraActive(false);
+            setIsInitializing(false);
+          }
+          return;
         }
         
-        // Permission denied or error - show error state with instructions
-        setCameraError(true);
-        setIsInitializing(false);
-        toast({
-          title: t.common.error,
-          description: "Permissão de câmera negada. Vá em Ajustes > Paddock > Câmera para habilitar.",
-          variant: "destructive",
-        });
         return;
       }
       
@@ -261,6 +274,11 @@ export const ScannerView = () => {
           audio: false
         });
 
+        if (!mounted) {
+          stream.getTracks().forEach(track => track.stop());
+          return;
+        }
+
         console.log("[Scanner] Camera stream acquired successfully");
         
         streamRef.current = stream;
@@ -268,6 +286,8 @@ export const ScannerView = () => {
         setIsInitializing(false);
         
       } catch (error: unknown) {
+        if (!mounted) return;
+        
         console.error("[Scanner] Camera access error:", error);
         setCameraError(true);
         setIsInitializing(false);
@@ -301,6 +321,7 @@ export const ScannerView = () => {
 
     // Cleanup on unmount
     return () => {
+      mounted = false;
       console.log("[Scanner] Cleanup: stopping camera");
       if (streamRef.current) {
         streamRef.current.getTracks().forEach(track => track.stop());
@@ -316,7 +337,8 @@ export const ScannerView = () => {
         clearInterval(recordingTimerRef.current);
       }
     };
-  }, [toast, t, nativeCamera]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Empty deps - run only once on mount
 
   const startCamera = useCallback(async () => {
     console.log("[Scanner] Manual startCamera called");
@@ -1371,7 +1393,7 @@ export const ScannerView = () => {
         {useNativeFallback && !capturedImage && !isScanning && (
           <div className="absolute inset-0 bg-black flex flex-col items-center justify-center gap-4 px-8">
             <div className="w-20 h-20 rounded-full bg-white/10 flex items-center justify-center">
-              <Camera className="h-10 w-10 text-white/60" />
+              <CameraIcon className="h-10 w-10 text-white/60" />
             </div>
             <p className="text-white/80 text-center font-medium">
               Toque no botão para abrir a câmera
@@ -1488,7 +1510,7 @@ export const ScannerView = () => {
               <div className="bg-black/60 backdrop-blur-md rounded-2xl p-5 mx-6 max-w-sm">
                 <div className="flex flex-col items-center gap-3">
                   <div className="w-12 h-12 rounded-full bg-destructive/20 flex items-center justify-center">
-                    <Camera className="h-6 w-6 text-destructive" />
+                    <CameraIcon className="h-6 w-6 text-destructive" />
                   </div>
                   <p className="text-sm text-white font-medium text-center">
                     Não foi possível acessar a câmera
