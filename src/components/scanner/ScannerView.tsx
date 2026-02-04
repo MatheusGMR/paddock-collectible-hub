@@ -19,6 +19,7 @@ import { cropImageByBoundingBox, BoundingBox, extractFrameFromVideo } from "@/li
 import { PaddockLogo } from "@/components/icons/PaddockLogo";
 import { trackInteraction, trackEvent } from "@/lib/analytics";
 import { useNativeCamera } from "@/hooks/useNativeCamera";
+import { Capacitor } from "@capacitor/core";
 interface AnalysisResult {
   boundingBox?: BoundingBox;
   realCar: {
@@ -185,28 +186,71 @@ export const ScannerView = () => {
     attachStreamToVideo();
   }, [cameraActive]);
 
-  // Auto-start camera on mount - request permissions if not yet granted
+  // Auto-start camera on mount - use native camera by default on iOS/Android
   useEffect(() => {
     const initCamera = async () => {
-      console.log("[Scanner] Initializing camera automatically...");
+      console.log("[Scanner] Initializing camera...");
+      console.log("[Scanner] Platform:", Capacitor.getPlatform(), "isNative:", Capacitor.isNativePlatform());
       setIsInitializing(true);
       setCameraError(false);
       setUseNativeFallback(false);
       
+      // On native platforms (iOS/Android), skip getUserMedia entirely and use native camera
+      // This avoids iOS security context issues and provides a better UX
+      if (Capacitor.isNativePlatform()) {
+        console.log("[Scanner] Native platform detected, using native camera directly");
+        
+        try {
+          const hasPermission = await nativeCamera.checkPermissions();
+          console.log("[Scanner] Native camera permission:", hasPermission);
+          
+          if (hasPermission) {
+            setUseNativeFallback(true);
+            setCameraActive(false);
+            setCameraError(false);
+            setIsInitializing(false);
+            return;
+          } else {
+            // Request permission via native API
+            console.log("[Scanner] Requesting native camera permission...");
+            const granted = await nativeCamera.checkPermissions();
+            
+            if (granted) {
+              setUseNativeFallback(true);
+              setCameraActive(false);
+              setCameraError(false);
+              setIsInitializing(false);
+              return;
+            }
+          }
+        } catch (error) {
+          console.error("[Scanner] Native camera check error:", error);
+        }
+        
+        // Permission denied or error - show error state with instructions
+        setCameraError(true);
+        setIsInitializing(false);
+        toast({
+          title: t.common.error,
+          description: "Permissão de câmera negada. Vá em Ajustes > Paddock > Câmera para habilitar.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      // Web platform - use getUserMedia
       try {
-        // Stop any existing stream first
         if (streamRef.current) {
           streamRef.current.getTracks().forEach(track => track.stop());
           streamRef.current = null;
         }
 
-        // Check if getUserMedia is available
         if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-          console.log("[Scanner] getUserMedia not available, checking native fallback...");
+          console.log("[Scanner] getUserMedia not available");
           throw new Error("getUserMedia not supported");
         }
 
-        console.log("[Scanner] Requesting camera stream...");
+        console.log("[Scanner] Requesting camera stream (web)...");
         
         const stream = await navigator.mediaDevices.getUserMedia({
           video: {
@@ -225,25 +269,6 @@ export const ScannerView = () => {
         
       } catch (error: unknown) {
         console.error("[Scanner] Camera access error:", error);
-        
-        // Check if we can use native camera as fallback
-        if (nativeCamera.isNative) {
-          console.log("[Scanner] Falling back to native camera...");
-          const hasPermission = await nativeCamera.checkPermissions();
-          
-          if (hasPermission) {
-            console.log("[Scanner] Native camera permission granted, using native fallback");
-            setUseNativeFallback(true);
-            setCameraActive(false);
-            setCameraError(false);
-            setIsInitializing(false);
-            return;
-          } else {
-            console.log("[Scanner] Native camera permission denied");
-          }
-        }
-        
-        // No fallback available
         setCameraError(true);
         setIsInitializing(false);
         
