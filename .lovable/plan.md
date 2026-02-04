@@ -1,192 +1,227 @@
 
+# Plano: Experiência de Câmera Imersiva no iOS
 
-# Plano: Simplificar o Uso de Câmera Nativa no Scanner
+## Problema Identificado
 
-## Diagnóstico do Problema
+Atualmente, no iOS nativo, a experiência é fragmentada:
 
-O log do Xcode mostra um **loop infinito de re-renderização** no Scanner:
+1. **Clica no Scanner** → Abre tela preta com botão "Toque para abrir"
+2. **Toca no botão** → Abre a câmera nativa do iOS (interface diferente, outro layout)
+3. **Captura foto** → Volta para o app com a imagem
 
-```text
-[Scanner] Initializing camera...
-[Scanner] Native camera permission: true
-[Scanner] Cleanup: stopping camera
-[Scanner] Initializing camera...   ← repete infinitamente
-```
+A experiência desejada é:
+- **Clica no Scanner** → Câmera abre direto em tela cheia, com layout integrado ao design do app
 
-### Causa Raiz
+## Diagnóstico Técnico
 
-O `useEffect` de inicialização da câmera (linhas 190-319) tem `nativeCamera` como dependência:
+O `@capacitor/camera` (plugin padrão) sempre abre a **interface nativa do iOS** (UIImagePickerController ou PHPickerViewController). Isso é uma limitação do plugin - ele não oferece preview embutido.
 
-```javascript
-useEffect(() => {
-  const initCamera = async () => { ... };
-  initCamera();
-  return () => { cleanup... };
-}, [toast, t, nativeCamera]); // ← PROBLEMA
-```
-
-O hook `useNativeCamera()` retorna um **novo objeto** a cada render, causando re-execuções infinitas do `useEffect`.
-
----
+Para ter um feed de câmera **dentro** do app no iOS, precisamos usar o plugin `@capacitor-community/camera-preview`, que renderiza o feed da câmera como uma view nativa por trás da WebView.
 
 ## Solução Proposta
 
-### 1. Corrigir o Hook `useNativeCamera` para ser Estável
+### Opção Implementada: Camera Preview Plugin
 
-Usar `useMemo` e `useCallback` para garantir que o objeto retornado seja referenciado de forma estável.
+Usar o `@capacitor-community/camera-preview` para:
+- Mostrar feed de câmera em tela cheia direto ao abrir o Scanner
+- Manter layout consistente com o design do Paddock (botões, watermark, etc.)
+- Capturar foto sem sair do contexto do app
 
-**Arquivo:** `src/hooks/useNativeCamera.ts`
+### Arquitetura
 
-```typescript
-import { useCallback, useMemo } from "react";
-import { Capacitor } from "@capacitor/core";
-import { Camera, CameraResultType, CameraSource } from "@capacitor/camera";
-
-export const useNativeCamera = () => {
-  const isNative = Capacitor.isNativePlatform();
-
-  const isAvailable = useCallback(() => isNative, [isNative]);
-
-  const takePhoto = useCallback(async () => {
-    if (!isNative) return null;
-    try {
-      const image = await Camera.getPhoto({
-        quality: 90,
-        allowEditing: false,
-        resultType: CameraResultType.Base64,
-        source: CameraSource.Camera,
-        correctOrientation: true,
-        width: 1280,
-        height: 960,
-      });
-      if (!image.base64String) return null;
-      return {
-        base64Image: `data:image/${image.format || 'jpeg'};base64,${image.base64String}`,
-        format: image.format || 'jpeg',
-      };
-    } catch (error) {
-      console.error("[NativeCamera] Error:", error);
-      return null;
-    }
-  }, [isNative]);
-
-  // ... mesmo para pickFromGallery e checkPermissions
-
-  return useMemo(() => ({
-    isNative,
-    isAvailable,
-    takePhoto,
-    pickFromGallery,
-    checkPermissions,
-  }), [isNative, isAvailable, takePhoto, pickFromGallery, checkPermissions]);
-};
+```text
+┌─────────────────────────────────────────┐
+│              WebView (React)            │
+│  ┌─────────────────────────────────────┐│
+│  │    UI Elements (buttons, overlay)   ││
+│  │    - Botão X (fechar)               ││
+│  │    - Botão captura                  ││
+│  │    - Watermark PADDOCK              ││
+│  │    - Corner guides                  ││
+│  │         (transparent background)    ││
+│  └─────────────────────────────────────┘│
+│                    ↑                    │
+│              (transparent)              │
+│                    ↓                    │
+│  ┌─────────────────────────────────────┐│
+│  │     Native Camera Layer (behind)     ││
+│  │        AVCaptureVideoPreviewLayer    ││
+│  └─────────────────────────────────────┘│
+└─────────────────────────────────────────┘
 ```
-
-### 2. Simplificar o `useEffect` de Inicialização no ScannerView
-
-Remover `nativeCamera` das dependências e usar uma ref ou importação direta para acessar as funções do Capacitor.
-
-**Arquivo:** `src/components/scanner/ScannerView.tsx`
-
-```typescript
-// Usar o Camera direto do Capacitor para checagem, evitando dependência do hook
-import { Camera } from "@capacitor/camera";
-
-// ...
-
-useEffect(() => {
-  let mounted = true;
-  
-  const initCamera = async () => {
-    if (!mounted) return;
-    
-    setIsInitializing(true);
-    setCameraError(false);
-    
-    // Em plataforma nativa, usar câmera nativa diretamente
-    if (Capacitor.isNativePlatform()) {
-      try {
-        const permissions = await Camera.checkPermissions();
-        if (!mounted) return;
-        
-        if (permissions.camera === 'granted' || permissions.camera === 'prompt') {
-          setUseNativeFallback(true);
-          setCameraActive(false);
-          setIsInitializing(false);
-          return;
-        }
-      } catch (error) {
-        console.error("[Scanner] Permission check error:", error);
-      }
-      
-      if (mounted) {
-        setCameraError(true);
-        setIsInitializing(false);
-      }
-      return;
-    }
-    
-    // Web: getUserMedia flow...
-  };
-
-  initCamera();
-
-  return () => {
-    mounted = false;
-    // cleanup streams...
-  };
-}, []); // ← Sem dependências problemáticas
-```
-
-### 3. Separar Responsabilidades (Simplificação)
-
-Criar uma estrutura mais clara onde:
-- Inicialização roda **apenas uma vez** no mount
-- Funções de captura são callbacks estáveis
-- Não há múltiplos estados conflitantes
 
 ---
 
-## Benefícios da Solução
+## Passos de Implementação
 
-| Antes | Depois |
-|-------|--------|
-| Loop infinito de re-render | Inicialização única no mount |
-| `nativeCamera` muda a cada render | Referências estáveis com `useMemo/useCallback` |
-| Múltiplas chamadas `Camera.checkPermissions` | Uma única verificação inicial |
-| UI travada carregando | Transição imediata para modo nativo |
+### 1. Instalar o Plugin Camera-Preview
+
+Adicionar a dependência:
+```json
+"@capacitor-community/camera-preview": "^6.0.0"
+```
+
+### 2. Criar Hook `useNativeCameraPreview`
+
+Novo hook para gerenciar o camera-preview em plataformas nativas:
+
+```typescript
+// src/hooks/useNativeCameraPreview.ts
+import { CameraPreview, CameraPreviewOptions, CameraPreviewPictureOptions } from '@capacitor-community/camera-preview';
+import { Capacitor } from '@capacitor/core';
+
+export const useNativeCameraPreview = () => {
+  const isNative = Capacitor.isNativePlatform();
+
+  const start = async () => {
+    if (!isNative) return false;
+    
+    const options: CameraPreviewOptions = {
+      position: 'rear',
+      toBack: true, // Renderiza atrás da WebView
+      parent: 'camera-preview-container',
+      className: 'camera-preview',
+      enableZoom: true,
+      disableAudio: true,
+    };
+    
+    await CameraPreview.start(options);
+    return true;
+  };
+
+  const stop = async () => {
+    if (!isNative) return;
+    await CameraPreview.stop();
+  };
+
+  const capture = async (): Promise<string | null> => {
+    if (!isNative) return null;
+    
+    const options: CameraPreviewPictureOptions = {
+      quality: 90,
+    };
+    
+    const result = await CameraPreview.capture(options);
+    return result.value ? `data:image/jpeg;base64,${result.value}` : null;
+  };
+
+  const flip = async () => {
+    if (!isNative) return;
+    await CameraPreview.flip();
+  };
+
+  return { isNative, start, stop, capture, flip };
+};
+```
+
+### 3. Atualizar ScannerView para Usar Camera-Preview no iOS
+
+Modificar o componente para:
+
+a) **Adicionar container transparente** para o preview nativo aparecer por trás:
+```tsx
+<div 
+  id="camera-preview-container" 
+  className="fixed inset-0 z-0" 
+  style={{ backgroundColor: 'transparent' }}
+/>
+```
+
+b) **Usar background transparente** na WebView para ver a câmera por trás:
+```tsx
+// CSS para iOS nativo
+.native-camera-mode {
+  background-color: transparent !important;
+}
+```
+
+c) **Inicializar camera-preview** no mount (iOS/Android):
+```typescript
+useEffect(() => {
+  if (Capacitor.isNativePlatform()) {
+    cameraPreview.start();
+    setCameraActive(true);
+    setIsInitializing(false);
+    
+    return () => {
+      cameraPreview.stop();
+    };
+  }
+}, []);
+```
+
+d) **Capturar foto** direto do preview (sem abrir interface nativa):
+```typescript
+const capturePhoto = async () => {
+  const imageBase64 = await cameraPreview.capture();
+  if (imageBase64) {
+    setCapturedImage(imageBase64);
+    analyzeImage(imageBase64);
+  }
+};
+```
+
+### 4. Configuração iOS Nativa
+
+Adicionar no `ios/App/App/Info.plist` (já feito anteriormente):
+- NSCameraUsageDescription
+- NSPhotoLibraryUsageDescription
+- NSPhotoLibraryAddUsageDescription
+
+### 5. Manter Fallback para Web
+
+No navegador web, continuar usando `getUserMedia` (fluxo atual funciona bem).
+
+---
+
+## Fluxo Final
+
+```text
+[iOS/Android]
+Clica em Scanner → 
+  CameraPreview.start() → 
+    Feed aparece em tela cheia (atrás da WebView) →
+      UI sobreposta (botões, watermark) →
+        Toca no botão de captura →
+          CameraPreview.capture() →
+            Imagem capturada →
+              Análise IA
+
+[Web]
+Clica em Scanner → 
+  getUserMedia() →
+    <video> mostra feed →
+      Toca no botão de captura →
+        canvas.drawImage() →
+          Imagem capturada →
+            Análise IA
+```
 
 ---
 
 ## Arquivos a Modificar
 
-1. **`src/hooks/useNativeCamera.ts`** – Estabilizar retorno do hook com `useMemo`/`useCallback`
-2. **`src/components/scanner/ScannerView.tsx`** – Simplificar `useEffect` de inicialização, remover dependências instáveis
+1. **`package.json`** - Adicionar `@capacitor-community/camera-preview`
+2. **`src/hooks/useNativeCameraPreview.ts`** - Novo hook para camera-preview
+3. **`src/components/scanner/ScannerView.tsx`** - Usar camera-preview no iOS, background transparente
+4. **`src/index.css`** - Estilos para modo câmera transparente
 
 ---
 
-## Seção Técnica
+## Passos Pós-Implementação (Usuário)
 
-### Por que o loop acontece
+1. `git pull`
+2. `npm install`
+3. `npx cap sync ios`
+4. No Xcode: Adicionar permissões no `Info.plist` (se não feito)
+5. Clean Build (⌘⇧K)
+6. Run no device
 
-```text
-React render → useNativeCamera() retorna novo objeto → 
-useEffect detecta mudança em dependência → 
-executa initCamera → setState → re-render → 
-useNativeCamera() retorna novo objeto → ∞
-```
+---
 
-### Solução: Referência Estável
+## Resultado Esperado
 
-O `useMemo` no hook garante que o mesmo objeto seja retornado enquanto `isNative` não mudar (é estático).
-
-O `useCallback` garante que as funções `takePhoto`, `pickFromGallery`, `checkPermissions` mantenham a mesma referência.
-
-### Testes Necessários
-
-Após a implementação:
-1. Abrir o Scanner no iOS nativo
-2. Verificar que o log mostra **apenas uma** inicialização
-3. Verificar que o botão de captura abre a câmera nativa
-4. Tirar foto e confirmar análise
-
+- Câmera abre imediatamente em tela cheia ao entrar no Scanner
+- Layout consistente com o design do Paddock (watermark, botões)
+- Sem tela intermediária "Toque para abrir"
+- Experiência fluida e imersiva como Instagram/TikTok
