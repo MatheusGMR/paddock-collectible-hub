@@ -49,11 +49,7 @@ export const FeedHeader = () => {
           >
             <MessageCircle className="h-6 w-6" />
             {unreadCount > 0 && (
-              <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] rounded-full bg-primary flex items-center justify-center px-1">
-                <span className="text-[10px] font-bold text-primary-foreground">
-                  {unreadCount > 99 ? "99+" : unreadCount}
-                </span>
-              </span>
+              <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 rounded-full bg-destructive border-2 border-background" />
             )}
           </button>
         </div>
