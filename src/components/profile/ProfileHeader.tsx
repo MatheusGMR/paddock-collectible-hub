@@ -68,7 +68,7 @@ export const ProfileHeader = ({ user, onEditProfile, onSettings }: ProfileHeader
         </div>
       </header>
 
-      <div className="border-b border-border bg-blue-subtle/50">
+      <div className="border-b border-border bg-black">
 
         {/* Profile Info */}
         <div className="px-4 pb-6 pt-6">
@@ -104,11 +104,11 @@ export const ProfileHeader = ({ user, onEditProfile, onSettings }: ProfileHeader
             )}
           </div>
 
-          {/* Edit Profile Button */}
+          {/* Edit Profile Button - with subtle blue shadow */}
           <Button 
             variant="outline" 
             onClick={onEditProfile}
-            className="w-full mt-4 border-primary/30 bg-blue-subtle text-foreground hover:bg-primary/20 hover:border-primary/50"
+            className="w-full mt-4 border-primary/30 bg-background text-foreground hover:bg-primary/20 hover:border-primary/50 shadow-[0_0_12px_rgba(59,130,246,0.15)]"
           >
             {t.profile.editProfile}
           </Button>
