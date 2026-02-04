@@ -56,10 +56,16 @@ const BRAND_ALIASES: Record<string, string[]> = {
   dodge: ["dodge"],
   jeep: ["jeep"],
   land: ["land rover", "range rover"],
+  hyundai: ["hyundai"],
+  kia: ["kia"],
+  renault: ["renault"],
+  peugeot: ["peugeot"],
+  citroen: ["citroen", "citroën"],
 };
 
-// Model name variations (Portuguese/English)
+// Model name variations (Portuguese/English) - includes Brazilian market models
 const MODEL_ALIASES: Record<string, string[]> = {
+  // Classic/European
   fusca: ["fusca", "beetle", "bug", "kafer"],
   gol: ["gol", "voyage"],
   uno: ["uno"],
@@ -83,6 +89,41 @@ const MODEL_ALIASES: Record<string, string[]> = {
   aventador: ["aventador"],
   gallardo: ["gallardo"],
   murcielago: ["murcielago", "murciélago"],
+  // Brazilian market cars - Fiat
+  toro: ["toro", "fiat toro"],
+  argo: ["argo", "fiat argo"],
+  cronos: ["cronos", "fiat cronos"],
+  mobi: ["mobi", "fiat mobi"],
+  strada: ["strada", "fiat strada"],
+  pulse: ["pulse", "fiat pulse"],
+  fastback: ["fastback", "fiat fastback"],
+  // Brazilian market cars - Chevrolet
+  onix: ["onix", "chevrolet onix"],
+  tracker: ["tracker", "chevrolet tracker"],
+  s10: ["s10", "chevrolet s10"],
+  montana: ["montana", "chevrolet montana"],
+  spin: ["spin", "chevrolet spin"],
+  // Brazilian market cars - Volkswagen
+  polo: ["polo", "vw polo"],
+  virtus: ["virtus", "vw virtus"],
+  nivus: ["nivus", "vw nivus"],
+  tcross: ["t-cross", "tcross", "vw t-cross"],
+  taos: ["taos", "vw taos"],
+  saveiro: ["saveiro", "vw saveiro"],
+  amarok: ["amarok", "vw amarok"],
+  // Brazilian market cars - Toyota
+  hilux: ["hilux", "toyota hilux"],
+  sw4: ["sw4", "toyota sw4", "fortuner"],
+  yaris: ["yaris", "toyota yaris"],
+  // Brazilian market cars - Hyundai/Kia
+  hb20: ["hb20", "hyundai hb20"],
+  creta: ["creta", "hyundai creta"],
+  tucson: ["tucson", "hyundai tucson"],
+  sportage: ["sportage", "kia sportage"],
+  // Brazilian market cars - Jeep
+  compass: ["compass", "jeep compass"],
+  renegade: ["renegade", "jeep renegade"],
+  commander: ["commander", "jeep commander"],
 };
 
 // Generate multiple search query variations for better results
@@ -101,28 +142,45 @@ const generateSearchQueries = (car: RealCarData, originalTerms: string[]): strin
     modelLower.includes(key) || key.includes(modelLower)
   )?.[1] || [car.model];
   
-  // Original AI-suggested terms first (they're often good)
+  // PRIORITY 1: Direct product searches (most likely to find actual listings)
+  queries.push(`${car.brand} ${car.model} miniatura comprar`);
+  queries.push(`${car.brand} ${car.model} diecast comprar`);
+  queries.push(`${car.brand} ${car.model} carrinho miniatura`);
+  queries.push(`miniatura ${car.brand} ${car.model}`);
+  
+  // PRIORITY 2: Specific manufacturer searches (Hot Wheels, Majorette, etc.)
+  queries.push(`hot wheels ${car.brand} ${car.model}`);
+  queries.push(`majorette ${car.brand} ${car.model}`);
+  queries.push(`matchbox ${car.brand} ${car.model}`);
+  queries.push(`welly ${car.brand} ${car.model}`);
+  queries.push(`maisto ${car.brand} ${car.model}`);
+  queries.push(`bburago ${car.brand} ${car.model}`);
+  
+  // PRIORITY 3: Scale-specific searches
+  queries.push(`${car.brand} ${car.model} 1:64`);
+  queries.push(`${car.brand} ${car.model} escala 1:43`);
+  queries.push(`${car.brand} ${car.model} escala 1:24`);
+  
+  // Original AI-suggested terms
   queries.push(...originalTerms);
   
   // Generate combinations with brand/model variations
-  for (const brand of brandVariations) {
-    for (const model of modelVariations) {
+  for (const brand of brandVariations.slice(0, 2)) {
+    for (const model of modelVariations.slice(0, 2)) {
       queries.push(`${brand} ${model} miniatura`);
       queries.push(`${brand} ${model} diecast`);
-      queries.push(`${brand} ${model} hot wheels`);
-      queries.push(`${brand} ${model} 1:64`);
     }
   }
   
-  // Specific manufacturer searches
-  queries.push(`hot wheels ${car.brand} ${car.model}`);
-  queries.push(`matchbox ${car.brand} ${car.model}`);
-  queries.push(`majorette ${car.brand} ${car.model}`);
-  queries.push(`tomica ${car.brand} ${car.model}`);
+  // Brazilian market specific searches
+  queries.push(`${car.model} miniatura brasil`);
+  queries.push(`carrinho ${car.brand} ${car.model}`);
+  queries.push(`${car.brand} ${car.model} brinquedo colecionável`);
   
   // Just model (some models are unique enough)
   queries.push(`${car.model} miniatura diecast`);
   queries.push(`${car.model} hot wheels`);
+  queries.push(`${car.model} majorette`);
   
   // Brand + collectible terms
   queries.push(`${car.brand} miniatura colecionável`);
@@ -131,18 +189,21 @@ const generateSearchQueries = (car: RealCarData, originalTerms: string[]): strin
   // With year if specific (not decade)
   if (car.year && !car.year.includes("Anos") && car.year.length === 4) {
     queries.push(`${car.brand} ${car.model} ${car.year} miniatura`);
-    queries.push(`${car.brand} ${car.model} ${car.year} diecast`);
   }
   
   // Variant-specific searches
   if (car.variant && car.variant.trim()) {
     queries.push(`${car.brand} ${car.model} ${car.variant} miniatura`);
-    queries.push(`${car.model} ${car.variant} hot wheels`);
+    queries.push(`${car.model} ${car.variant} diecast`);
   }
   
-  // Body style specific
+  // Body style specific for pickups and SUVs (common in Brazil)
   if (car.bodyStyle) {
-    queries.push(`${car.brand} ${car.bodyStyle.toLowerCase()} miniatura`);
+    const bodyLower = car.bodyStyle.toLowerCase();
+    if (bodyLower === "pickup" || bodyLower === "suv") {
+      queries.push(`${car.brand} ${bodyLower} miniatura`);
+      queries.push(`${car.model} ${bodyLower} diecast`);
+    }
   }
   
   // Remove duplicates and empty strings, normalize
@@ -152,15 +213,17 @@ const generateSearchQueries = (car: RealCarData, originalTerms: string[]): strin
       .map(q => q.toLowerCase().trim())
   )];
   
-  // Prioritize queries with both brand and model
+  // Prioritize queries with both brand and model, then those with "comprar" or "miniatura"
   return uniqueQueries.sort((a, b) => {
     const aHasBrand = a.includes(brandLower);
     const aHasModel = a.includes(modelLower);
+    const aHasAction = a.includes("comprar") || a.includes("miniatura");
     const bHasBrand = b.includes(brandLower);
     const bHasModel = b.includes(modelLower);
+    const bHasAction = b.includes("comprar") || b.includes("miniatura");
     
-    const aScore = (aHasBrand ? 2 : 0) + (aHasModel ? 1 : 0);
-    const bScore = (bHasBrand ? 2 : 0) + (bHasModel ? 1 : 0);
+    const aScore = (aHasBrand ? 3 : 0) + (aHasModel ? 2 : 0) + (aHasAction ? 1 : 0);
+    const bScore = (bHasBrand ? 3 : 0) + (bHasModel ? 2 : 0) + (bHasAction ? 1 : 0);
     
     return bScore - aScore;
   });

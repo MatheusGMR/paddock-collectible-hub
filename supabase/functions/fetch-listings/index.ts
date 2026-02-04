@@ -43,6 +43,88 @@ const STORE_CONFIGS: Record<string, { url: string; searchPath: string; name: str
   plaza_japan: { url: "plazajapan.com", searchPath: "/collections/tomica", name: "Plaza Japan", country: "JP" },
 };
 
+// Trusted domains for miniature/diecast listings
+const TRUSTED_DOMAINS = [
+  "mercadolivre.com.br",
+  "olx.com.br",
+  "shopee.com.br",
+  "ebay.com",
+  "aliexpress.com",
+  "amazon.com",
+  "amazon.com.br",
+  "americanas.com.br",
+  "magazineluiza.com.br",
+  "casasbahia.com.br",
+  "pontofrio.com.br",
+  "kalunga.com.br",
+  "walmart.com",
+  "target.com",
+  "hotwheelscollectors.mattel.com",
+  "creations.mattel.com",
+  "matchbox.mattel.com",
+  "jcardiecast.com",
+  "diecastcarsshop.com",
+  "miniaturasbr.com.br",
+  "escalaminiaturas.com.br",
+  "orangeboxminiaturas.com.br",
+  "bfrminiaturas.com.br",
+  "miniaturasds.com.br",
+  "carrinhosbr.com.br",
+];
+
+// Determine source info from URL
+function getSourceFromUrl(url: string): { source: string; source_name: string; source_country: string } {
+  const urlLower = url.toLowerCase();
+  
+  // Check known stores first
+  for (const [code, config] of Object.entries(STORE_CONFIGS)) {
+    if (urlLower.includes(config.url)) {
+      return { source: code, source_name: config.name, source_country: config.country };
+    }
+  }
+  
+  // Try to detect from URL patterns
+  if (urlLower.includes("mercadolivre") || urlLower.includes("mercadolibre")) {
+    return { source: "mercadolivre", source_name: "Mercado Livre", source_country: "BR" };
+  }
+  if (urlLower.includes("amazon.com.br")) {
+    return { source: "amazon_br", source_name: "Amazon Brasil", source_country: "BR" };
+  }
+  if (urlLower.includes("amazon.com")) {
+    return { source: "amazon", source_name: "Amazon", source_country: "US" };
+  }
+  if (urlLower.includes("shopee.com.br")) {
+    return { source: "shopee_br", source_name: "Shopee", source_country: "BR" };
+  }
+  if (urlLower.includes("ebay")) {
+    return { source: "ebay", source_name: "eBay", source_country: "US" };
+  }
+  if (urlLower.includes("aliexpress")) {
+    return { source: "aliexpress", source_name: "AliExpress", source_country: "CN" };
+  }
+  if (urlLower.includes(".com.br")) {
+    return { source: "web_br", source_name: "Web Brasil", source_country: "BR" };
+  }
+  
+  return { source: "web", source_name: "Web", source_country: "US" };
+}
+
+// Check if URL is from a trusted marketplace
+function isTrustedDomain(url: string): boolean {
+  const urlLower = url.toLowerCase();
+  return TRUSTED_DOMAINS.some(domain => urlLower.includes(domain));
+}
+
+// Extract currency from country
+function getCurrencyForCountry(country: string): string {
+  switch (country) {
+    case "BR": return "BRL";
+    case "JP": return "JPY";
+    case "CN": return "CNY";
+    default: return "USD";
+  }
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -65,127 +147,196 @@ serve(async (req) => {
       );
     }
 
-    // Filter stores based on request parameters
-    let storesToScrape = Object.entries(STORE_CONFIGS);
-    
-    if (sources && sources.length > 0) {
-      storesToScrape = storesToScrape.filter(([key]) => sources.includes(key));
-    }
-    
-    if (country) {
-      storesToScrape = storesToScrape.filter(([, config]) => config.country === country);
-    }
-
-    // Limit to 3 stores per request to avoid timeout
-    storesToScrape = storesToScrape.slice(0, 3);
-
     const listings: Listing[] = [];
     const sourcesStatus: Record<string, "success" | "error" | "skipped"> = {};
 
-    // Search using Firecrawl
-    const searchQuery = query || "hot wheels diecast collectible";
+    // Base search query
+    const baseQuery = query || "hot wheels diecast collectible";
     
-    console.log(`Searching for: "${searchQuery}" across ${storesToScrape.length} stores`);
+    console.log(`[fetch-listings] Searching for: "${baseQuery}"`);
 
-    // Use Firecrawl search for web results
-    const searchResponse = await fetch("https://api.firecrawl.dev/v1/search", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        query: `${searchQuery} site:${storesToScrape.map(([, c]) => c.url).join(" OR site:")}`,
-        limit: limit,
-        scrapeOptions: {
-          formats: ["markdown"],
+    // Strategy 1: General web search (Google results via Firecrawl)
+    // This finds listings across ALL sites including those not in our store list
+    const webSearchQuery = `${baseQuery} comprar miniatura diecast`;
+    
+    console.log(`[fetch-listings] Web search: "${webSearchQuery}"`);
+
+    try {
+      const webSearchResponse = await fetch("https://api.firecrawl.dev/v1/search", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
         },
-      }),
-    });
-
-    if (!searchResponse.ok) {
-      const errorText = await searchResponse.text();
-      console.error("Firecrawl search error:", searchResponse.status, errorText);
-      
-      // Return empty listings instead of error
-      return new Response(
-        JSON.stringify({
-          success: true,
-          listings: [],
-          total: 0,
-          has_more: false,
-          sources_status: Object.fromEntries(storesToScrape.map(([key]) => [key, "error"])),
-          message: "Search temporarily unavailable"
+        body: JSON.stringify({
+          query: webSearchQuery,
+          limit: Math.min(limit * 2, 30), // Get more results for filtering
+          scrapeOptions: {
+            formats: ["markdown"],
+          },
         }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      });
+
+      if (webSearchResponse.ok) {
+        const webSearchData = await webSearchResponse.json();
+        console.log(`[fetch-listings] Web search returned ${webSearchData.data?.length || 0} results`);
+
+        if (webSearchData.data && Array.isArray(webSearchData.data)) {
+          for (const result of webSearchData.data) {
+            // Skip if no URL
+            if (!result.url) continue;
+            
+            // Skip non-marketplace results (blogs, news, etc.)
+            if (!isTrustedDomain(result.url)) {
+              console.log(`[fetch-listings] Skipping non-marketplace: ${result.url}`);
+              continue;
+            }
+
+            // Get real image from metadata
+            const realImage = result.metadata?.ogImage || result.metadata?.image;
+            
+            if (!realImage) {
+              console.log(`[fetch-listings] Skipping (no image): ${result.title}`);
+              continue;
+            }
+
+            // Get source info from URL
+            const sourceInfo = getSourceFromUrl(result.url);
+            sourcesStatus[sourceInfo.source] = "success";
+
+            // Extract price from content
+            const priceMatch = result.markdown?.match(/(?:R\$|US\$|\$|¥|€)\s*([\d.,]+)/);
+            const price = priceMatch ? parseFloat(priceMatch[1].replace(/\./g, "").replace(",", ".")) : 0;
+
+            listings.push({
+              id: `fc_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+              title: result.title || "Collectible Item",
+              price: price,
+              currency: getCurrencyForCountry(sourceInfo.source_country),
+              image_url: realImage,
+              source: sourceInfo.source,
+              source_name: sourceInfo.source_name,
+              source_country: sourceInfo.source_country,
+              external_url: result.url,
+            });
+          }
+        }
+      } else {
+        console.error("[fetch-listings] Web search failed:", await webSearchResponse.text());
+      }
+    } catch (error) {
+      console.error("[fetch-listings] Web search error:", error);
     }
 
-    const searchData = await searchResponse.json();
-    console.log(`Firecrawl returned ${searchData.data?.length || 0} results`);
+    // Strategy 2: If still need more results, try specific stores
+    if (listings.length < limit) {
+      // Filter stores based on request parameters
+      let storesToScrape = Object.entries(STORE_CONFIGS);
+      
+      if (sources && sources.length > 0) {
+        storesToScrape = storesToScrape.filter(([key]) => sources.includes(key));
+      }
+      
+      if (country) {
+        storesToScrape = storesToScrape.filter(([, config]) => config.country === country);
+      }
 
-    // Parse search results into listings - only include those with REAL images
-    if (searchData.data && Array.isArray(searchData.data)) {
-      for (const result of searchData.data) {
-        // Determine which store this result is from
-        const storeEntry = storesToScrape.find(([, config]) => 
-          result.url?.includes(config.url)
-        );
+      // Limit to 3 stores to avoid timeout
+      storesToScrape = storesToScrape.slice(0, 3);
 
-        if (storeEntry) {
-          const [sourceCode, sourceConfig] = storeEntry;
-          sourcesStatus[sourceCode] = "success";
+      if (storesToScrape.length > 0) {
+        console.log(`[fetch-listings] Store search across ${storesToScrape.length} stores`);
 
-          // Get real image from metadata - skip listings without real images
-          const realImage = result.metadata?.ogImage || result.metadata?.image;
+        try {
+          const storeSearchQuery = `${baseQuery} site:${storesToScrape.map(([, c]) => c.url).join(" OR site:")}`;
           
-          // Only add listings that have a real image from the source
-          if (!realImage) {
-            console.log(`Skipping listing without real image: ${result.title}`);
-            continue;
-          }
-
-          // Extract price from content (basic pattern matching)
-          const priceMatch = result.markdown?.match(/(?:R\$|US\$|\$|¥)\s*([\d.,]+)/);
-          const price = priceMatch ? parseFloat(priceMatch[1].replace(",", ".")) : 0;
-
-          listings.push({
-            id: `fc_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-            title: result.title || "Collectible Item",
-            price: price,
-            currency: sourceConfig.country === "BR" ? "BRL" : 
-                     sourceConfig.country === "JP" ? "JPY" : "USD",
-            image_url: realImage,
-            source: sourceCode,
-            source_name: sourceConfig.name,
-            source_country: sourceConfig.country,
-            external_url: result.url || "",
+          const storeSearchResponse = await fetch("https://api.firecrawl.dev/v1/search", {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${apiKey}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              query: storeSearchQuery,
+              limit: limit - listings.length,
+              scrapeOptions: {
+                formats: ["markdown"],
+              },
+            }),
           });
+
+          if (storeSearchResponse.ok) {
+            const storeSearchData = await storeSearchResponse.json();
+            console.log(`[fetch-listings] Store search returned ${storeSearchData.data?.length || 0} results`);
+
+            if (storeSearchData.data && Array.isArray(storeSearchData.data)) {
+              for (const result of storeSearchData.data) {
+                // Skip duplicates
+                if (listings.some(l => l.external_url === result.url)) continue;
+
+                // Determine which store this result is from
+                const storeEntry = storesToScrape.find(([, config]) => 
+                  result.url?.includes(config.url)
+                );
+
+                if (storeEntry) {
+                  const [sourceCode, sourceConfig] = storeEntry;
+                  sourcesStatus[sourceCode] = "success";
+
+                  const realImage = result.metadata?.ogImage || result.metadata?.image;
+                  
+                  if (!realImage) continue;
+
+                  const priceMatch = result.markdown?.match(/(?:R\$|US\$|\$|¥|€)\s*([\d.,]+)/);
+                  const price = priceMatch ? parseFloat(priceMatch[1].replace(/\./g, "").replace(",", ".")) : 0;
+
+                  listings.push({
+                    id: `fc_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                    title: result.title || "Collectible Item",
+                    price: price,
+                    currency: getCurrencyForCountry(sourceConfig.country),
+                    image_url: realImage,
+                    source: sourceCode,
+                    source_name: sourceConfig.name,
+                    source_country: sourceConfig.country,
+                    external_url: result.url || "",
+                  });
+                }
+              }
+            }
+          }
+        } catch (error) {
+          console.error("[fetch-listings] Store search error:", error);
         }
       }
     }
 
     // Mark stores without results as skipped
-    for (const [key] of storesToScrape) {
+    for (const [key] of Object.entries(STORE_CONFIGS)) {
       if (!sourcesStatus[key]) {
         sourcesStatus[key] = "skipped";
       }
     }
 
-    console.log(`Returning ${listings.length} listings`);
+    // Remove duplicates by URL
+    const uniqueListings = listings.filter((listing, index, self) =>
+      index === self.findIndex(l => l.external_url === listing.external_url)
+    );
+
+    console.log(`[fetch-listings] Returning ${uniqueListings.length} unique listings`);
 
     return new Response(
       JSON.stringify({
         success: true,
-        listings,
-        total: listings.length,
-        has_more: listings.length >= limit,
+        listings: uniqueListings.slice(0, limit),
+        total: uniqueListings.length,
+        has_more: uniqueListings.length >= limit,
         sources_status: sourcesStatus,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
-    console.error("fetch-listings error:", error);
+    console.error("[fetch-listings] error:", error);
     return new Response(
       JSON.stringify({ 
         success: false,
