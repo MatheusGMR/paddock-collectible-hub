@@ -13,7 +13,8 @@ import {
   Smartphone,
   Shield,
   HelpCircle,
-  RotateCcw
+  RotateCcw,
+  Fingerprint
 } from "lucide-react";
 import { useAdmin } from "@/hooks/useAdmin";
 import {
@@ -28,6 +29,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSubscription } from "@/contexts/SubscriptionContext";
 import { useGuidedTips } from "@/contexts/GuidedTipsContext";
+import { useBiometricAuth } from "@/hooks/useBiometricAuth";
 import { 
   isPushSupported, 
   getPushPermission, 
@@ -61,6 +63,15 @@ export const SettingsSheet = ({ open, onOpenChange, onSignOut }: SettingsSheetPr
   const [pushEnabled, setPushEnabled] = useState(false);
   const [pushLoading, setPushLoading] = useState(false);
   const [pushSupported] = useState(isPushSupported());
+  const [biometricLoading, setBiometricLoading] = useState(false);
+
+  const {
+    isAvailable: biometricAvailable,
+    isEnabled: biometricEnabled,
+    enableBiometric,
+    disableBiometric,
+    getBiometryLabel,
+  } = useBiometricAuth();
 
   // Fetch native app info on mount (iOS/Android)
   useEffect(() => {
@@ -156,6 +167,33 @@ export const SettingsSheet = ({ open, onOpenChange, onSignOut }: SettingsSheetPr
     navigate("/");
   };
 
+  const handleBiometricToggle = async (enabled: boolean) => {
+    if (!user?.email) return;
+    
+    setBiometricLoading(true);
+    try {
+      if (enabled) {
+        const success = await enableBiometric(user.email);
+        if (success) {
+          toast({
+            title: `${getBiometryLabel()} ativado`,
+            description: "Você pode usar biometria para entrar no app.",
+          });
+        }
+      } else {
+        disableBiometric();
+        toast({
+          title: `${getBiometryLabel()} desativado`,
+          description: "Login biométrico foi desativado.",
+        });
+      }
+    } catch (error) {
+      console.error("Biometric toggle error:", error);
+    } finally {
+      setBiometricLoading(false);
+    }
+  };
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="w-full sm:max-w-md bg-background border-l border-border p-0 overflow-y-auto">
@@ -240,6 +278,47 @@ export const SettingsSheet = ({ open, onOpenChange, onSignOut }: SettingsSheetPr
               )}
             </div>
           </motion.section>
+
+          {/* Security / Biometric Section - Only on native */}
+          {biometricAvailable && (
+            <>
+              <Separator className="bg-border" />
+              
+              <motion.section
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.22 }}
+              >
+                <div className="flex items-center gap-2 mb-3">
+                  <Fingerprint className="h-4 w-4 text-primary" />
+                  <h3 className="text-sm font-semibold text-foreground uppercase tracking-wide">
+                    Segurança
+                  </h3>
+                </div>
+                
+                <div className="bg-card rounded-xl border border-border overflow-hidden">
+                  <div className="flex items-center justify-between p-4">
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                        <Fingerprint className="h-5 w-5 text-primary" />
+                      </div>
+                      <div>
+                        <p className="text-foreground font-medium">{getBiometryLabel()}</p>
+                        <p className="text-xs text-muted-foreground">
+                          Desbloqueio rápido ao abrir o app
+                        </p>
+                      </div>
+                    </div>
+                    <Switch 
+                      checked={biometricEnabled}
+                      onCheckedChange={handleBiometricToggle}
+                      disabled={biometricLoading}
+                    />
+                  </div>
+                </div>
+              </motion.section>
+            </>
+          )}
 
           <Separator className="bg-border" />
 
