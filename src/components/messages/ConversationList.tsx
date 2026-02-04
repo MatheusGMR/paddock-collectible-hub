@@ -1,8 +1,7 @@
-import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect, useCallback } from "react";
 import { MessageCircle, Loader2 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { getConversations, ConversationWithDetails } from "@/lib/api/messages";
+import { getConversations, subscribeToConversationUpdates, ConversationWithDetails } from "@/lib/api/messages";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -19,11 +18,7 @@ export const ConversationList = ({
   const [conversations, setConversations] = useState<ConversationWithDetails[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    loadConversations();
-  }, []);
-
-  const loadConversations = async () => {
+  const loadConversations = useCallback(async () => {
     try {
       const data = await getConversations();
       setConversations(data);
@@ -32,7 +27,18 @@ export const ConversationList = ({
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    loadConversations();
+
+    // Subscribe to conversation updates (new messages)
+    const unsubscribe = subscribeToConversationUpdates(() => {
+      loadConversations();
+    });
+
+    return unsubscribe;
+  }, [loadConversations]);
 
   if (isLoading) {
     return (
