@@ -173,6 +173,60 @@ export const ScannerView = () => {
     };
   }, [videoPreviewUrl]);
 
+  // Make html/body/#root transparent when using native camera preview
+  // This is CRITICAL for iOS where the camera renders behind the WebView
+  useEffect(() => {
+    if (!useCameraPreview) return;
+
+    const html = document.documentElement;
+    const body = document.body;
+    const root = document.getElementById("root");
+
+    // Store original background colors
+    const originalHtmlBg = html.style.backgroundColor;
+    const originalBodyBg = body.style.backgroundColor;
+    const originalRootBg = root?.style.backgroundColor;
+
+    console.log("[Scanner] Applying transparency for camera preview");
+    console.log("[Scanner] Before - body computed bg:", getComputedStyle(body).backgroundColor);
+    console.log("[Scanner] Before - html computed bg:", getComputedStyle(html).backgroundColor);
+
+    // Apply transparent backgrounds
+    html.style.setProperty("background-color", "transparent", "important");
+    body.style.setProperty("background-color", "transparent", "important");
+    if (root) {
+      root.style.setProperty("background-color", "transparent", "important");
+    }
+
+    console.log("[Scanner] After - body computed bg:", getComputedStyle(body).backgroundColor);
+    console.log("[Scanner] After - html computed bg:", getComputedStyle(html).backgroundColor);
+
+    // Cleanup: restore original backgrounds
+    return () => {
+      console.log("[Scanner] Restoring original backgrounds");
+      
+      if (originalHtmlBg) {
+        html.style.backgroundColor = originalHtmlBg;
+      } else {
+        html.style.removeProperty("background-color");
+      }
+      
+      if (originalBodyBg) {
+        body.style.backgroundColor = originalBodyBg;
+      } else {
+        body.style.removeProperty("background-color");
+      }
+      
+      if (root) {
+        if (originalRootBg) {
+          root.style.backgroundColor = originalRootBg;
+        } else {
+          root.style.removeProperty("background-color");
+        }
+      }
+    };
+  }, [useCameraPreview]);
+
   // Effect to attach stream to video element when cameraActive changes
   useEffect(() => {
     const attachStreamToVideo = async () => {
