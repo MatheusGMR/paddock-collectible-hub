@@ -41,6 +41,17 @@ export const getTierColor = (tier: string): string => {
   return colors[tier] || 'text-foreground';
 };
 
+export const getTierBorderColor = (tier: string): string => {
+  const colors: Record<string, string> = {
+    common: 'border-foreground-secondary',
+    uncommon: 'border-green-500',
+    rare: 'border-blue-500',
+    super_rare: 'border-purple-500',
+    ultra_rare: 'border-amber-500',
+  };
+  return colors[tier] || 'border-foreground';
+};
+
 export const getTierBgColor = (tier: string): string => {
   const colors: Record<string, string> = {
     common: 'bg-muted',

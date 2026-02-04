@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Pin } from "lucide-react";
 import { CollectibleDetailCard, CollectibleDetailItem } from "@/components/collection/CollectibleDetailCard";
-import { getRarityTier, getTierColor } from "@/lib/priceIndex";
+import { getRarityTier, getTierColor, getTierBorderColor } from "@/lib/priceIndex";
 import { togglePinItem } from "@/lib/database";
 import { cn } from "@/lib/utils";
 
@@ -49,6 +49,11 @@ export const PostGrid = ({ posts, collectionItems = [], onPinToggle }: PostGridP
     return getTierColor(tier);
   };
 
+  const getBorderColor = (tier: string | null): string => {
+    if (!tier) return "border-foreground-secondary";
+    return getTierBorderColor(tier);
+  };
+
   return (
     <>
       <div className="profile-grid">
@@ -71,8 +76,11 @@ export const PostGrid = ({ posts, collectionItems = [], onPinToggle }: PostGridP
               {/* Index Badge - top left */}
               {post.priceIndex != null && (
                 <div className="absolute top-1.5 left-1.5 flex items-center justify-center">
-                  <div className="w-7 h-7 rounded-full bg-black/60 border border-white/20 flex items-center justify-center backdrop-blur-sm">
-                    <span className={cn("text-[10px] font-bold", getIndexColor(tier))}>
+                  <div className={cn(
+                    "w-9 h-9 rounded-full bg-black/70 border-2 flex items-center justify-center backdrop-blur-sm",
+                    getBorderColor(tier)
+                  )}>
+                    <span className={cn("text-xs font-bold", getIndexColor(tier))}>
                       {post.priceIndex}
                     </span>
                   </div>
