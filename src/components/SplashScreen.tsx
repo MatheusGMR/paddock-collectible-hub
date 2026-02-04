@@ -74,22 +74,14 @@ export const SplashScreen = ({
         `}
       >
         {/* Paddock Logo */}
-        <div 
-          className="w-28 h-28 flex items-center justify-center rounded-3xl overflow-hidden"
+        <img
+          src={paddockLogo}
+          alt="Paddock"
+          className="w-28 h-28 object-contain"
           style={{
-            backgroundColor: "#0E1117",
+            filter: "drop-shadow(0 0 60px rgba(76, 195, 255, 0.25))",
           }}
-        >
-          <img
-            src={paddockLogo}
-            alt="Paddock"
-            className="w-full h-full object-contain"
-            style={{
-              filter: "drop-shadow(0 0 60px rgba(76, 195, 255, 0.25))",
-              mixBlendMode: "lighten",
-            }}
-          />
-        </div>
+        />
       </div>
 
       {/* Subtle bottom indicator */}
