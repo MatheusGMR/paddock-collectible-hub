@@ -1921,7 +1921,9 @@ export const ScannerView = () => {
           <img
             src={capturedImage}
             alt="Captured"
-            className="absolute inset-0 w-full h-full object-cover"
+            className={`absolute inset-0 w-full h-full object-cover transition-all duration-300 ${
+              hasResults ? 'blur-sm scale-105' : ''
+            }`}
           />
         )}
 

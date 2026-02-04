@@ -1,5 +1,5 @@
-import { useState, useCallback } from "react";
-import { Check, Plus, RotateCcw, ChevronLeft, ChevronRight, Loader2, CheckCircle2, SkipForward, AlertTriangle, Car, Package, History, ChevronDown, ChevronUp } from "lucide-react";
+import { useState, useCallback, useRef } from "react";
+import { Check, Plus, RotateCcw, ChevronLeft, ChevronRight, Loader2, CheckCircle2, SkipForward, AlertTriangle, Car, Package, History, ChevronDown, ChevronUp, Minus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import { MusicPlayer } from "./MusicPlayer";
 import { RealCarGallery } from "./RealCarGallery";
 import { ScanFeedback } from "./ScanFeedback";
+import { Drawer, DrawerContent } from "@/components/ui/drawer";
 
 import { BoundingBox } from "@/lib/imageCrop";
 
@@ -169,6 +170,7 @@ export const ResultCarousel = ({
   const [justAddedIndex, setJustAddedIndex] = useState<number | null>(null);
   const [breakdownOpen, setBreakdownOpen] = useState(false);
   const [breakdownResult, setBreakdownResult] = useState<AnalysisResult | null>(null);
+  const [snapPoint, setSnapPoint] = useState<string | number>("85%");
 
   // Get remaining items (not added)
   const remainingResults = results.filter((_, idx) => !addedIndices.has(idx));
@@ -264,20 +266,37 @@ export const ResultCarousel = ({
   const { result, originalIndex } = currentItem;
 
   return (
-    <div className="bg-card rounded-t-[28px] safe-bottom animate-slide-up-card relative z-10 overflow-hidden overflow-x-hidden -mt-6 shadow-[0_-8px_30px_rgba(0,0,0,0.3)]">
-      {/* Header with count */}
-      {results.length > 1 && (
-        <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-          <p className="text-sm text-foreground-secondary">
-            {results.length} {t.scanner.multipleCarsDetected}
+    <Drawer 
+      open={true}
+      snapPoints={["15%", "85%"]}
+      activeSnapPoint={snapPoint}
+      setActiveSnapPoint={setSnapPoint}
+      modal={false}
+      dismissible={false}
+    >
+      <DrawerContent className="h-[92vh] rounded-t-[28px] bg-card border-0 overflow-hidden">
+        {/* Drag handle with car title */}
+        <div 
+          className="sticky top-0 z-20 bg-card pt-3 pb-2 cursor-grab active:cursor-grabbing"
+        >
+          {/* Visual drag indicator */}
+          <div className="mx-auto w-12 h-1.5 rounded-full bg-muted-foreground/30 mb-3" />
+          
+          {/* Car title as main header */}
+          <h2 className="text-xl font-bold text-foreground text-center px-4">
+            {result.realCar.brand} {result.realCar.model}
+          </h2>
+          <p className="text-sm text-muted-foreground text-center mt-0.5">
+            {result.collectible.manufacturer} • {result.collectible.scale} • {result.realCar.year}
           </p>
-          <div className="flex items-center gap-1">
-            <span className="text-sm font-medium text-foreground">
-              {selectedIndex + 1} {t.scanner.addingProgress} {remainingResults.length}
-            </span>
-          </div>
+          
+          {/* Multi-car indicator */}
+          {results.length > 1 && (
+            <div className="flex items-center justify-center gap-2 mt-2 text-xs text-foreground-secondary">
+              <span>{selectedIndex + 1} de {remainingResults.length} • {results.length} detectados</span>
+            </div>
+          )}
         </div>
-      )}
 
       {/* Single item view - vertical scroll only, no horizontal scroll */}
       <div className="relative overflow-hidden overflow-x-hidden">
@@ -318,15 +337,7 @@ export const ResultCarousel = ({
               carYear={result.realCar.year}
             />
 
-            {/* Car title */}
-            <div className="text-center space-y-1">
-              <h3 className="text-xl font-bold text-foreground">
-                {result.realCar.brand} {result.realCar.model}
-              </h3>
-              <p className="text-sm text-muted-foreground">
-                {result.collectible.manufacturer} • {result.collectible.scale} • {result.collectible.color || "Original"}
-              </p>
-            </div>
+            {/* Duplicate Warning */}
 
             {/* Duplicate Warning */}
             {result.isDuplicate && (
@@ -511,6 +522,7 @@ export const ResultCarousel = ({
           </div>
         )}
       </div>
+      </DrawerContent>
 
       {/* Breakdown sheet */}
       {breakdownResult?.priceIndex && (
@@ -522,6 +534,6 @@ export const ResultCarousel = ({
           breakdown={breakdownResult.priceIndex.breakdown}
         />
       )}
-    </div>
+    </Drawer>
   );
 };
