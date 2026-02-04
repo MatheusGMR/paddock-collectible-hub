@@ -18,6 +18,7 @@ interface ProfileHeaderProps {
     followers: number;
     following: number;
     collection: number;
+    averageIndex?: number | null;
   };
   onEditProfile?: () => void;
   onSettings?: () => void;
@@ -88,7 +89,11 @@ export const ProfileHeader = ({ user, onEditProfile, onSettings }: ProfileHeader
 
             {/* Stats */}
             <div className="flex flex-1 justify-around pt-2">
-              <StatItem value={user.collection} label={t.profile.items} />
+              <StatItem 
+                value={user.collection} 
+                label={t.profile.items} 
+                subValue={user.averageIndex != null ? `Ø ${user.averageIndex}` : undefined}
+              />
               <StatItem value={user.followers} label={t.profile.followers} />
               <StatItem value={user.following} label={t.profile.following} />
             </div>
@@ -140,9 +145,14 @@ export const ProfileHeader = ({ user, onEditProfile, onSettings }: ProfileHeader
   );
 };
 
-const StatItem = ({ value, label }: { value: number; label: string }) => (
+const StatItem = ({ value, label, subValue }: { value: number; label: string; subValue?: string }) => (
   <div className="text-center">
-    <p className="text-lg font-semibold">{value.toLocaleString()}</p>
+    <div className="flex items-baseline justify-center gap-1.5">
+      <p className="text-lg font-semibold">{value.toLocaleString()}</p>
+      {subValue && (
+        <span className="text-xs text-primary font-medium">{subValue}</span>
+      )}
+    </div>
     <p className="text-xs text-foreground-secondary">{label}</p>
   </div>
 );

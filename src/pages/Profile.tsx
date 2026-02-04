@@ -10,7 +10,7 @@ import { SettingsSheet } from "@/components/profile/SettingsSheet";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useScreenTips } from "@/hooks/useScreenTips";
-import { getProfile, getCollectionWithIndex, getFollowCounts, getCollectionCount, updateProfile, Profile, CollectionItemWithIndex } from "@/lib/database";
+import { getProfile, getCollectionWithIndex, getFollowCounts, getCollectionCount, updateProfile, togglePinItem, Profile, CollectionItemWithIndex } from "@/lib/database";
 import { Loader2 } from "lucide-react";
 
 const ProfilePage = () => {
@@ -89,6 +89,16 @@ const ProfilePage = () => {
     );
   }
 
+  // Calculate average rarity index
+  const averageIndex = collection.length > 0
+    ? Math.round(
+        collection
+          .filter(item => item.item?.price_index != null)
+          .reduce((sum, item) => sum + (item.item?.price_index || 0), 0) /
+        collection.filter(item => item.item?.price_index != null).length
+      ) || null
+    : null;
+
   const userData = {
     username: profile?.username || t.profile.defaultUser,
     avatar: profile?.avatar_url || "",
@@ -98,12 +108,33 @@ const ProfilePage = () => {
     followers: stats.followers,
     following: stats.following,
     collection: stats.collection,
+    averageIndex,
   };
 
+  // Sort collection: pinned first (by pinned_at desc), then by rarity (highest first)
+  const sortedCollection = [...collection].sort((a, b) => {
+    // Pinned items first
+    if (a.is_pinned && !b.is_pinned) return -1;
+    if (!a.is_pinned && b.is_pinned) return 1;
+    
+    // If both pinned, sort by pinned_at (most recent first)
+    if (a.is_pinned && b.is_pinned) {
+      return new Date(b.pinned_at || 0).getTime() - new Date(a.pinned_at || 0).getTime();
+    }
+    
+    // Otherwise sort by rarity (highest first)
+    const aIndex = a.item?.price_index || 0;
+    const bIndex = b.item?.price_index || 0;
+    return bIndex - aIndex;
+  });
+
   // Transform collection items to grid format
-  const gridPosts = collection.map((item) => ({
+  const gridPosts = sortedCollection.map((item) => ({
     id: item.id,
     image: item.image_url || "https://images.unsplash.com/photo-1594787318286-3d835c1d207f?w=300&h=300&fit=crop",
+    priceIndex: item.item?.price_index || null,
+    rarityTier: item.item?.rarity_tier || null,
+    isPinned: item.is_pinned || false,
   }));
 
   return (
@@ -119,7 +150,7 @@ const ProfilePage = () => {
 
       {activeTab === "posts" ? (
         gridPosts.length > 0 ? (
-          <PostGrid posts={gridPosts} collectionItems={collection} />
+          <PostGrid posts={gridPosts} collectionItems={sortedCollection} onPinToggle={loadProfile} />
         ) : (
           <div className="p-8 text-center text-foreground-secondary">
             <p>{t.profile.noPostsYet}</p>
