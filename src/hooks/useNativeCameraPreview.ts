@@ -28,24 +28,18 @@ export const useNativeCameraPreview = () => {
     try {
       console.log("[CameraPreview] Starting camera preview...");
       
-      // Get screen dimensions for fullscreen camera
-      const width = window.innerWidth;
-      const height = window.innerHeight;
-      
+      // On iOS, let the plugin use UIScreen.main.bounds for fullscreen
+      // Passing explicit dimensions can cause issues with frame calculation
       const options: CameraPreviewOptions = {
         position: "rear",
-        toBack: true, // Render behind the WebView
+        toBack: true, // Render behind the WebView - CRITICAL
         parent: "camera-preview-container",
         className: "camera-preview",
         enableZoom: true,
         disableAudio: true,
         storeToFile: false,
         enableHighResolution: true,
-        // Fullscreen dimensions to avoid black bars
-        width: width,
-        height: height,
-        x: 0,
-        y: 0,
+        // Note: Omitting width/height/x/y lets iOS use UIScreen.main.bounds
       };
       
       await CameraPreview.start(options);
