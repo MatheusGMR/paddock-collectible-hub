@@ -1,13 +1,10 @@
+# Plano: Experiência de Câmera Imersiva no iOS ✅ IMPLEMENTADO
 
-# Plano: Experiência de Câmera Imersiva no iOS
+## Status: Concluído
 
-## Problema Identificado
+A implementação foi realizada usando o plugin `@capacitor-community/camera-preview` para renderizar o feed da câmera diretamente no app, sem abrir a interface nativa do iOS.
 
-Atualmente, no iOS nativo, a experiência é fragmentada:
-
-1. **Clica no Scanner** → Abre tela preta com botão "Toque para abrir"
-2. **Toca no botão** → Abre a câmera nativa do iOS (interface diferente, outro layout)
-3. **Captura foto** → Volta para o app com a imagem
+## Problema Identificado (Resolvido)
 
 A experiência desejada é:
 - **Clica no Scanner** → Câmera abre direto em tela cheia, com layout integrado ao design do app
