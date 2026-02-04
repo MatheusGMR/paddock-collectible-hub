@@ -264,7 +264,7 @@ export const ResultCarousel = ({
   const { result, originalIndex } = currentItem;
 
   return (
-    <div className="bg-card rounded-t-[28px] safe-bottom animate-slide-up-card relative z-10 overflow-hidden -mt-6 shadow-[0_-8px_30px_rgba(0,0,0,0.3)]">
+    <div className="bg-card rounded-t-[28px] safe-bottom animate-slide-up-card relative z-10 overflow-hidden overflow-x-hidden -mt-6 shadow-[0_-8px_30px_rgba(0,0,0,0.3)]">
       {/* Header with count */}
       {results.length > 1 && (
         <div className="flex items-center justify-between px-4 py-3 border-b border-border">
@@ -280,7 +280,7 @@ export const ResultCarousel = ({
       )}
 
       {/* Single item view - vertical scroll only, no horizontal scroll */}
-      <div className="relative overflow-hidden">
+      <div className="relative overflow-hidden overflow-x-hidden">
         {/* Navigation arrows for multiple items */}
         {remainingResults.length > 1 && (
           <>
@@ -308,7 +308,7 @@ export const ResultCarousel = ({
             justAddedIndex === originalIndex && "opacity-0 scale-95"
           )}
         >
-          <div className="space-y-4 max-h-[65vh] overflow-y-auto pb-2">
+          <div className="space-y-4 max-h-[65vh] overflow-y-auto overflow-x-hidden pb-2">
             {/* Hero image with highlighted bounding box for context */}
             <HighlightedImage
               originalImage={originalImage || result.croppedImage || ""}
