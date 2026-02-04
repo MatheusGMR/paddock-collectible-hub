@@ -274,7 +274,7 @@ export const ResultCarousel = ({
       modal={false}
       dismissible={false}
     >
-      <DrawerContent className="h-[92vh] rounded-t-[28px] bg-card border-0 overflow-hidden">
+      <DrawerContent className="h-[92vh] rounded-t-[28px] bg-card border-0 overflow-hidden pb-safe">
         {/* Drag handle with car title */}
         <div 
           className="sticky top-0 z-20 bg-card pt-3 pb-2 cursor-grab active:cursor-grabbing"
@@ -508,7 +508,7 @@ export const ResultCarousel = ({
 
         {/* Pagination dots */}
         {remainingResults.length > 1 && (
-          <div className="flex justify-center gap-2 py-3">
+          <div className="flex justify-center gap-2 py-3 bg-card">
             {remainingResults.map((_, idx) => (
               <button
                 key={idx}
@@ -521,6 +521,9 @@ export const ResultCarousel = ({
             ))}
           </div>
         )}
+        
+        {/* Bottom safe area fill */}
+        <div className="bg-card pb-safe" />
       </div>
       </DrawerContent>
 
