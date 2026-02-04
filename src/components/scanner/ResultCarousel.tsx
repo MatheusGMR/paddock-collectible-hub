@@ -65,7 +65,7 @@ const HighlightedImage = ({ originalImage, croppedImage, boundingBox, carName, c
   // If no bounding box available, show cropped image or original without highlight
   if (!boundingBox) {
     return (
-      <div className="relative w-full aspect-square rounded-t-[20px] rounded-b-2xl overflow-hidden bg-gradient-to-b from-muted to-muted/50">
+      <div className="relative w-full aspect-square rounded-2xl overflow-hidden bg-gradient-to-b from-muted to-muted/50">
         <img
           src={croppedImage || originalImage}
           alt={carName}
@@ -80,55 +80,25 @@ const HighlightedImage = ({ originalImage, croppedImage, boundingBox, carName, c
     );
   }
 
+  // With bounding box: show original image with simple highlight border around the car
   return (
-    <div className="relative w-full aspect-square rounded-t-[20px] rounded-b-2xl overflow-hidden bg-black">
-      {/* Full original image - cropped to square */}
+    <div className="relative w-full aspect-square rounded-2xl overflow-hidden bg-black">
+      {/* Full original image */}
       <img
         src={originalImage}
         alt="Captura original"
         className="w-full h-full object-cover"
       />
       
-      {/* Dark overlay with cutout for the highlighted car */}
+      {/* Simple highlight border around the detected car - no overlay, just a glowing border */}
       <div 
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          background: `linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6))`
-        }}
-      />
-      
-      {/* Clear window for the car (no darkening) */}
-      <div 
-        className="absolute overflow-hidden"
+        className="absolute border-2 border-primary rounded-lg pointer-events-none"
         style={{
           left: `${boundingBox.x}%`,
           top: `${boundingBox.y}%`,
           width: `${boundingBox.width}%`,
           height: `${boundingBox.height}%`,
-        }}
-      >
-        <img
-          src={originalImage}
-          alt={carName}
-          className="absolute object-cover"
-          style={{
-            left: `-${(boundingBox.x / boundingBox.width) * 100}%`,
-            top: `-${(boundingBox.y / boundingBox.height) * 100}%`,
-            width: `${100 / boundingBox.width * 100}%`,
-            height: `${100 / boundingBox.height * 100}%`,
-          }}
-        />
-      </div>
-      
-      {/* Animated border around the car */}
-      <div 
-        className="absolute border-2 border-primary rounded-xl animate-pulse-subtle"
-        style={{
-          left: `${boundingBox.x}%`,
-          top: `${boundingBox.y}%`,
-          width: `${boundingBox.width}%`,
-          height: `${boundingBox.height}%`,
-          boxShadow: '0 0 15px 2px hsl(var(--primary) / 0.4)',
+          boxShadow: '0 0 0 3px hsl(var(--primary) / 0.3), 0 0 20px 4px hsl(var(--primary) / 0.4), inset 0 0 15px hsl(var(--primary) / 0.1)',
         }}
       />
       
