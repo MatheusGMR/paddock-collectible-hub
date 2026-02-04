@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef, useCallback, useMemo } from "react";
 import { FeedHeader } from "@/components/feed/FeedHeader";
 import { PostCard } from "@/components/feed/PostCard";
 import { FeaturedCuriosityCard } from "@/components/feed/FeaturedCuriosityCard";
@@ -68,6 +68,16 @@ const Index = () => {
     item: p.item ? { ...p.item, manufacturer: null } : null,
   }));
 
+  // Calculate random position for curiosity card (between 1 and min(5, posts.length))
+  // Use curiosity id as seed to keep position stable during session
+  const curiosityPosition = useMemo(() => {
+    if (!curiosity || displayPosts.length === 0) return -1;
+    const maxPosition = Math.min(5, displayPosts.length);
+    // Use a simple hash of curiosity id for consistent positioning during session
+    const hash = curiosity.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    return (hash % maxPosition) + 1; // Position 1 to maxPosition (after 1st to maxPosition-th post)
+  }, [curiosity, displayPosts.length]);
+
   // Always show mock data as fallback content when real posts run out
   const showMockFallback = posts.length > 0 && !hasMore && posts.length < 5;
 
@@ -83,13 +93,6 @@ const Index = () => {
       
       {/* Challenge progress bar */}
       <ChallengeProgressBar />
-      
-      {/* Featured Curiosity Card */}
-      <FeaturedCuriosityCard 
-        curiosity={curiosity} 
-        loading={curiosityLoading} 
-        onRefresh={refreshCuriosity}
-      />
       
       {loading && !isRefreshing ? (
         <div className="flex items-center justify-center py-20">
@@ -111,9 +114,28 @@ const Index = () => {
         </div>
       ) : (
         <div className="divide-y divide-border">
-          {displayPosts.map((post) => (
-            <PostCard key={post.id} post={post} />
+          {displayPosts.map((post, index) => (
+            <div key={post.id}>
+              <PostCard post={post} />
+              {/* Insert curiosity card at random position */}
+              {index + 1 === curiosityPosition && (
+                <FeaturedCuriosityCard 
+                  curiosity={curiosity} 
+                  loading={curiosityLoading} 
+                  onRefresh={refreshCuriosity}
+                />
+              )}
+            </div>
           ))}
+          
+          {/* Fallback: Show curiosity at end if position wasn't hit (e.g., not enough posts) */}
+          {curiosityPosition === -1 && curiosity && (
+            <FeaturedCuriosityCard 
+              curiosity={curiosity} 
+              loading={curiosityLoading} 
+              onRefresh={refreshCuriosity}
+            />
+          )}
           
           {/* Show mock posts as "Destaques da comunidade" when real posts run out */}
           {showMockFallback && (
