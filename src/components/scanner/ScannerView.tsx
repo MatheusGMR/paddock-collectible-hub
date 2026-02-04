@@ -196,14 +196,10 @@ export const ScannerView = () => {
           streamRef.current = null;
         }
 
-        // If permissions weren't requested during onboarding, request them now (silently)
-        // This ensures users who skipped onboarding still get camera access
-        if (!hasRequestedPermissions() && cameraPermission !== "granted") {
-          console.log("[Scanner] Permissions not yet granted, requesting now...");
-          await requestAllPermissions();
-        }
-
-        // Now get the camera stream - permission should be granted
+        // Always attempt to get camera stream directly
+        // This is the most reliable way on iOS native apps
+        console.log("[Scanner] Requesting camera stream...");
+        
         const stream = await navigator.mediaDevices.getUserMedia({
           video: {
             facingMode: "environment",
@@ -213,7 +209,7 @@ export const ScannerView = () => {
           audio: false // No audio needed for photo capture - prevents iOS permission issues
         });
 
-        console.log("[Scanner] Camera stream acquired (using pre-granted permission)");
+        console.log("[Scanner] Camera stream acquired successfully");
         
         // Store stream immediately
         streamRef.current = stream;
@@ -229,13 +225,29 @@ export const ScannerView = () => {
         
         // Provide more specific error message for permission issues
         const errorName = error instanceof Error ? error.name : "";
-        const isPermissionError = errorName === "NotAllowedError" || errorName === "PermissionDeniedError";
+        const errorMessage = error instanceof Error ? error.message : "";
+        
+        console.log("[Scanner] Error details - name:", errorName, "message:", errorMessage);
+        
+        const isPermissionError = 
+          errorName === "NotAllowedError" || 
+          errorName === "PermissionDeniedError" ||
+          errorMessage.includes("permission") ||
+          errorMessage.includes("Permission");
+        
+        const isNotFoundError = errorName === "NotFoundError" || errorName === "DevicesNotFoundError";
+        
+        let errorDescription = t.scanner.cameraError;
+        
+        if (isPermissionError) {
+          errorDescription = "Permissão de câmera negada. Vá em Ajustes > Paddock > Câmera para habilitar.";
+        } else if (isNotFoundError) {
+          errorDescription = "Nenhuma câmera encontrada no dispositivo.";
+        }
         
         toast({
           title: t.common.error,
-          description: isPermissionError 
-            ? "Permissão de câmera negada. Vá em Ajustes > Privacidade > Câmera para habilitar."
-            : t.scanner.cameraError,
+          description: errorDescription,
           variant: "destructive",
         });
       }
@@ -260,7 +272,7 @@ export const ScannerView = () => {
         clearInterval(recordingTimerRef.current);
       }
     };
-  }, [toast, t, hasRequestedPermissions, requestAllPermissions, cameraPermission]);
+  }, [toast, t]);
 
   const startCamera = useCallback(async () => {
     console.log("[Scanner] Manual startCamera called");
@@ -1183,15 +1195,24 @@ export const ScannerView = () => {
                 </p>
               </>
             ) : cameraError ? (
-              <div className="bg-black/40 backdrop-blur-sm rounded-2xl p-4 mx-6">
-                <p className="text-sm text-white/70 text-center mb-3">
-                  {t.scanner.cameraError}
-                </p>
+              <div className="bg-black/60 backdrop-blur-md rounded-2xl p-5 mx-6 max-w-sm">
+                <div className="flex flex-col items-center gap-3">
+                  <div className="w-12 h-12 rounded-full bg-destructive/20 flex items-center justify-center">
+                    <Camera className="h-6 w-6 text-destructive" />
+                  </div>
+                  <p className="text-sm text-white font-medium text-center">
+                    Não foi possível acessar a câmera
+                  </p>
+                  <p className="text-xs text-white/60 text-center leading-relaxed">
+                    Verifique se a permissão está habilitada em{" "}
+                    <span className="text-white/80 font-medium">Ajustes → Paddock → Câmera</span>
+                  </p>
+                </div>
                 <Button
                   onClick={startCamera}
-                  className="w-full bg-white/20 backdrop-blur-sm text-white hover:bg-white/30 h-11 border-0"
+                  className="w-full mt-4 bg-white text-black hover:bg-white/90 h-11 font-medium"
                 >
-                  <Camera className="h-5 w-5 mr-2" />
+                  <RotateCcw className="h-4 w-4 mr-2" />
                   {t.scanner.tryAgain}
                 </Button>
               </div>
