@@ -1,131 +1,142 @@
 
+# Plano: Corrigir Tela Escura no Scanner (camera-preview iOS)
 
-# Plano: Resolver Definitivamente o Erro "Missing package product 'CapApp-SPM'"
+## Diagnóstico
 
-## Diagnóstico Final
+O problema é que o plugin `@capacitor-community/camera-preview` com a opção `toBack: true` renderiza a câmera **atrás da WebView**. Para que a câmera seja visível, a WebView precisa ter fundo transparente. 
 
-O erro persiste porque:
-1. O plugin `@aparajita/capacitor-biometric-auth` **não tem suporte a SPM** (confirmado pelo warning: "does not have a Package.swift")
-2. Isso pode estar causando instabilidade no gerenciamento de pacotes SPM do Xcode
-3. A solução mais confiável é **migrar para CocoaPods**
-
----
-
-## Solução: Recriar iOS com CocoaPods (Mais Estável)
-
-### Pré-requisito: Instalar CocoaPods (se não tiver)
-
-No Terminal:
-```bash
-sudo gem install cocoapods
+Os logs mostram que a câmera está iniciando corretamente:
+```
+[CameraPreview] Camera preview started successfully
+[Scanner] Camera-preview started successfully
 ```
 
-Se pedir senha, digite a senha do seu Mac.
+Porém a WebView está **opaca por padrão** no iOS, bloqueando a visualização da câmera.
 
----
+## Solução em Duas Partes
 
-### Passo a Passo Completo
+### Parte 1: Configuração Nativa iOS (Obrigatória)
 
-**1. Feche o Xcode completamente**
+Criar uma subclasse do `CAPBridgeViewController` para configurar a WebView como transparente quando necessário.
 
-**2. Limpe caches do Xcode**
-```bash
-rm -rf ~/Library/Developer/Xcode/DerivedData/*
+**Arquivo a criar: `ios/App/App/CameraPreviewViewController.swift`**
+
+```swift
+import UIKit
+import Capacitor
+
+class CameraPreviewViewController: CAPBridgeViewController {
+    
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        
+        // Configurar WebView como transparente para camera-preview funcionar com toBack:true
+        webView?.isOpaque = false
+        webView?.backgroundColor = .clear
+        webView?.scrollView.backgroundColor = .clear
+    }
+}
 ```
 
-**3. Delete a pasta iOS atual**
-```bash
-cd /Users/matheusroldan/Documents/paddock-collectible-hub/paddock-collectible-hub
-rm -rf ios
+**Arquivo a modificar: `ios/App/App/AppDelegate.swift`**
+
+Alterar para usar o novo ViewController:
+
+```swift
+import UIKit
+import Capacitor
+
+@UIApplicationMain
+class AppDelegate: UIResponder, UIApplicationDelegate {
+
+    var window: UIWindow?
+
+    func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
+        
+        window = UIWindow(frame: UIScreen.main.bounds)
+        let vc = CameraPreviewViewController()
+        window?.rootViewController = vc
+        window?.makeKeyAndVisible()
+        
+        return true
+    }
+    
+    // ... resto dos métodos permanecem iguais
+}
 ```
 
-**4. Adicione iOS com CocoaPods (não SPM)**
-```bash
-npx cap add ios
+### Parte 2: Verificar CSS (Já Implementado)
+
+O CSS em `src/index.css` já tem a configuração correta:
+```css
+.native-camera-mode {
+  background-color: transparent !important;
+}
+
+.native-camera-mode * {
+  background-color: transparent !important;
+}
 ```
 
-Sem a flag `--packagemanager SPM`, ele usa CocoaPods por padrão.
-
-**5. Sincronize**
-```bash
-npx cap sync ios
+E o componente `ScannerView.tsx` aplica a classe corretamente:
+```tsx
+<div className={`fixed inset-0 z-50 flex flex-col ${useCameraPreview ? 'native-camera-mode' : 'bg-background'}`}>
 ```
 
-**6. Instale os Pods**
-```bash
-cd ios/App
-pod install
-cd ../..
+## Passos para Implementar
+
+1. **Abra o projeto iOS no Xcode**:
+   ```bash
+   open ios/App/App.xcworkspace
+   ```
+
+2. **Crie um novo arquivo Swift** (File → New → File → Swift File):
+   - Nome: `CameraPreviewViewController.swift`
+   - Adicione o código do ViewController personalizado
+
+3. **Modifique o `AppDelegate.swift`** existente para usar o novo ViewController
+
+4. **Limpe e reconstrua**:
+   - Product → Clean Build Folder (⌘⇧K)
+   - Delete o app do iPhone
+   - Run (⌘R)
+
+## Alternativa Mais Simples
+
+Se preferir não criar arquivos Swift, você pode modificar diretamente o `AppDelegate.swift` existente:
+
+```swift
+func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
+    // Configurar WebView transparente após o carregamento
+    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+        if let vc = self.window?.rootViewController as? CAPBridgeViewController {
+            vc.webView?.isOpaque = false
+            vc.webView?.backgroundColor = .clear
+            vc.webView?.scrollView.backgroundColor = .clear
+        }
+    }
+    return true
+}
 ```
 
-**7. Abra o WORKSPACE (não o xcodeproj)**
-```bash
-open ios/App/App.xcworkspace
-```
+## Por Que Isso é Necessário
 
----
+| Camada | Comportamento Padrão | O Que Precisamos |
+|--------|---------------------|------------------|
+| Camera (nativa) | Renderiza atrás da WebView | ✓ Correto |
+| WebView | Fundo opaco (branco/preto) | Fundo transparente |
+| HTML/CSS | Pode ser transparente | ✓ Já configurado |
 
-### Importante: Abrir o Arquivo Correto
-
-Com CocoaPods, você deve abrir:
-- **App.xcworkspace** (correto)
-- ~~App.xcodeproj~~ (errado - vai dar erro)
-
----
-
-### No Xcode
-
-1. **Product → Clean Build Folder** (⌘⇧K)
-2. **Product → Build** (⌘B)
-
----
-
-## Por Que CocoaPods é Melhor Para Este Projeto
-
-| Aspecto | SPM | CocoaPods |
-|---------|-----|-----------|
-| Plugin Biometria | Não suportado | Suportado |
-| Estabilidade | Caches problemáticos | Mais maduro |
-| Compatibilidade | Alguns plugins falham | 99% dos plugins funcionam |
-
----
+Sem a configuração nativa, a WebView bloqueia a visualização da câmera mesmo com CSS transparente.
 
 ## Resumo dos Comandos
 
 ```bash
-# 1. Instalar CocoaPods (se necessário)
-sudo gem install cocoapods
-
-# 2. Na pasta do projeto
-cd /Users/matheusroldan/Documents/paddock-collectible-hub/paddock-collectible-hub
-
-# 3. Limpar e recriar
-rm -rf ~/Library/Developer/Xcode/DerivedData/*
-rm -rf ios
-npx cap add ios
-npx cap sync ios
-
-# 4. Instalar Pods
-cd ios/App
-pod install
-cd ../..
-
-# 5. Abrir no Xcode (WORKSPACE!)
+# 1. Abrir no Xcode
 open ios/App/App.xcworkspace
+
+# 2. Após modificar os arquivos Swift:
+#    - Product → Clean Build Folder (⌘⇧K)
+#    - Delete app do iPhone
+#    - Run (⌘R)
 ```
-
----
-
-## Se o `pod install` Falhar
-
-Se aparecer erro de CocoaPods, pode ser necessário:
-```bash
-pod repo update
-pod install
-```
-
-Ou se o pod não for encontrado:
-```bash
-brew install cocoapods
-```
-
