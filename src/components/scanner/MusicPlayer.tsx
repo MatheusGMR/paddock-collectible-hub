@@ -131,7 +131,10 @@ export const MusicPlayer = ({
         if (error) {
           console.error('[MusicPlayer] YouTube search error:', error, { mode });
           if (mode === 'user') {
-            setErrorMessage('Não foi possível buscar a música');
+            const errorMsg = error.message?.includes('timeout') 
+              ? 'Conexão lenta. Tente novamente.'
+              : 'Erro de conexão. Verifique sua internet.';
+            setErrorMessage(errorMsg);
             setPlayerState('error');
           } else {
             setPlayerState('idle');
@@ -156,7 +159,7 @@ export const MusicPlayer = ({
         }
 
         if (mode === 'user') {
-          setErrorMessage('Música não encontrada no YouTube');
+          setErrorMessage(`Música "${title}" não encontrada. Tente os links abaixo.`);
           setPlayerState('error');
         } else {
           setPlayerState('idle');
