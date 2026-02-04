@@ -14,7 +14,7 @@
   },
   "dependencies": {
     "@aparajita/capacitor-biometric-auth": "^9.1.2",
-    "@capacitor-community/camera-preview": "^6.0.1",
+    "@capacitor-community/camera-preview": "^7.0.4",
     "@capacitor/app": "^8.0.0",
     "@capacitor/camera": "^8.0.0",
     "@capacitor/cli": "^8.0.2",
