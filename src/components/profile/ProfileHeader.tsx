@@ -42,24 +42,24 @@ export const ProfileHeader = ({ user, onEditProfile, onSettings }: ProfileHeader
               className="object-contain"
             />
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1">
             <button 
               onClick={() => setSearchOpen(true)}
-              className="p-2 text-foreground-secondary hover:text-primary transition-colors"
+              className="p-2 rounded-lg bg-blue-subtle text-foreground-secondary hover:text-primary hover:bg-primary/20 transition-colors"
               title={t.social.searchUsers}
             >
               <Search className="h-5 w-5" />
             </button>
             <button 
               onClick={() => setQrCodeOpen(true)}
-              className="p-2 text-foreground-secondary hover:text-primary transition-colors"
+              className="p-2 rounded-lg bg-blue-subtle text-foreground-secondary hover:text-primary hover:bg-primary/20 transition-colors"
               title={t.social.myQRCode}
             >
               <QrCode className="h-5 w-5" />
             </button>
             <button 
               onClick={onSettings}
-              className="p-2 text-foreground-secondary hover:text-primary transition-colors"
+              className="p-2 rounded-lg bg-blue-subtle text-foreground-secondary hover:text-primary hover:bg-primary/20 transition-colors"
               title="Configurações"
             >
               <Settings className="h-5 w-5" />
@@ -68,10 +68,10 @@ export const ProfileHeader = ({ user, onEditProfile, onSettings }: ProfileHeader
         </div>
       </header>
 
-      <div className="border-b border-border">
+      <div className="border-b border-border bg-blue-subtle/50">
 
         {/* Profile Info */}
-        <div className="px-4 pb-6">
+        <div className="px-4 pb-6 pt-4">
           <div className="flex items-start gap-6">
             {/* Avatar with username below */}
             <div className="flex flex-col items-center">
@@ -108,7 +108,7 @@ export const ProfileHeader = ({ user, onEditProfile, onSettings }: ProfileHeader
           <Button 
             variant="outline" 
             onClick={onEditProfile}
-            className="w-full mt-4 border-border text-foreground hover:bg-muted"
+            className="w-full mt-4 border-primary/30 bg-blue-subtle text-foreground hover:bg-primary/20 hover:border-primary/50"
           >
             {t.profile.editProfile}
           </Button>
