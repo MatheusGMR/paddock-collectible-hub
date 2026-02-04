@@ -51,12 +51,16 @@ export interface CollectionItem {
   notes: string | null;
   acquired_at: string | null;
   created_at: string;
+  is_pinned?: boolean;
+  pinned_at?: string | null;
   item?: Item;
 }
 
 export interface CollectionItemWithIndex {
   id: string;
   image_url: string | null;
+  is_pinned?: boolean;
+  pinned_at?: string | null;
   item: {
     real_car_brand: string;
     real_car_model: string;
@@ -156,6 +160,8 @@ export const getCollectionWithIndex = async (userId: string): Promise<Collection
     .select(`
       id,
       image_url,
+      is_pinned,
+      pinned_at,
       item:items(
         real_car_brand,
         real_car_model,
@@ -184,6 +190,8 @@ export const getCollectionWithIndex = async (userId: string): Promise<Collection
   return (data || []).map(item => ({
     id: item.id,
     image_url: item.image_url,
+    is_pinned: item.is_pinned,
+    pinned_at: item.pinned_at,
     item: item.item ? {
       real_car_brand: item.item.real_car_brand,
       real_car_model: item.item.real_car_model,
@@ -204,6 +212,19 @@ export const getCollectionWithIndex = async (userId: string): Promise<Collection
       real_car_photos: item.item.real_car_photos as string[] | null
     } : null
   }));
+};
+
+// Toggle pin status for a collection item
+export const togglePinItem = async (itemId: string, isPinned: boolean): Promise<void> => {
+  const { error } = await supabase
+    .from("user_collection")
+    .update({
+      is_pinned: isPinned,
+      pinned_at: isPinned ? new Date().toISOString() : null
+    })
+    .eq("id", itemId);
+  
+  if (error) throw error;
 };
 
 // Get public collection (for viewing other users' collections)

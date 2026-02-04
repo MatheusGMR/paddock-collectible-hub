@@ -738,8 +738,10 @@ export type Database = {
           created_at: string
           id: string
           image_url: string | null
+          is_pinned: boolean
           item_id: string
           notes: string | null
+          pinned_at: string | null
           user_id: string
         }
         Insert: {
@@ -747,8 +749,10 @@ export type Database = {
           created_at?: string
           id?: string
           image_url?: string | null
+          is_pinned?: boolean
           item_id: string
           notes?: string | null
+          pinned_at?: string | null
           user_id: string
         }
         Update: {
@@ -756,8 +760,10 @@ export type Database = {
           created_at?: string
           id?: string
           image_url?: string | null
+          is_pinned?: boolean
           item_id?: string
           notes?: string | null
+          pinned_at?: string | null
           user_id?: string
         }
         Relationships: [
