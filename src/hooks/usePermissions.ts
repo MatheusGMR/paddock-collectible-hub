@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect } from "react";
 import { subscribeToPush } from "@/lib/pushNotifications";
 import { useAuth } from "@/contexts/AuthContext";
 
-type PermissionState = "prompt" | "granted" | "denied";
+type PermissionState = "prompt" | "granted" | "denied" | "unknown";
 
 interface PermissionsState {
   camera: PermissionState;
@@ -12,11 +12,12 @@ interface PermissionsState {
 }
 
 const PERMISSIONS_STORAGE_KEY = "paddock_permissions_requested";
+const CAMERA_GRANTED_KEY = "paddock_camera_granted";
 
 export const usePermissions = () => {
   const { user } = useAuth();
   const [state, setState] = useState<PermissionsState>({
-    camera: "prompt",
+    camera: "unknown",
     notifications: "prompt",
     allGranted: false,
     isRequesting: false,
@@ -25,20 +26,26 @@ export const usePermissions = () => {
   // Check current permission states on mount
   useEffect(() => {
     const checkPermissions = async () => {
-      let cameraState: PermissionState = "prompt";
+      let cameraState: PermissionState = "unknown";
       let notificationState: PermissionState = "prompt";
 
-      // Check camera permission
+      // Check camera permission - navigator.permissions.query is not supported on iOS WKWebView
       try {
-        const cameraPermission = await navigator.permissions.query({ 
-          name: "camera" as PermissionName 
-        });
-        cameraState = cameraPermission.state as PermissionState;
+        if (navigator.permissions && navigator.permissions.query) {
+          const cameraPermission = await navigator.permissions.query({ 
+            name: "camera" as PermissionName 
+          });
+          cameraState = cameraPermission.state as PermissionState;
+        }
       } catch {
-        // Fallback: check if we've previously requested
-        const requested = localStorage.getItem(PERMISSIONS_STORAGE_KEY);
-        if (requested) {
-          cameraState = "granted"; // Assume granted if previously requested
+        // Permissions API not available (common on iOS)
+        // Check our local storage for previous successful grant
+        const wasGranted = localStorage.getItem(CAMERA_GRANTED_KEY);
+        if (wasGranted === "true") {
+          cameraState = "granted";
+        } else {
+          // Unknown state - we'll try to request when scanner opens
+          cameraState = "unknown";
         }
       }
 
@@ -75,6 +82,8 @@ export const usePermissions = () => {
     // Only request camera if not already granted
     if (!cameraGranted) {
       try {
+        console.log("[Permissions] Requesting camera permission...");
+        
         // Request camera permission by getting a stream briefly - NO AUDIO to avoid iOS issues
         const stream = await navigator.mediaDevices.getUserMedia({
           video: { facingMode: "environment" },
@@ -85,9 +94,13 @@ export const usePermissions = () => {
         stream.getTracks().forEach(track => track.stop());
         cameraGranted = true;
         
+        // Store successful grant for future reference (important for iOS where permissions API doesn't work)
+        localStorage.setItem(CAMERA_GRANTED_KEY, "true");
+        
         console.log("[Permissions] Camera permission granted");
       } catch (error) {
         console.log("[Permissions] Camera permission denied:", error);
+        localStorage.setItem(CAMERA_GRANTED_KEY, "false");
         cameraGranted = false;
       }
     }
@@ -132,9 +145,16 @@ export const usePermissions = () => {
     return localStorage.getItem(PERMISSIONS_STORAGE_KEY) === "true";
   }, []);
 
+  // Reset camera permission state (useful when user manually changes in Settings)
+  const resetCameraPermission = useCallback(() => {
+    localStorage.removeItem(CAMERA_GRANTED_KEY);
+    setState(prev => ({ ...prev, camera: "unknown" }));
+  }, []);
+
   return {
     ...state,
     requestAllPermissions,
     hasRequestedPermissions,
+    resetCameraPermission,
   };
 };
