@@ -1,224 +1,171 @@
-# Plano: Experiência de Câmera Imersiva no iOS ✅ IMPLEMENTADO
 
-## Status: Concluído
+# Plano: Melhorar Exibição do Resultado do Scanner
 
-A implementação foi realizada usando o plugin `@capacitor-community/camera-preview` para renderizar o feed da câmera diretamente no app, sem abrir a interface nativa do iOS.
+## Análise da Situação Atual
 
-## Problema Identificado (Resolvido)
+### O que já funciona corretamente:
+- **Na coleção**: A imagem salva é `result.croppedImage` (recorte exato do carro)
+- **Em publicações**: Usaria a mesma `image_url` recortada
+- Isso evita o problema de imagens repetidas quando há múltiplos carros
 
-A experiência desejada é:
-- **Clica no Scanner** → Câmera abre direto em tela cheia, com layout integrado ao design do app
+### O que precisa melhorar:
+- **No resultado do scanner**: Mostrar apenas o recorte isolado sem contexto é confuso
+- O usuário não sabe qual carro da foto original foi identificado
 
-## Diagnóstico Técnico
+## Solução: Duas Imagens - Contexto + Recorte
 
-O `@capacitor/camera` (plugin padrão) sempre abre a **interface nativa do iOS** (UIImagePickerController ou PHPickerViewController). Isso é uma limitação do plugin - ele não oferece preview embutido.
-
-Para ter um feed de câmera **dentro** do app no iOS, precisamos usar o plugin `@capacitor-community/camera-preview`, que renderiza o feed da câmera como uma view nativa por trás da WebView.
-
-## Solução Proposta
-
-### Opção Implementada: Camera Preview Plugin
-
-Usar o `@capacitor-community/camera-preview` para:
-- Mostrar feed de câmera em tela cheia direto ao abrir o Scanner
-- Manter layout consistente com o design do Paddock (botões, watermark, etc.)
-- Capturar foto sem sair do contexto do app
-
-### Arquitetura
+Mostrar no card de resultado:
+1. **Foto original com bounding box** - para contexto visual (qual carro foi identificado)
+2. **Manter recorte para salvar** - a imagem salva continua sendo a `croppedImage`
 
 ```text
 ┌─────────────────────────────────────────┐
-│              WebView (React)            │
-│  ┌─────────────────────────────────────┐│
-│  │    UI Elements (buttons, overlay)   ││
-│  │    - Botão X (fechar)               ││
-│  │    - Botão captura                  ││
-│  │    - Watermark PADDOCK              ││
-│  │    - Corner guides                  ││
-│  │         (transparent background)    ││
-│  └─────────────────────────────────────┘│
-│                    ↑                    │
-│              (transparent)              │
-│                    ↓                    │
-│  ┌─────────────────────────────────────┐│
-│  │     Native Camera Layer (behind)     ││
-│  │        AVCaptureVideoPreviewLayer    ││
-│  └─────────────────────────────────────┘│
+│         FOTO ORIGINAL COMPLETA          │
+│    ┌────────────────┐                   │
+│    │  ◈ CARRINHO ◈  │← Bounding box     │
+│    │   DESTACADO    │   animado         │
+│    └────────────────┘                   │
+│       [BMW M3 • 1992]                   │
+└─────────────────────────────────────────┘
+│                                         │
+│  ── Dados do Colecionável ──            │
+│  Hot Wheels • 1:64 • Azul               │
+│                                         │
 └─────────────────────────────────────────┘
 ```
 
----
+## Arquivos a Modificar
 
-## Passos de Implementação
-
-### 1. Instalar o Plugin Camera-Preview
-
-Adicionar a dependência:
-```json
-"@capacitor-community/camera-preview": "^6.0.0"
-```
-
-### 2. Criar Hook `useNativeCameraPreview`
-
-Novo hook para gerenciar o camera-preview em plataformas nativas:
-
+### 1. `src/components/scanner/ScannerView.tsx`
+Passar a imagem original para o ResultCarousel:
 ```typescript
-// src/hooks/useNativeCameraPreview.ts
-import { CameraPreview, CameraPreviewOptions, CameraPreviewPictureOptions } from '@capacitor-community/camera-preview';
-import { Capacitor } from '@capacitor/core';
-
-export const useNativeCameraPreview = () => {
-  const isNative = Capacitor.isNativePlatform();
-
-  const start = async () => {
-    if (!isNative) return false;
-    
-    const options: CameraPreviewOptions = {
-      position: 'rear',
-      toBack: true, // Renderiza atrás da WebView
-      parent: 'camera-preview-container',
-      className: 'camera-preview',
-      enableZoom: true,
-      disableAudio: true,
-    };
-    
-    await CameraPreview.start(options);
-    return true;
-  };
-
-  const stop = async () => {
-    if (!isNative) return;
-    await CameraPreview.stop();
-  };
-
-  const capture = async (): Promise<string | null> => {
-    if (!isNative) return null;
-    
-    const options: CameraPreviewPictureOptions = {
-      quality: 90,
-    };
-    
-    const result = await CameraPreview.capture(options);
-    return result.value ? `data:image/jpeg;base64,${result.value}` : null;
-  };
-
-  const flip = async () => {
-    if (!isNative) return;
-    await CameraPreview.flip();
-  };
-
-  return { isNative, start, stop, capture, flip };
-};
-```
-
-### 3. Atualizar ScannerView para Usar Camera-Preview no iOS
-
-Modificar o componente para:
-
-a) **Adicionar container transparente** para o preview nativo aparecer por trás:
-```tsx
-<div 
-  id="camera-preview-container" 
-  className="fixed inset-0 z-0" 
-  style={{ backgroundColor: 'transparent' }}
+<ResultCarousel
+  results={analysisResults}
+  originalImage={capturedImage}  // ← Nova prop
+  onAddToCollection={handleAddToCollection}
+  // ...
 />
 ```
 
-b) **Usar background transparente** na WebView para ver a câmera por trás:
-```tsx
-// CSS para iOS nativo
-.native-camera-mode {
-  background-color: transparent !important;
+### 2. `src/components/scanner/ResultCarousel.tsx`
+Criar componente `HighlightedImage` e substituir a exibição do recorte isolado:
+
+```typescript
+// Nova interface
+interface ResultCarouselProps {
+  results: AnalysisResult[];
+  originalImage?: string;  // Foto original completa
+  // ... resto das props
+}
+
+// Novo componente para exibir foto com destaque
+const HighlightedImage = ({ 
+  originalImage, 
+  boundingBox, 
+  carName, 
+  carYear 
+}: HighlightedImageProps) => (
+  <div className="relative w-full aspect-[4/3] rounded-2xl overflow-hidden bg-black">
+    {/* Foto original */}
+    <img
+      src={originalImage}
+      alt="Captura original"
+      className="w-full h-full object-cover"
+    />
+    
+    {/* Overlay escurecido */}
+    {boundingBox && (
+      <div className="absolute inset-0 bg-black/50 pointer-events-none">
+        {/* Área do carro "recortada" (transparente) */}
+        <div 
+          className="absolute bg-transparent"
+          style={{
+            left: `${boundingBox.x}%`,
+            top: `${boundingBox.y}%`,
+            width: `${boundingBox.width}%`,
+            height: `${boundingBox.height}%`,
+            boxShadow: '0 0 0 9999px rgba(0,0,0,0.5)',
+            borderRadius: '12px'
+          }}
+        />
+      </div>
+    )}
+    
+    {/* Borda animada no carro */}
+    {boundingBox && (
+      <div 
+        className="absolute border-2 border-primary rounded-xl animate-pulse-subtle shadow-glow"
+        style={{
+          left: `${boundingBox.x}%`,
+          top: `${boundingBox.y}%`,
+          width: `${boundingBox.width}%`,
+          height: `${boundingBox.height}%`,
+        }}
+      >
+        {/* Badge com nome */}
+        <div className="absolute -bottom-7 left-1/2 -translate-x-1/2">
+          <div className="px-3 py-1 rounded-full bg-primary text-primary-foreground text-xs font-medium whitespace-nowrap">
+            {carName} • {carYear}
+          </div>
+        </div>
+      </div>
+    )}
+  </div>
+);
+```
+
+### 3. `src/index.css`
+Adicionar animações para o destaque visual:
+```css
+@keyframes pulse-subtle {
+  0%, 100% { 
+    box-shadow: 0 0 0 0 hsl(var(--primary) / 0.4);
+  }
+  50% { 
+    box-shadow: 0 0 20px 4px hsl(var(--primary) / 0.2);
+  }
+}
+
+.animate-pulse-subtle {
+  animation: pulse-subtle 2s ease-in-out infinite;
+}
+
+.shadow-glow {
+  box-shadow: 0 0 15px 2px hsl(var(--primary) / 0.3);
 }
 ```
 
-c) **Inicializar camera-preview** no mount (iOS/Android):
-```typescript
-useEffect(() => {
-  if (Capacitor.isNativePlatform()) {
-    cameraPreview.start();
-    setCameraActive(true);
-    setIsInitializing(false);
-    
-    return () => {
-      cameraPreview.stop();
-    };
-  }
-}, []);
-```
-
-d) **Capturar foto** direto do preview (sem abrir interface nativa):
-```typescript
-const capturePhoto = async () => {
-  const imageBase64 = await cameraPreview.capture();
-  if (imageBase64) {
-    setCapturedImage(imageBase64);
-    analyzeImage(imageBase64);
-  }
-};
-```
-
-### 4. Configuração iOS Nativa
-
-Adicionar no `ios/App/App/Info.plist` (já feito anteriormente):
-- NSCameraUsageDescription
-- NSPhotoLibraryUsageDescription
-- NSPhotoLibraryAddUsageDescription
-
-### 5. Manter Fallback para Web
-
-No navegador web, continuar usando `getUserMedia` (fluxo atual funciona bem).
-
----
-
-## Fluxo Final
+## Fluxo Visual Final
 
 ```text
-[iOS/Android]
-Clica em Scanner → 
-  CameraPreview.start() → 
-    Feed aparece em tela cheia (atrás da WebView) →
-      UI sobreposta (botões, watermark) →
-        Toca no botão de captura →
-          CameraPreview.capture() →
-            Imagem capturada →
-              Análise IA
+ANTES (confuso):              DEPOIS (com contexto):
+┌──────────────┐              ┌────────────────────────┐
+│  [Recorte    │              │    FOTO ORIGINAL       │
+│   isolado    │              │ ┌────────┐ ┌────────┐  │
+│   do carro]  │              │ │ 🚗 ←───┼─┼─ esse! │  │
+│              │              │ └────────┘ └────────┘  │
+└──────────────┘              │    [BMW M3 • 1992]     │
+                              └────────────────────────┘
 
-[Web]
-Clica em Scanner → 
-  getUserMedia() →
-    <video> mostra feed →
-      Toca no botão de captura →
-        canvas.drawImage() →
-          Imagem capturada →
-            Análise IA
+│ Hot Wheels 1:64             │ Hot Wheels 1:64        │
+│ Azul                        │ Azul                   │
 ```
 
----
+## O que NÃO muda
 
-## Arquivos a Modificar
+- **Imagem salva na coleção**: Continua sendo `croppedImage` (recorte exato)
+- **Imagem em publicações**: Usaria a mesma `image_url` recortada do banco
+- **Detecção de duplicados**: Continua funcionando igual
 
-1. **`package.json`** - Adicionar `@capacitor-community/camera-preview`
-2. **`src/hooks/useNativeCameraPreview.ts`** - Novo hook para camera-preview
-3. **`src/components/scanner/ScannerView.tsx`** - Usar camera-preview no iOS, background transparente
-4. **`src/index.css`** - Estilos para modo câmera transparente
+## Fallback quando não há bounding box
 
----
+Se `boundingBox` não estiver disponível (item único sem coordenadas), mostrar:
+- A foto original completa sem overlay
+- Ou a `croppedImage` como fallback (comportamento atual)
 
-## Passos Pós-Implementação (Usuário)
+## Benefícios
 
-1. `git pull`
-2. `npm install`
-3. `npx cap sync ios`
-4. No Xcode: Adicionar permissões no `Info.plist` (se não feito)
-5. Clean Build (⌘⇧K)
-6. Run no device
-
----
-
-## Resultado Esperado
-
-- Câmera abre imediatamente em tela cheia ao entrar no Scanner
-- Layout consistente com o design do Paddock (watermark, botões)
-- Sem tela intermediária "Toque para abrir"
-- Experiência fluida e imersiva como Instagram/TikTok
+1. **Contexto claro**: Usuário vê exatamente qual carro foi identificado na foto
+2. **Profissional**: Similar a apps como Google Lens, Shazam visual
+3. **Múltiplos carros**: Fica óbvio qual carro está sendo processado
+4. **Coleção limpa**: Imagens individuais recortadas, sem repetição
