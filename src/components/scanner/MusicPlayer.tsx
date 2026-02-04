@@ -218,15 +218,14 @@ export const MusicPlayer = ({
           )}
         </div>
 
-        {/* YouTube Player iframe - Shows when playing */}
+        {/* Hidden YouTube Player iframe - Audio only, no visible frame */}
         {playerState === 'playing' && youtubeVideoId && (
-          <div className="mb-4 rounded-lg overflow-hidden bg-black aspect-video animate-fade-in">
+          <div className="sr-only" aria-hidden="true">
             <iframe
               ref={iframeRef}
               src={getPlayerUrl(youtubeVideoId)}
-              className="w-full h-full border-0"
+              className="w-0 h-0 border-0 absolute -left-[9999px]"
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowFullScreen
               onLoad={handleIframeLoad}
               onError={handleIframeError}
             />
