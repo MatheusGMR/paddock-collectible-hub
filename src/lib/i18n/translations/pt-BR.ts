@@ -222,7 +222,7 @@ export const ptBR = {
     portuguese: "Português",
     english: "Inglês",
     items: "Máquinas",
-    rarity: "Raridade Méd",
+    rarity: "Raridade",
     noPostsYet: "Nenhum post ainda",
     scanItemsToAdd: "Escaneie itens para adicionar à sua coleção",
     emptyCollection: "Sua coleção está vazia",

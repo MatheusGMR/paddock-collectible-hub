@@ -106,7 +106,7 @@ export const ProfileHeader = ({ user, onEditProfile, onSettings }: ProfileHeader
             </div>
 
             {/* Stats */}
-            <div className="flex flex-1 justify-around pt-2">
+            <div className="flex flex-1 justify-between pt-2 px-2">
               <StatItem value={user.collection} label={t.profile.items} />
               <StatItem 
                 value={user.averageIndex ?? 0} 
