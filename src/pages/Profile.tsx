@@ -10,7 +10,7 @@ import { SettingsSheet } from "@/components/profile/SettingsSheet";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useScreenTips } from "@/hooks/useScreenTips";
-import { getProfile, getCollectionWithIndex, getFollowCounts, getCollectionCount, updateProfile, togglePinItem, Profile, CollectionItemWithIndex } from "@/lib/database";
+import { getProfile, getCollectionWithIndex, getFollowCounts, getCollectionCount, updateProfile, togglePinItem, deleteFromCollection, Profile, CollectionItemWithIndex } from "@/lib/database";
 import { Loader2 } from "lucide-react";
 
 const ProfilePage = () => {
@@ -150,7 +150,15 @@ const ProfilePage = () => {
 
       {activeTab === "posts" ? (
         gridPosts.length > 0 ? (
-          <PostGrid posts={gridPosts} collectionItems={sortedCollection} onPinToggle={loadProfile} />
+          <PostGrid 
+            posts={gridPosts} 
+            collectionItems={sortedCollection} 
+            onPinToggle={loadProfile}
+            onDelete={async (id) => {
+              await deleteFromCollection(id);
+              loadProfile();
+            }}
+          />
         ) : (
           <div className="p-8 text-center text-foreground-secondary">
             <p>{t.profile.noPostsYet}</p>

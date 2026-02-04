@@ -15,9 +15,10 @@ interface PostGridProps {
   }>;
   collectionItems?: CollectibleDetailItem[];
   onPinToggle?: () => void;
+  onDelete?: (id: string) => Promise<void>;
 }
 
-export const PostGrid = ({ posts, collectionItems = [], onPinToggle }: PostGridProps) => {
+export const PostGrid = ({ posts, collectionItems = [], onPinToggle, onDelete }: PostGridProps) => {
   const [selectedItem, setSelectedItem] = useState<CollectibleDetailItem | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [pinningId, setPinningId] = useState<string | null>(null);
@@ -124,6 +125,7 @@ export const PostGrid = ({ posts, collectionItems = [], onPinToggle }: PostGridP
         item={selectedItem}
         open={drawerOpen}
         onOpenChange={setDrawerOpen}
+        onDelete={onDelete}
       />
     </>
   );

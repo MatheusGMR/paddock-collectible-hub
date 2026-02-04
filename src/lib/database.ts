@@ -577,3 +577,13 @@ export const unfollowUser = async (followerId: string, followingId: string): Pro
 
   if (error) throw error;
 };
+
+// Delete item from collection
+export const deleteFromCollection = async (collectionItemId: string): Promise<void> => {
+  const { error } = await supabase
+    .from("user_collection")
+    .delete()
+    .eq("id", collectionItemId);
+
+  if (error) throw error;
+};
