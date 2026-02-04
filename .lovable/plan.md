@@ -1,26 +1,49 @@
 
 
-## Plano: Corrigir Conflito de Dependência do Camera Preview
+## Plano: Corrigir Warnings de Ref no Componente Drawer
 
 ### Problema Identificado
-O `package.json` especifica `@capacitor-community/camera-preview@^6.0.1`, que requer `@capacitor/core@^6.0.0`. Porém o projeto usa `@capacitor/core@8.0.2`, causando o erro de dependência.
-
-### Solução
-Atualizar a versão do `@capacitor-community/camera-preview` para `^7.0.0`, que é compatível com Capacitor 8.
-
-### Alteração
-
-**Arquivo:** `package.json`
-- Linha 17: Alterar de `"@capacitor-community/camera-preview": "^6.0.1"` para `"@capacitor-community/camera-preview": "^7.0.0"`
-
-### Após a Correção
-
-Execute novamente os comandos:
-```bash
-npm install
-npx cap sync
+Os logs mostram warnings do React sobre components que recebem refs sem usar `forwardRef`:
+```
+Warning: Function components cannot be given refs. 
+Did you mean to use React.forwardRef()?
 ```
 
+Este é um warning de desenvolvimento (não um erro crítico) que não impede o funcionamento da aplicação, mas deve ser corrigido para seguir boas práticas.
+
+### Solução
+Atualizar o componente `Drawer` para usar `React.forwardRef`, permitindo que refs sejam encaminhadas corretamente para o componente primitivo do `vaul`.
+
+### Alterações
+
+**Arquivo:** `src/components/ui/drawer.tsx`
+
+**Mudança:** Refatorar o componente `Drawer` (linhas 6-9) de um function component simples para usar `React.forwardRef`:
+
+```tsx
+// De:
+const Drawer = ({ shouldScaleBackground = true, ...props }) => (
+  <DrawerPrimitive.Root shouldScaleBackground={shouldScaleBackground} {...props} />
+);
+
+// Para:
+const Drawer = React.forwardRef<
+  React.ElementRef<typeof DrawerPrimitive.Root>,
+  React.ComponentPropsWithoutRef<typeof DrawerPrimitive.Root>
+>(({ shouldScaleBackground = true, ...props }, ref) => (
+  <DrawerPrimitive.Root 
+    ref={ref} 
+    shouldScaleBackground={shouldScaleBackground} 
+    {...props} 
+  />
+));
+```
+
+### Resultado Esperado
+- Os warnings de ref desaparecerão do console
+- O componente Drawer funcionará corretamente com refs
+- Não há mudança no comportamento visual ou funcional
+
 ### Observação
-O `npx cap sync` já mostrou que o iOS está usando a versão 7.0.4 corretamente. Esta correção apenas alinha o `package.json` com o que já está funcionando no lado nativo.
+Este é apenas um warning de desenvolvimento e não afeta a experiência do usuário em produção. A correção é uma melhoria de qualidade de código.
 
