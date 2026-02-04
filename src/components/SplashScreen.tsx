@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import paddockLogo from "@/assets/paddock-logo.png";
+import paddockSplashLogo from "@/assets/paddock-splash-logo.png";
 
 interface SplashScreenProps {
   onComplete: () => void;
@@ -75,9 +75,9 @@ export const SplashScreen = ({
       >
         {/* Paddock Logo */}
         <img
-          src={paddockLogo}
+          src={paddockSplashLogo}
           alt="Paddock"
-          className="w-28 h-28 object-contain"
+          className="w-64 h-auto object-contain"
           style={{
             filter: "drop-shadow(0 0 60px rgba(76, 195, 255, 0.25))",
           }}
