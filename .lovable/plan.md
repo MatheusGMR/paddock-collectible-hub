@@ -1,35 +1,26 @@
 
-# Plano: Ajustar Cor de Fundo do Perfil
 
-## Problema Identificado
+## Plano: Corrigir Conflito de Dependência do Camera Preview
 
-No arquivo `src/components/profile/ProfileHeader.tsx` (linha 71), a seção de informações do perfil usa `bg-black` (preto puro `#000`), enquanto todas as outras páginas do app usam `bg-background` - que é definido como `hsl(220, 22%, 7%)`, um preto azulado muito sutil que faz parte da identidade visual premium do Paddock.
+### Problema Identificado
+O `package.json` especifica `@capacitor-community/camera-preview@^6.0.1`, que requer `@capacitor/core@^6.0.0`. Porém o projeto usa `@capacitor/core@8.0.2`, causando o erro de dependência.
 
-## Solução
+### Solução
+Atualizar a versão do `@capacitor-community/camera-preview` para `^7.0.0`, que é compatível com Capacitor 8.
 
-Alterar a classe CSS de `bg-black` para `bg-background` para manter a consistência visual.
+### Alteração
 
-## Alteração
+**Arquivo:** `package.json`
+- Linha 17: Alterar de `"@capacitor-community/camera-preview": "^6.0.1"` para `"@capacitor-community/camera-preview": "^7.0.0"`
 
-**Arquivo:** `src/components/profile/ProfileHeader.tsx`
+### Após a Correção
 
-| Linha | Antes | Depois |
-|-------|-------|--------|
-| 71 | `<div className="border-b border-border bg-black">` | `<div className="border-b border-border bg-background">` |
-
----
-
-## Detalhes Técnicos
-
-A variável CSS `--background` está definida em `src/index.css`:
-```css
---background: 220 22% 7%;
+Execute novamente os comandos:
+```bash
+npm install
+npx cap sync
 ```
 
-Isso resulta em `hsl(220, 22%, 7%)` - um tom de preto com um leve toque azulado, que é o padrão usado em:
-- Feed (`Index.tsx`)
-- Mercado/Notícias (`Mercado.tsx`)
-- Scanner (`Scanner.tsx`)
-- Headers de todas as páginas
+### Observação
+O `npx cap sync` já mostrou que o iOS está usando a versão 7.0.4 corretamente. Esta correção apenas alinha o `package.json` com o que já está funcionando no lado nativo.
 
-A mudança garante que o perfil siga o mesmo padrão visual.
