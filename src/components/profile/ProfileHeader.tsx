@@ -86,11 +86,7 @@ export const ProfileHeader = ({ user, onEditProfile, onSettings }: ProfileHeader
             >
               <MessageCircle className="h-5 w-5" />
               {unreadCount > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-[16px] rounded-full bg-primary flex items-center justify-center px-0.5">
-                  <span className="text-[9px] font-bold text-primary-foreground">
-                    {unreadCount > 99 ? "99+" : unreadCount}
-                  </span>
-                </span>
+                <span className="absolute top-1 right-1 w-2.5 h-2.5 rounded-full bg-destructive border-2 border-background" />
               )}
             </button>
             <button 
