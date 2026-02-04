@@ -28,6 +28,10 @@ export const useNativeCameraPreview = () => {
     try {
       console.log("[CameraPreview] Starting camera preview...");
       
+      // Get screen dimensions for fullscreen camera
+      const width = window.innerWidth;
+      const height = window.innerHeight;
+      
       const options: CameraPreviewOptions = {
         position: "rear",
         toBack: true, // Render behind the WebView
@@ -37,6 +41,11 @@ export const useNativeCameraPreview = () => {
         disableAudio: true,
         storeToFile: false,
         enableHighResolution: true,
+        // Fullscreen dimensions to avoid black bars
+        width: width,
+        height: height,
+        x: 0,
+        y: 0,
       };
       
       await CameraPreview.start(options);

@@ -1917,7 +1917,8 @@ export const ScannerView = () => {
         /* Floating controls overlay - no bottom panel */
         <div className="absolute bottom-0 left-0 right-0 pb-8 safe-bottom">
           <div className="flex flex-col items-center gap-3">
-            {isInitializing ? (
+            {isInitializing && !Capacitor.isNativePlatform() ? (
+              /* Only show loading spinner on web - native camera opens automatically */
               <>
                 <Loader2 className="h-8 w-8 text-white animate-spin" />
                 <p className="text-sm text-white/70 text-center">
