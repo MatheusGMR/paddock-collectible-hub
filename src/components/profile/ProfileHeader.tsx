@@ -41,9 +41,6 @@ export const ProfileHeader = ({ user, onEditProfile, onSettings }: ProfileHeader
               style={{ height: 30, width: "auto" }}
               className="object-contain"
             />
-            <span className="text-xs font-bold text-red-500 bg-red-100 px-2 py-0.5 rounded">
-              BUILD v2
-            </span>
           </div>
           <div className="flex items-center gap-2">
             <button 
