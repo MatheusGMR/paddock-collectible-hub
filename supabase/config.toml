@@ -32,3 +32,6 @@ verify_jwt = false
 
 [functions.cron-news-alerts]
 verify_jwt = false
+
+[functions.youtube-search]
+verify_jwt = false
