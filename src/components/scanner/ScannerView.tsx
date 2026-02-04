@@ -1658,8 +1658,11 @@ export const ScannerView = () => {
           music_selection_reason: result.musicSelectionReason || null,
           real_car_photos: result.realCarPhotos || null,
         },
-        // Use cropped image if available, otherwise fall back to full image
-        result.croppedImage || capturedImage || undefined
+        // For single car photos, use original image (better quality)
+        // For multiple cars, use cropped image to isolate each car
+        analysisResults.length === 1 
+          ? (capturedImage || result.croppedImage || undefined)
+          : (result.croppedImage || capturedImage || undefined)
       );
 
       toast({
