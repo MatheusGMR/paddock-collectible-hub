@@ -41,6 +41,9 @@
     --input: 220 25% 15%;
     --ring: 196 100% 65%;
     
+    /* Subtle Blue Tint */
+    --blue-subtle: 210 75% 12%;
+    
     /* Destructive */
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
