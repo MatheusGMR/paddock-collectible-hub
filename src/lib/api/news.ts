@@ -176,7 +176,8 @@ export async function getNewsArticles(options: {
   }
   
   // For "all" category, fetch balanced from each category with PT priority
-  const perCategory = Math.ceil(fetchLimit / 3);
+  // We maintain strict category balance by interleaving, not sorting by date globally
+  const perCategory = Math.ceil((limit * 2) / 3); // Fetch more per category for deduplication
   const categoryOffset = Math.floor(offset / 3);
   
   const fetchCategory = async (cat: string) => {
@@ -202,9 +203,23 @@ export async function getNewsArticles(options: {
     
     const [ptResult, enResult] = await Promise.all([ptQuery, enQuery]);
     
-    // Combine and deduplicate
+    // Combine and deduplicate within category
     const combined = [...(ptResult.data || []), ...(enResult.data || [])];
-    return deduplicateArticles(combined);
+    const deduplicated = deduplicateArticles(combined);
+    
+    // Sort by date within category, Portuguese priority
+    return deduplicated.sort((a, b) => {
+      const dateA = a.published_at ? new Date(a.published_at).getTime() : 0;
+      const dateB = b.published_at ? new Date(b.published_at).getTime() : 0;
+      
+      // If same day, prioritize Portuguese
+      if (Math.abs(dateA - dateB) < 86400000) {
+        if (a.language === 'pt' && b.language !== 'pt') return -1;
+        if (b.language === 'pt' && a.language !== 'pt') return 1;
+      }
+      
+      return dateB - dateA;
+    });
   };
   
   // Fetch from all 3 categories in parallel
@@ -214,36 +229,28 @@ export async function getNewsArticles(options: {
     fetchCategory('cars'),
   ]);
   
-  // Interleave articles for balanced display
-  const combined: NewsArticle[] = [];
-  const maxLen = Math.max(collectibles.length, motorsport.length, cars.length);
+  // Interleave articles for STRICTLY balanced display
+  // This ensures equal representation regardless of category count
+  const balanced: NewsArticle[] = [];
+  const targetPerCategory = Math.ceil(limit / 3);
   
-  for (let i = 0; i < maxLen; i++) {
-    if (collectibles[i]) combined.push(collectibles[i]);
-    if (motorsport[i]) combined.push(motorsport[i]);
-    if (cars[i]) combined.push(cars[i]);
+  for (let i = 0; i < targetPerCategory; i++) {
+    // Add one from each category in round-robin fashion
+    if (collectibles[i]) balanced.push(collectibles[i]);
+    if (motorsport[i]) balanced.push(motorsport[i]);
+    if (cars[i]) balanced.push(cars[i]);
   }
   
-  // Final deduplication across categories
-  const deduplicated = deduplicateArticles(combined);
+  // Final deduplication across categories (in case same article appears in multiple)
+  const deduplicated = deduplicateArticles(balanced);
   
-  // Sort by date with Portuguese priority
-  const sorted = deduplicated.sort((a, b) => {
-    const dateA = a.published_at ? new Date(a.published_at).getTime() : 0;
-    const dateB = b.published_at ? new Date(b.published_at).getTime() : 0;
-    
-    // If same day, prioritize Portuguese
-    if (Math.abs(dateA - dateB) < 86400000) {
-      if (a.language === 'pt' && b.language !== 'pt') return -1;
-      if (b.language === 'pt' && a.language !== 'pt') return 1;
-    }
-    
-    return dateB - dateA;
-  });
+  // DO NOT re-sort by date - preserve the balanced interleaving
   
   return {
-    articles: sorted.slice(0, limit),
-    hasMore: sorted.length > limit,
+    articles: deduplicated.slice(0, limit),
+    hasMore: collectibles.length > targetPerCategory || 
+             motorsport.length > targetPerCategory || 
+             cars.length > targetPerCategory,
   };
 }
 
