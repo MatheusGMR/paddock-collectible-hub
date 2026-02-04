@@ -3,12 +3,13 @@ import { useNavigate } from "react-router-dom";
 import { Capacitor } from "@capacitor/core";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useBiometricAuth } from "@/hooks/useBiometricAuth";
 import { lovable } from "@/integrations/lovable/index";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PaddockLogo } from "@/components/icons/PaddockLogo";
 import { useToast } from "@/hooks/use-toast";
-import { Eye, EyeOff, Loader2 } from "lucide-react";
+import { Eye, EyeOff, Loader2, Fingerprint } from "lucide-react";
 
 // Get the appropriate redirect URI based on platform
 const getRedirectUri = () => {
@@ -32,11 +33,21 @@ const Auth = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [appleLoading, setAppleLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [biometricLoading, setBiometricLoading] = useState(false);
   
   const { signIn, signUp, user, loading: authLoading } = useAuth();
   const { t } = useLanguage();
   const navigate = useNavigate();
   const { toast } = useToast();
+  
+  const {
+    isAvailable: biometricAvailable,
+    isEnabled: biometricEnabled,
+    storedEmail,
+    authenticate: biometricAuthenticate,
+    getBiometryLabel,
+    loading: biometricCheckLoading,
+  } = useBiometricAuth();
 
   // Redirect if already authenticated
   useEffect(() => {
@@ -44,6 +55,53 @@ const Auth = () => {
       navigate("/", { replace: true });
     }
   }, [user, authLoading, navigate]);
+
+  // Auto-trigger biometric auth if enabled
+  useEffect(() => {
+    const tryBiometricLogin = async () => {
+      if (
+        !authLoading &&
+        !user &&
+        biometricEnabled &&
+        storedEmail &&
+        !biometricCheckLoading
+      ) {
+        await handleBiometricLogin();
+      }
+    };
+    tryBiometricLogin();
+  }, [biometricEnabled, storedEmail, authLoading, user, biometricCheckLoading]);
+
+  // Handle biometric login
+  const handleBiometricLogin = async () => {
+    if (!storedEmail || biometricLoading) return;
+    
+    setBiometricLoading(true);
+    try {
+      const success = await biometricAuthenticate();
+      if (success) {
+        // User authenticated with biometrics - get their session from stored token
+        // Since we can't store passwords securely, biometric just confirms identity
+        // The session should still be active from Supabase's persistence
+        const { data: { session } } = await (await import("@/integrations/supabase/client")).supabase.auth.getSession();
+        
+        if (session) {
+          navigate("/", { replace: true });
+        } else {
+          // Session expired, need to login again
+          toast({
+            title: "Sessão expirada",
+            description: "Por favor, faça login novamente.",
+            variant: "destructive",
+          });
+        }
+      }
+    } catch (error) {
+      console.error("[Biometric] Login error:", error);
+    } finally {
+      setBiometricLoading(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -183,6 +241,26 @@ const Auth = () => {
             )}
           </Button>
         </form>
+
+        {/* Biometric Login Button - Only shown when available and enabled */}
+        {biometricAvailable && biometricEnabled && storedEmail && (
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleBiometricLogin}
+            disabled={biometricLoading}
+            className="w-full h-14 bg-primary/10 text-primary hover:bg-primary/20 border border-primary/30 font-medium gap-3"
+          >
+            {biometricLoading ? (
+              <Loader2 className="h-6 w-6 animate-spin" />
+            ) : (
+              <>
+                <Fingerprint className="h-6 w-6" />
+                Entrar com {getBiometryLabel()}
+              </>
+            )}
+          </Button>
+        )}
 
         {/* Divider */}
         <div className="relative">
