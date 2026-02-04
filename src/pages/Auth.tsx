@@ -53,7 +53,6 @@ const Auth = () => {
       if (isLogin) {
         const { error } = await signIn(email, password);
         if (error) throw error;
-        toast({ title: t.auth.welcomeBack, description: t.auth.successfullySignedIn });
         navigate("/");
       } else {
         if (!username.trim()) {
@@ -61,7 +60,6 @@ const Auth = () => {
         }
         const { error } = await signUp(email, password, username);
         if (error) throw error;
-        toast({ title: t.auth.accountCreated, description: t.auth.welcomeToPaddock });
         navigate("/");
       }
     } catch (error) {
