@@ -92,7 +92,7 @@ export default {
           to: { opacity: "1", transform: "translateY(0)" },
         },
         "slide-up-card": {
-          "0%": { opacity: "0", transform: "translateY(100%)" },
+          "0%": { opacity: "0", transform: "translateY(40%)" },
           "100%": { opacity: "1", transform: "translateY(0)" },
         },
         "pulse-glow": {
@@ -115,7 +115,7 @@ export default {
         "fade-in": "fade-in 0.3s ease-out",
         "scale-in": "scale-in 0.2s ease-out",
         "slide-up": "slide-up 0.3s ease-out",
-        "slide-up-card": "slide-up-card 0.5s cubic-bezier(0.16, 1, 0.3, 1)",
+        "slide-up-card": "slide-up-card 0.4s cubic-bezier(0.33, 1, 0.68, 1)",
         "pulse-glow": "pulse-glow 2s ease-in-out infinite",
         "glow-pulse": "glow-pulse 3s ease-in-out infinite",
         "scanner-line": "scanner-line 2s ease-in-out infinite",
