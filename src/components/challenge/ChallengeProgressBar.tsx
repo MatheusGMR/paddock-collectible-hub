@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Car, Gift, Sparkles } from "lucide-react";
+import { Car, Gift } from "lucide-react";
 import { useCollectionChallenge } from "@/hooks/useCollectionChallenge";
 import { useLanguage } from "@/contexts/LanguageContext";
 
@@ -46,18 +46,8 @@ export const ChallengeProgressBar = () => {
           initial={{ width: 0 }}
           animate={{ width: `${progress}%` }}
           transition={{ duration: 0.5, ease: "easeOut" }}
-          className="h-full bg-gradient-to-r from-primary to-primary/80 rounded-full relative"
-        >
-          {progress >= 10 && (
-            <motion.div
-              animate={{ x: [0, 5, 0] }}
-              transition={{ duration: 1.5, repeat: Infinity }}
-              className="absolute right-1 top-1/2 -translate-y-1/2"
-            >
-              <Sparkles className="w-3 h-3 text-primary-foreground" />
-            </motion.div>
-          )}
-        </motion.div>
+          className="h-full bg-gradient-to-r from-primary to-primary/80 rounded-full"
+        />
       </div>
     </motion.div>
   );
