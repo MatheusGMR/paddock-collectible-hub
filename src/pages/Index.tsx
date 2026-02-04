@@ -1,9 +1,11 @@
 import { useEffect, useRef, useCallback } from "react";
 import { FeedHeader } from "@/components/feed/FeedHeader";
 import { PostCard } from "@/components/feed/PostCard";
+import { FeaturedCuriosityCard } from "@/components/feed/FeaturedCuriosityCard";
 import { PullToRefreshIndicator } from "@/components/feed/PullToRefreshIndicator";
 import { ChallengeProgressBar } from "@/components/challenge/ChallengeProgressBar";
 import { useFeedPosts } from "@/hooks/useFeedPosts";
+import { useFeaturedCuriosity } from "@/hooks/useFeaturedCuriosity";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { useScreenTips } from "@/hooks/useScreenTips";
 import { Loader2, Inbox } from "lucide-react";
@@ -11,6 +13,7 @@ import { mockPosts } from "@/data/mockData";
 
 const Index = () => {
   const { posts, loading, loadingMore, error, hasMore, loadMore, refetch } = useFeedPosts();
+  const { curiosity, loading: curiosityLoading, refresh: refreshCuriosity } = useFeaturedCuriosity();
   const observerRef = useRef<IntersectionObserver | null>(null);
   const loadMoreTriggerRef = useRef<HTMLDivElement | null>(null);
   
@@ -19,6 +22,7 @@ const Index = () => {
     onRefresh: async () => {
       await new Promise(resolve => setTimeout(resolve, 300)); // Small delay for visual feedback
       refetch();
+      refreshCuriosity(); // Also refresh the curiosity card
     },
     threshold: 80,
   });
@@ -79,6 +83,13 @@ const Index = () => {
       
       {/* Challenge progress bar */}
       <ChallengeProgressBar />
+      
+      {/* Featured Curiosity Card */}
+      <FeaturedCuriosityCard 
+        curiosity={curiosity} 
+        loading={curiosityLoading} 
+        onRefresh={refreshCuriosity}
+      />
       
       {loading && !isRefreshing ? (
         <div className="flex items-center justify-center py-20">
