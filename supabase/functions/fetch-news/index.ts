@@ -193,6 +193,12 @@ async function fetchRSSFeed(source: {
         imageUrl = await fetchOgImage(item.link);
       }
       
+      // Skip articles without valid images
+      if (!imageUrl || !isValidImageUrl(imageUrl)) {
+        console.log(`Skipping RSS article without image: ${item.title}`);
+        continue;
+      }
+      
       processedItems.push({
         title: item.title || 'Untitled',
         summary: cleanHTML(description).substring(0, 300),
@@ -254,20 +260,39 @@ async function fetchFirecrawlNews(
       return [];
     }
 
-    return data.data.map((result: any) => ({
-      title: result.title || 'Untitled',
-      summary: result.description || (result.markdown ? result.markdown.substring(0, 300) : null),
-      content: result.markdown || null,
-      image_url: result.ogImage || result.screenshot || null,
-      source_url: result.url,
-      source_name: new URL(result.url).hostname.replace('www.', ''),
-      source_logo: null,
-      category,
-      subcategory: null,
-      published_at: null,
-      language,
-      tags: [],
-    }));
+    const articlesWithImages: NewsArticle[] = [];
+    
+    for (const result of data.data) {
+      let imageUrl = result.ogImage || result.screenshot || null;
+      
+      // If no image from Firecrawl, try to fetch og:image from the article
+      if (!imageUrl && result.url) {
+        imageUrl = await fetchOgImage(result.url);
+      }
+      
+      // Skip articles without images
+      if (!imageUrl) {
+        console.log(`Skipping article without image: ${result.title}`);
+        continue;
+      }
+      
+      articlesWithImages.push({
+        title: result.title || 'Untitled',
+        summary: result.description || (result.markdown ? result.markdown.substring(0, 300) : null),
+        content: result.markdown || null,
+        image_url: imageUrl,
+        source_url: result.url,
+        source_name: new URL(result.url).hostname.replace('www.', ''),
+        source_logo: null,
+        category,
+        subcategory: null,
+        published_at: null,
+        language,
+        tags: [],
+      });
+    }
+    
+    return articlesWithImages;
   } catch (error) {
     console.error('Firecrawl search error:', error);
     return [];
