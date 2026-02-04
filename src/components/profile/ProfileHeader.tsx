@@ -71,7 +71,7 @@ export const ProfileHeader = ({ user, onEditProfile, onSettings }: ProfileHeader
       <div className="border-b border-border">
 
         {/* Profile Info */}
-        <div className="px-4 pb-4">
+        <div className="px-4 pb-6">
           <div className="flex items-start gap-6">
             {/* Avatar with username below */}
             <div className="flex flex-col items-center">
