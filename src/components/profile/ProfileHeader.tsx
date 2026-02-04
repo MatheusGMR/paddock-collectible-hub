@@ -1,10 +1,13 @@
-import { useState } from "react";
-import { Settings, Search, QrCode, UserPen } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import { Settings, Search, QrCode, UserPen, MessageCircle } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { UserSearchSheet } from "@/components/social/UserSearchSheet";
 import { QRCodeSheet } from "@/components/social/QRCodeSheet";
 import { QRScannerSheet } from "@/components/social/QRScannerSheet";
+import { MessagesSheet } from "@/components/messages/MessagesSheet";
+import { getTotalUnreadCount, subscribeToConversationUpdates } from "@/lib/api/messages";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -31,10 +34,37 @@ interface ProfileHeaderProps {
 
 export const ProfileHeader = ({ user, onEditProfile, onSettings }: ProfileHeaderProps) => {
   const { t } = useLanguage();
+  const { user: authUser } = useAuth();
   const [searchOpen, setSearchOpen] = useState(false);
   const [qrCodeOpen, setQrCodeOpen] = useState(false);
   const [qrScannerOpen, setQrScannerOpen] = useState(false);
-  
+  const [messagesOpen, setMessagesOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  const loadUnreadCount = useCallback(async () => {
+    if (!authUser) return;
+    const count = await getTotalUnreadCount();
+    setUnreadCount(count);
+  }, [authUser]);
+
+  useEffect(() => {
+    if (!authUser) return;
+
+    loadUnreadCount();
+
+    const unsubscribe = subscribeToConversationUpdates(() => {
+      loadUnreadCount();
+    });
+
+    return unsubscribe;
+  }, [authUser, loadUnreadCount]);
+
+  const handleMessagesOpen = (open: boolean) => {
+    setMessagesOpen(open);
+    if (!open) {
+      loadUnreadCount();
+    }
+  };
   return (
     <>
       {/* Top Bar with Paddock Logo - sticky with safe-area */}
@@ -49,6 +79,20 @@ export const ProfileHeader = ({ user, onEditProfile, onSettings }: ProfileHeader
             />
           </div>
           <div className="flex items-center gap-1">
+            <button 
+              onClick={() => setMessagesOpen(true)}
+              className="relative p-2 rounded-lg bg-blue-subtle text-foreground-secondary hover:text-primary hover:bg-primary/20 transition-colors"
+              title="Mensagens"
+            >
+              <MessageCircle className="h-5 w-5" />
+              {unreadCount > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-[16px] rounded-full bg-primary flex items-center justify-center px-0.5">
+                  <span className="text-[9px] font-bold text-primary-foreground">
+                    {unreadCount > 99 ? "99+" : unreadCount}
+                  </span>
+                </span>
+              )}
+            </button>
             <button 
               onClick={() => setSearchOpen(true)}
               className="p-2 rounded-lg bg-blue-subtle text-foreground-secondary hover:text-primary hover:bg-primary/20 transition-colors"
@@ -151,6 +195,12 @@ export const ProfileHeader = ({ user, onEditProfile, onSettings }: ProfileHeader
       <QRScannerSheet
         open={qrScannerOpen}
         onOpenChange={setQrScannerOpen}
+      />
+
+      {/* Messages Sheet */}
+      <MessagesSheet
+        open={messagesOpen}
+        onOpenChange={handleMessagesOpen}
       />
     </>
   );
