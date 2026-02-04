@@ -31,8 +31,9 @@ export const useFeaturedCuriosity = () => {
       setLoading(true);
       setError(null);
 
-      // Build query to get collectibles from other users, prioritizing rare items
-      let query = supabase
+      // Build query to get collectibles, prioritizing rare items
+      // Include all users' collections to ensure content availability
+      const { data: collectionItems, error: collectionError } = await supabase
         .from("user_collection")
         .select(`
           id,
@@ -52,14 +53,7 @@ export const useFeaturedCuriosity = () => {
         `)
         .not("image_url", "is", null)
         .order("created_at", { ascending: false })
-        .limit(50); // Get recent items to pick from
-
-      // Exclude current user's items if logged in
-      if (user?.id) {
-        query = query.neq("user_id", user.id);
-      }
-
-      const { data: collectionItems, error: collectionError } = await query;
+        .limit(50);
 
       if (collectionError) throw collectionError;
 
@@ -69,9 +63,16 @@ export const useFeaturedCuriosity = () => {
       }
 
       // Sort by rarity (prioritize rare items) and pick one randomly from top items
+      // Prefer items from other users, but include own items if needed
       const sortedItems = collectionItems
         .filter(item => item.item && item.item.historical_fact) // Only items with curiosities
         .sort((a, b) => {
+          // Prioritize other users' items
+          const isOwnA = user?.id && a.user_id === user.id ? 0 : 1;
+          const isOwnB = user?.id && b.user_id === user.id ? 0 : 1;
+          if (isOwnA !== isOwnB) return isOwnB - isOwnA;
+          
+          // Then by rarity
           const scoreA = a.item?.price_index || 0;
           const scoreB = b.item?.price_index || 0;
           return scoreB - scoreA; // Higher score first
