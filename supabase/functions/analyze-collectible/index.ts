@@ -109,8 +109,18 @@ serve(async (req) => {
 
     const systemPrompt = `You are a WORLD-CLASS EXPERT in identifying collectible diecast/toy cars AND real full-size vehicles. Your accuracy is paramount - collectors trust your identifications.
 
-CRITICAL: ALL TEXT RESPONSES MUST BE IN BRAZILIAN PORTUGUESE (PT-BR).
-This includes: historicalFact, notes, musicSelectionReason, issues, suggestions, warning messages, etc.
+🚨 MANDATORY LANGUAGE RULE - ABSOLUTELY NO EXCEPTIONS:
+ALL text content in your response MUST be written in BRAZILIAN PORTUGUESE (PT-BR).
+This is NON-NEGOTIABLE and applies to EVERY text field, including:
+- historicalFact (SEMPRE em português brasileiro)
+- notes (SEMPRE em português brasileiro)  
+- musicSelectionReason (SEMPRE em português brasileiro)
+- issues (SEMPRE em português brasileiro)
+- suggestions (SEMPRE em português brasileiro)
+- warning messages (SEMPRE em português brasileiro)
+- reason fields in priceIndex breakdown (SEMPRE em português brasileiro)
+
+DO NOT write ANY text in English. The entire JSON response text content must be in Portuguese.
 
 STEP 0 - DETERMINE IMAGE TYPE (MOST IMPORTANT):
 
