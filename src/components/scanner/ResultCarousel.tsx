@@ -253,7 +253,7 @@ export const ResultCarousel = ({
   // All items processed - show completion screen
   if (allProcessed) {
     return (
-      <div className="bg-card rounded-t-3xl p-6 safe-bottom animate-slide-up-card relative z-10">
+      <div className="bg-card rounded-t-3xl p-6 safe-bottom animate-slide-up-card relative z-10 -mt-6 shadow-[0_-8px_30px_rgba(0,0,0,0.3)]">
         <div className="flex flex-col items-center gap-4 py-6">
           <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center">
             <CheckCircle2 className="h-8 w-8 text-primary" />
@@ -294,7 +294,7 @@ export const ResultCarousel = ({
   const { result, originalIndex } = currentItem;
 
   return (
-    <div className="bg-card rounded-t-[28px] safe-bottom animate-slide-up-card relative z-10 overflow-hidden">
+    <div className="bg-card rounded-t-[28px] safe-bottom animate-slide-up-card relative z-10 overflow-hidden -mt-6 shadow-[0_-8px_30px_rgba(0,0,0,0.3)]">
       {/* Header with count */}
       {results.length > 1 && (
         <div className="flex items-center justify-between px-4 py-3 border-b border-border">
