@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { MessageCircle, Loader2, Bell } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useScreenTips } from "@/hooks/useScreenTips";
@@ -10,6 +10,10 @@ import {
   subscribeToNotifications,
   Notification 
 } from "@/lib/api/notifications";
+import { 
+  getTotalUnreadCount, 
+  subscribeToConversationUpdates 
+} from "@/lib/api/messages";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -38,23 +42,38 @@ const Notifications = () => {
   const [messagesOpen, setMessagesOpen] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
+  const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
   
   // Trigger guided tips for notifications screen
   useScreenTips("notifications", 600);
 
+  const loadUnreadCount = useCallback(async () => {
+    const count = await getTotalUnreadCount();
+    setUnreadMessagesCount(count);
+  }, []);
+
   useEffect(() => {
     if (user) {
       loadNotifications();
+      loadUnreadCount();
       markNotificationsAsRead();
 
       // Subscribe to new notifications
-      const unsubscribe = subscribeToNotifications(user.id, (newNotif) => {
+      const unsubNotifications = subscribeToNotifications(user.id, (newNotif) => {
         setNotifications((prev) => [newNotif, ...prev]);
       });
 
-      return unsubscribe;
+      // Subscribe to message updates for badge
+      const unsubMessages = subscribeToConversationUpdates(() => {
+        loadUnreadCount();
+      });
+
+      return () => {
+        unsubNotifications();
+        unsubMessages();
+      };
     }
-  }, [user]);
+  }, [user, loadUnreadCount]);
 
   const loadNotifications = async () => {
     try {
@@ -73,6 +92,14 @@ const Notifications = () => {
     }
   };
 
+  const handleMessagesOpen = (open: boolean) => {
+    setMessagesOpen(open);
+    // Refresh unread count when closing messages sheet
+    if (!open) {
+      loadUnreadCount();
+    }
+  };
+
   return (
     <div className="min-h-screen">
       {/* Header */}
@@ -81,10 +108,17 @@ const Notifications = () => {
           <h1 className="text-lg font-semibold">{t.notifications.title}</h1>
           <button
             onClick={() => setMessagesOpen(true)}
-            className="p-2 text-foreground-secondary hover:text-primary transition-colors"
+            className="relative p-2 text-foreground-secondary hover:text-primary transition-colors"
             title="Mensagens"
           >
             <MessageCircle className="h-5 w-5" />
+            {unreadMessagesCount > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] rounded-full bg-primary flex items-center justify-center px-1">
+                <span className="text-[10px] font-bold text-primary-foreground">
+                  {unreadMessagesCount > 99 ? "99+" : unreadMessagesCount}
+                </span>
+              </span>
+            )}
           </button>
         </div>
       </header>
@@ -164,7 +198,7 @@ const Notifications = () => {
       {/* Messages Sheet */}
       <MessagesSheet
         open={messagesOpen}
-        onOpenChange={setMessagesOpen}
+        onOpenChange={handleMessagesOpen}
       />
     </div>
   );

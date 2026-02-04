@@ -222,3 +222,54 @@ export function subscribeToMessages(
     supabase.removeChannel(channel);
   };
 }
+
+// Subscribe to all conversation updates (for conversation list refresh)
+export function subscribeToConversationUpdates(onUpdate: () => void) {
+  const channel = supabase
+    .channel("all-messages")
+    .on(
+      "postgres_changes",
+      {
+        event: "INSERT",
+        schema: "public",
+        table: "messages",
+      },
+      () => {
+        onUpdate();
+      }
+    )
+    .subscribe();
+
+  return () => {
+    supabase.removeChannel(channel);
+  };
+}
+
+// Get total unread messages count
+export async function getTotalUnreadCount(): Promise<number> {
+  const { data: session } = await supabase.auth.getSession();
+  const currentUserId = session.session?.user?.id;
+  
+  if (!currentUserId) return 0;
+
+  // Get conversations where user is participant
+  const { data: participations, error: partError } = await supabase
+    .from("conversation_participants")
+    .select("conversation_id")
+    .eq("user_id", currentUserId);
+
+  if (partError || !participations?.length) return 0;
+
+  const conversationIds = participations.map(p => p.conversation_id);
+
+  // Count unread messages
+  const { count, error } = await supabase
+    .from("messages")
+    .select("*", { count: "exact", head: true })
+    .in("conversation_id", conversationIds)
+    .neq("sender_id", currentUserId)
+    .is("read_at", null);
+
+  if (error) return 0;
+  return count || 0;
+}
