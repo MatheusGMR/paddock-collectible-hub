@@ -1,8 +1,9 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Music2, Play, Pause, Loader2, ExternalLink, X, AlertCircle } from "lucide-react";
+import { Music2, Play, Pause, Loader2, ExternalLink, X, AlertCircle, Volume2, VolumeX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
+import { Capacitor } from "@capacitor/core";
 
 interface MusicPlayerProps {
   suggestion: string;
@@ -39,6 +40,84 @@ const getYouTubeMusicUrl = (title: string, artist: string) => {
 
 type PlayerState = 'idle' | 'loading' | 'playing' | 'error';
 
+// Declare YouTube IFrame API types
+declare global {
+  interface Window {
+    YT: {
+      Player: new (
+        elementId: string,
+        config: {
+          videoId: string;
+          playerVars?: Record<string, number | string>;
+          events?: {
+            onReady?: (event: { target: YTPlayer }) => void;
+            onStateChange?: (event: { data: number }) => void;
+            onError?: (event: { data: number }) => void;
+          };
+        }
+      ) => YTPlayer;
+      PlayerState: {
+        PLAYING: number;
+        PAUSED: number;
+        ENDED: number;
+      };
+    };
+    onYouTubeIframeAPIReady?: () => void;
+  }
+}
+
+interface YTPlayer {
+  playVideo: () => void;
+  pauseVideo: () => void;
+  destroy: () => void;
+  mute: () => void;
+  unMute: () => void;
+  isMuted: () => boolean;
+}
+
+// Load YouTube IFrame API script
+let ytApiLoaded = false;
+let ytApiLoading = false;
+const ytApiCallbacks: (() => void)[] = [];
+
+const loadYouTubeAPI = (): Promise<void> => {
+  return new Promise((resolve) => {
+    if (ytApiLoaded && window.YT) {
+      resolve();
+      return;
+    }
+
+    ytApiCallbacks.push(resolve);
+
+    if (ytApiLoading) {
+      return;
+    }
+
+    ytApiLoading = true;
+
+    // Check if already loaded
+    if (window.YT && window.YT.Player) {
+      ytApiLoaded = true;
+      ytApiCallbacks.forEach(cb => cb());
+      ytApiCallbacks.length = 0;
+      return;
+    }
+
+    const tag = document.createElement('script');
+    tag.src = 'https://www.youtube.com/iframe_api';
+    tag.async = true;
+
+    window.onYouTubeIframeAPIReady = () => {
+      ytApiLoaded = true;
+      ytApiCallbacks.forEach(cb => cb());
+      ytApiCallbacks.length = 0;
+    };
+
+    const firstScriptTag = document.getElementsByTagName('script')[0];
+    firstScriptTag.parentNode?.insertBefore(tag, firstScriptTag);
+  });
+};
+
 export const MusicPlayer = ({ 
   suggestion, 
   selectionReason,
@@ -46,13 +125,17 @@ export const MusicPlayer = ({
 }: MusicPlayerProps) => {
   const [playerState, setPlayerState] = useState<PlayerState>('idle');
   const [youtubeVideoId, setYoutubeVideoId] = useState<string | null>(null);
-  const [showReason, setShowReason] = useState(false);
+  const [videoThumbnail, setVideoThumbnail] = useState<string | null>(null);
+  const [isMuted, setIsMuted] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string>('');
   
+  const playerRef = useRef<YTPlayer | null>(null);
+  const playerContainerRef = useRef<string>(`yt-player-${Date.now()}`);
   const pulseIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const [pulse, setPulse] = useState(false);
 
   const { title, artist, year } = parseMusicSuggestion(suggestion);
+  const isNative = Capacitor.isNativePlatform();
 
   // Animate equalizer bars when playing
   useEffect(() => {
@@ -72,6 +155,93 @@ export const MusicPlayer = ({
     };
   }, [playerState]);
 
+  // Cleanup player on unmount
+  useEffect(() => {
+    return () => {
+      if (playerRef.current) {
+        try {
+          playerRef.current.destroy();
+        } catch (e) {
+          console.log('[MusicPlayer] Error destroying player:', e);
+        }
+        playerRef.current = null;
+      }
+    };
+  }, []);
+
+  const initializePlayer = useCallback(async (videoId: string) => {
+    try {
+      await loadYouTubeAPI();
+
+      // Destroy existing player
+      if (playerRef.current) {
+        try {
+          playerRef.current.destroy();
+        } catch (e) {
+          console.log('[MusicPlayer] Error destroying existing player:', e);
+        }
+        playerRef.current = null;
+      }
+
+      // Ensure container exists
+      const container = document.getElementById(playerContainerRef.current);
+      if (!container) {
+        console.error('[MusicPlayer] Player container not found');
+        setErrorMessage('Erro ao inicializar player');
+        setPlayerState('error');
+        return;
+      }
+
+      console.log('[MusicPlayer] Initializing YouTube player for video:', videoId);
+
+      playerRef.current = new window.YT.Player(playerContainerRef.current, {
+        videoId: videoId,
+        playerVars: {
+          autoplay: 1,
+          playsinline: 1,
+          rel: 0,
+          modestbranding: 1,
+          showinfo: 0,
+          controls: 1,
+          origin: window.location.origin,
+        },
+        events: {
+          onReady: (event) => {
+            console.log('[MusicPlayer] Player ready, starting playback');
+            event.target.playVideo();
+            setPlayerState('playing');
+          },
+          onStateChange: (event) => {
+            console.log('[MusicPlayer] Player state changed:', event.data);
+            if (event.data === window.YT.PlayerState.PLAYING) {
+              setPlayerState('playing');
+            } else if (event.data === window.YT.PlayerState.ENDED) {
+              setPlayerState('idle');
+              setYoutubeVideoId(null);
+            }
+          },
+          onError: (event) => {
+            console.error('[MusicPlayer] YouTube player error:', event.data);
+            // Error codes: 2 = invalid param, 5 = HTML5 error, 100 = not found, 101/150 = embedding not allowed
+            const errorMessages: Record<number, string> = {
+              2: 'Parâmetro inválido',
+              5: 'Erro de reprodução HTML5',
+              100: 'Vídeo não encontrado',
+              101: 'Reprodução não permitida',
+              150: 'Reprodução não permitida',
+            };
+            setErrorMessage(errorMessages[event.data] || `Erro ${event.data} ao reproduzir`);
+            setPlayerState('error');
+          },
+        },
+      });
+    } catch (err) {
+      console.error('[MusicPlayer] Failed to initialize player:', err);
+      setErrorMessage('Erro ao inicializar player');
+      setPlayerState('error');
+    }
+  }, []);
+
   const searchYouTube = useCallback(async () => {
     setPlayerState('loading');
     setErrorMessage('');
@@ -82,38 +252,76 @@ export const MusicPlayer = ({
       });
 
       if (error) {
-        console.error('YouTube search error:', error);
+        console.error('[MusicPlayer] YouTube search error:', error);
         setErrorMessage('Não foi possível buscar a música');
         setPlayerState('error');
         return;
       }
 
       if (data?.videoId) {
+        console.log('[MusicPlayer] Found video:', data.videoId);
         setYoutubeVideoId(data.videoId);
-        setPlayerState('playing');
+        setVideoThumbnail(data.thumbnail || null);
+        
+        // Initialize the YouTube player
+        await initializePlayer(data.videoId);
       } else {
         setErrorMessage('Música não encontrada no YouTube');
         setPlayerState('error');
       }
     } catch (err) {
-      console.error('YouTube search failed:', err);
+      console.error('[MusicPlayer] YouTube search failed:', err);
       setErrorMessage('Erro ao buscar música');
       setPlayerState('error');
     }
-  }, [title, artist]);
+  }, [title, artist, initializePlayer]);
 
   const handlePlayClick = useCallback(() => {
     if (playerState === 'idle' || playerState === 'error') {
       searchYouTube();
     } else if (playerState === 'playing') {
+      // Stop and cleanup
+      if (playerRef.current) {
+        try {
+          playerRef.current.pauseVideo();
+          playerRef.current.destroy();
+        } catch (e) {
+          console.log('[MusicPlayer] Error stopping player:', e);
+        }
+        playerRef.current = null;
+      }
       setPlayerState('idle');
       setYoutubeVideoId(null);
     }
   }, [playerState, searchYouTube]);
 
   const handleClose = useCallback(() => {
+    if (playerRef.current) {
+      try {
+        playerRef.current.destroy();
+      } catch (e) {
+        console.log('[MusicPlayer] Error destroying player on close:', e);
+      }
+      playerRef.current = null;
+    }
     setPlayerState('idle');
     setYoutubeVideoId(null);
+  }, []);
+
+  const handleMuteToggle = useCallback(() => {
+    if (playerRef.current) {
+      try {
+        if (playerRef.current.isMuted()) {
+          playerRef.current.unMute();
+          setIsMuted(false);
+        } else {
+          playerRef.current.mute();
+          setIsMuted(true);
+        }
+      } catch (e) {
+        console.log('[MusicPlayer] Error toggling mute:', e);
+      }
+    }
   }, []);
 
   const handleSpotifyClick = () => {
@@ -155,26 +363,41 @@ export const MusicPlayer = ({
             </p>
           </div>
           {playerState === 'playing' && (
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handleClose}
-              className="h-8 w-8 text-muted-foreground hover:text-foreground"
-            >
-              <X className="h-4 w-4" />
-            </Button>
+            <div className="flex items-center gap-1">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleMuteToggle}
+                className="h-8 w-8 text-muted-foreground hover:text-foreground"
+              >
+                {isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleClose}
+                className="h-8 w-8 text-muted-foreground hover:text-foreground"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
           )}
         </div>
 
-        {/* YouTube Embed Player */}
-        {playerState === 'playing' && youtubeVideoId && (
+        {/* YouTube Player Container - Hidden div that becomes the player */}
+        {(playerState === 'loading' || playerState === 'playing') && (
           <div className="mb-4 rounded-lg overflow-hidden bg-black aspect-video animate-fade-in">
-            <iframe
-              src={`/youtube-embed.html?v=${youtubeVideoId}`}
-              className="w-full h-full border-0"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowFullScreen
+            <div 
+              id={playerContainerRef.current}
+              className="w-full h-full"
             />
+          </div>
+        )}
+
+        {/* Loading overlay */}
+        {playerState === 'loading' && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-lg z-10 pointer-events-none" style={{ top: '60px', bottom: 'auto', height: 'calc(56.25vw - 32px)', maxHeight: '200px' }}>
+            <Loader2 className="h-8 w-8 text-white animate-spin" />
           </div>
         )}
 
@@ -189,18 +412,16 @@ export const MusicPlayer = ({
         )}
 
         {/* Song info and main play button (hidden when playing) */}
-        {playerState !== 'playing' && (
+        {(playerState === 'idle' || playerState === 'error') && (
           <div className="flex items-center gap-3">
             {/* Album art with equalizer */}
             <div 
               className="relative w-16 h-16 rounded-lg bg-gradient-to-br from-primary/30 to-primary/10 flex items-center justify-center overflow-hidden cursor-pointer"
               onClick={handlePlayClick}
+              style={videoThumbnail ? { backgroundImage: `url(${videoThumbnail})`, backgroundSize: 'cover', backgroundPosition: 'center' } : {}}
             >
-              {playerState === 'loading' ? (
-                <Loader2 className="h-6 w-6 text-primary animate-spin" />
-              ) : (
-                <Play className="h-7 w-7 text-primary ml-0.5" />
-              )}
+              <div className="absolute inset-0 bg-black/30" />
+              <Play className="h-7 w-7 text-white relative z-10 ml-0.5" />
             </div>
 
             {/* Song details */}
@@ -219,17 +440,12 @@ export const MusicPlayer = ({
               variant="ghost"
               size="icon"
               onClick={handlePlayClick}
-              disabled={playerState === 'loading'}
               className={cn(
                 "h-12 w-12 rounded-full transition-all",
                 "bg-primary/20 text-primary hover:bg-primary/30"
               )}
             >
-              {playerState === 'loading' ? (
-                <Loader2 className="h-5 w-5 animate-spin" />
-              ) : (
-                <Play className="h-6 w-6 ml-0.5" />
-              )}
+              <Play className="h-6 w-6 ml-0.5" />
             </Button>
           </div>
         )}
