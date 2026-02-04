@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Settings, Search, QrCode, UserPen, LogOut } from "lucide-react";
+import { Settings, Search, QrCode, UserPen } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { UserSearchSheet } from "@/components/social/UserSearchSheet";
@@ -11,6 +11,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { cn } from "@/lib/utils";
 import paddockWordmark from "@/assets/paddock-wordmark-new.png";
 interface ProfileHeaderProps {
   user: {
@@ -106,10 +107,11 @@ export const ProfileHeader = ({ user, onEditProfile, onSettings }: ProfileHeader
 
             {/* Stats */}
             <div className="flex flex-1 justify-around pt-2">
+              <StatItem value={user.collection} label={t.profile.items} />
               <StatItem 
-                value={user.collection} 
-                label={t.profile.items} 
-                subValue={user.averageIndex != null ? `Ø ${user.averageIndex}` : undefined}
+                value={user.averageIndex ?? 0} 
+                label={t.profile.rarity} 
+                highlight={user.averageIndex != null}
               />
               <StatItem value={user.followers} label={t.profile.followers} />
               <StatItem value={user.following} label={t.profile.following} />
@@ -154,14 +156,11 @@ export const ProfileHeader = ({ user, onEditProfile, onSettings }: ProfileHeader
   );
 };
 
-const StatItem = ({ value, label, subValue }: { value: number; label: string; subValue?: string }) => (
+const StatItem = ({ value, label, highlight }: { value: number; label: string; highlight?: boolean }) => (
   <div className="text-center">
-    <div className="flex items-baseline justify-center gap-1.5">
-      <p className="text-lg font-semibold">{value.toLocaleString()}</p>
-      {subValue && (
-        <span className="text-xs text-primary font-medium">{subValue}</span>
-      )}
-    </div>
+    <p className={cn("text-lg font-semibold", highlight && "text-primary")}>
+      {value.toLocaleString()}
+    </p>
     <p className="text-xs text-foreground-secondary">{label}</p>
   </div>
 );
