@@ -19,6 +19,7 @@ import { cropImageByBoundingBox, BoundingBox, extractFrameFromVideo } from "@/li
 import { PaddockLogo } from "@/components/icons/PaddockLogo";
 import { trackInteraction, trackEvent } from "@/lib/analytics";
 import { useNativeCamera } from "@/hooks/useNativeCamera";
+import { useNativeCameraPreview } from "@/hooks/useNativeCameraPreview";
 import { Capacitor } from "@capacitor/core";
 import { Camera as CapacitorCamera } from "@capacitor/camera";
 interface AnalysisResult {
@@ -143,9 +144,12 @@ export const ScannerView = () => {
   const { t } = useLanguage();
   const navigate = useNavigate();
   const nativeCamera = useNativeCamera();
+  const cameraPreview = useNativeCameraPreview();
   
-  // Track if we're using native camera fallback (no live preview)
+  // Track if we're using native camera preview (embedded live preview) vs fallback (opens native UI)
   const [useNativeFallback, setUseNativeFallback] = useState(false);
+  // Track if using embedded camera preview (iOS/Android)
+  const [useCameraPreview, setUseCameraPreview] = useState(false);
   
   // Only trigger guided tips when camera is active and not in error state
   const { startScreenTips } = useGuidedTips();
@@ -187,7 +191,7 @@ export const ScannerView = () => {
     attachStreamToVideo();
   }, [cameraActive]);
 
-  // Auto-start camera on mount - use native camera by default on iOS/Android
+  // Auto-start camera on mount - use camera-preview on iOS/Android for immersive experience
   // IMPORTANT: Empty dependency array to run only once on mount
   useEffect(() => {
     let mounted = true;
@@ -200,31 +204,39 @@ export const ScannerView = () => {
       setIsInitializing(true);
       setCameraError(false);
       setUseNativeFallback(false);
+      setUseCameraPreview(false);
       
-      // On native platforms (iOS/Android), skip getUserMedia entirely and use native camera
-      // This avoids iOS security context issues and provides a better UX
+      // On native platforms (iOS/Android), use camera-preview for embedded live feed
       if (Capacitor.isNativePlatform()) {
-        console.log("[Scanner] Native platform detected, using native camera directly");
+        console.log("[Scanner] Native platform detected, using camera-preview for immersive experience");
         
         try {
-          // Use CapacitorCamera directly from Capacitor to avoid hook dependency issues
+          // First check camera permissions
           const permissions = await CapacitorCamera.checkPermissions();
           if (!mounted) return;
           
-          console.log("[Scanner] Native camera permission state:", permissions.camera);
+          console.log("[Scanner] Camera permission state:", permissions.camera);
           
-          // If granted or prompt, we can use native camera
-          if (permissions.camera === 'granted' || permissions.camera === 'prompt' || permissions.camera === 'prompt-with-rationale') {
-            setUseNativeFallback(true);
-            setCameraActive(false);
-            setCameraError(false);
-            setIsInitializing(false);
-            console.log("[Scanner] Ready for native camera capture");
-            return;
-          }
-          
-          // Permission denied - show error
-          if (permissions.camera === 'denied') {
+          // Request permission if needed
+          if (permissions.camera === 'prompt' || permissions.camera === 'prompt-with-rationale') {
+            console.log("[Scanner] Requesting camera permission...");
+            const requested = await CapacitorCamera.requestPermissions({ permissions: ['camera'] });
+            console.log("[Scanner] Permission result:", requested.camera);
+            
+            if (requested.camera === 'denied') {
+              console.log("[Scanner] Permission denied by user");
+              if (mounted) {
+                setCameraError(true);
+                setIsInitializing(false);
+                toast({
+                  title: t.common.error,
+                  description: "Permissão de câmera negada. Vá em Ajustes > Paddock > Câmera para habilitar.",
+                  variant: "destructive",
+                });
+              }
+              return;
+            }
+          } else if (permissions.camera === 'denied') {
             console.log("[Scanner] Camera permission denied");
             if (mounted) {
               setCameraError(true);
@@ -237,15 +249,37 @@ export const ScannerView = () => {
             }
             return;
           }
-        } catch (error) {
-          console.error("[Scanner] Native camera check error:", error);
-          if (mounted) {
-            // Still allow native fallback even on error - permission will be requested on capture
+          
+          // Permission granted - start camera preview
+          console.log("[Scanner] Permission granted, starting camera-preview...");
+          const started = await cameraPreview.start();
+          
+          if (!mounted) {
+            // Cleanup if unmounted
+            cameraPreview.stop();
+            return;
+          }
+          
+          if (started) {
+            console.log("[Scanner] Camera-preview started successfully");
+            setUseCameraPreview(true);
+            setCameraActive(true);
+            setIsInitializing(false);
+          } else {
+            // Fallback to native camera UI if camera-preview fails
+            console.log("[Scanner] Camera-preview failed, falling back to native camera UI");
             setUseNativeFallback(true);
             setCameraActive(false);
             setIsInitializing(false);
           }
-          return;
+        } catch (error) {
+          console.error("[Scanner] Camera-preview error:", error);
+          if (mounted) {
+            // Fallback to native camera UI
+            setUseNativeFallback(true);
+            setCameraActive(false);
+            setIsInitializing(false);
+          }
         }
         
         return;
@@ -323,6 +357,10 @@ export const ScannerView = () => {
     return () => {
       mounted = false;
       console.log("[Scanner] Cleanup: stopping camera");
+      
+      // Stop camera-preview if active
+      cameraPreview.stop();
+      
       if (streamRef.current) {
         streamRef.current.getTracks().forEach(track => track.stop());
         streamRef.current = null;
@@ -571,6 +609,13 @@ export const ScannerView = () => {
 
   const stopCamera = useCallback(() => {
     console.log("[Scanner] Stopping camera");
+    
+    // Stop camera-preview if using it
+    if (useCameraPreview) {
+      cameraPreview.stop();
+      setUseCameraPreview(false);
+    }
+    
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(track => track.stop());
       streamRef.current = null;
@@ -579,16 +624,181 @@ export const ScannerView = () => {
       videoRef.current.srcObject = null;
     }
     setCameraActive(false);
-  }, []);
+  }, [useCameraPreview, cameraPreview]);
 
-  const switchCamera = useCallback(() => {
+  const switchCamera = useCallback(async () => {
+    // For camera-preview, use flip method
+    if (useCameraPreview) {
+      await cameraPreview.flip();
+      return;
+    }
+    
     const newMode = facingMode === "environment" ? "user" : "environment";
     setFacingMode(newMode);
     if (cameraActive) {
       stopCamera();
       setTimeout(() => startCamera(), 100);
     }
-  }, [cameraActive, facingMode, startCamera, stopCamera]);
+  }, [cameraActive, facingMode, startCamera, stopCamera, useCameraPreview, cameraPreview]);
+
+  // Capture photo using camera-preview (embedded native camera)
+  const captureCameraPreviewPhoto = useCallback(async () => {
+    console.log("[Scanner] Capturing via camera-preview...");
+    
+    // Trigger flash effect
+    setShowFlash(true);
+    setTimeout(() => setShowFlash(false), 150);
+    
+    setIsScanning(true);
+    
+    try {
+      const result = await cameraPreview.capture();
+      
+      if (!result) {
+        setIsScanning(false);
+        toast({
+          title: t.common.error,
+          description: "Não foi possível capturar a foto.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      const imageBase64 = result.base64Image;
+      setCapturedImage(imageBase64);
+      
+      // Stop camera preview after capture
+      await cameraPreview.stop();
+      setUseCameraPreview(false);
+      setCameraActive(false);
+      
+      // Track scan event
+      trackEvent("scan_initiated", { source: "camera_preview" });
+
+      // Analyze the captured image
+      const { data, error } = await supabase.functions.invoke("analyze-collectible", {
+        body: { imageBase64 },
+      });
+
+      if (error) throw error;
+
+      const response = data as MultiCarAnalysisResponse;
+      const responseType = response.detectedType || "collectible";
+      setDetectedType(responseType);
+
+      trackEvent("scan_completed", { 
+        detected_type: responseType, 
+        identified: response.identified,
+        items_count: response.count || (response.identified ? 1 : 0)
+      });
+
+      console.log("[Scanner] Detected type:", responseType);
+
+      if (responseType === "real_car") {
+        if (!response.identified || !response.car) {
+          toast({
+            title: t.scanner.couldNotIdentify,
+            description: response.error || t.scanner.tryDifferentAngle,
+            variant: "destructive",
+          });
+          setRealCarResult(null);
+        } else {
+          setRealCarResult({
+            identified: response.identified,
+            car: response.car,
+            searchTerms: response.searchTerms || [],
+            confidence: response.confidence || "medium",
+          });
+        }
+      } else {
+        if (response.imageQuality && !response.imageQuality.isValid) {
+          const hasValidItems = response.items && response.items.length > 0 && response.identified;
+          const tooManyIssue = response.imageQuality.issues?.find((i: { type: string }) => i.type === "too_many_cars");
+          const isFalseTooMany = tooManyIssue && response.count && response.count <= 5;
+          
+          if (!hasValidItems && !isFalseTooMany) {
+            setImageQualityError(response.imageQuality);
+            setAnalysisResults([]);
+            setIsScanning(false);
+            return;
+          }
+        }
+
+        setImageQualityError(null);
+
+        if (!response.identified || response.count === 0) {
+          toast({
+            title: t.scanner.itemNotIdentified,
+            description: t.scanner.itemNotIdentifiedDesc,
+            variant: "destructive",
+          });
+          setAnalysisResults([]);
+        } else {
+          // Crop individual car images from bounding boxes
+          const itemsWithCrops = await Promise.all(
+            response.items.map(async (item) => {
+              if (item.boundingBox && imageBase64) {
+                try {
+                  const croppedImage = await cropImageByBoundingBox(imageBase64, item.boundingBox as BoundingBox);
+                  return { ...item, croppedImage };
+                } catch (error) {
+                  console.error("Failed to crop image:", error);
+                  return { ...item, croppedImage: imageBase64 };
+                }
+              }
+              return { ...item, croppedImage: imageBase64 };
+            })
+          );
+          
+          // Check for duplicates in user's collection
+          const itemsWithDuplicateCheck = await Promise.all(
+            itemsWithCrops.map(async (item) => {
+              if (user) {
+                try {
+                  const duplicate = await checkDuplicateInCollection(
+                    user.id,
+                    item.realCar.brand,
+                    item.realCar.model,
+                    item.collectible?.color
+                  );
+                  return {
+                    ...item,
+                    isDuplicate: duplicate.isDuplicate,
+                    existingItemImage: duplicate.existingItemImage
+                  };
+                } catch (error) {
+                  console.error("Failed to check duplicate:", error);
+                  return item;
+                }
+              }
+              return item;
+            })
+          );
+          
+          setAnalysisResults(itemsWithDuplicateCheck);
+          setAddedIndices(new Set());
+          setSkippedIndices(new Set());
+          
+          if (response.warning) {
+            setWarningMessage(response.warning);
+            toast({
+              title: t.scanner.maxCarsWarning,
+              description: response.warning,
+            });
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Analysis error:", error);
+      toast({
+        title: t.scanner.analysisFailed,
+        description: t.scanner.analysisFailedDesc,
+        variant: "destructive",
+      });
+    } finally {
+      setIsScanning(false);
+    }
+  }, [cameraPreview, toast, t, user]);
 
   const capturePhoto = useCallback(async () => {
     if (!videoRef.current || !canvasRef.current) return;
@@ -1484,7 +1694,7 @@ export const ScannerView = () => {
     navigate("/profile");
   };
 
-  const resetScan = useCallback(() => {
+  const resetScan = useCallback(async () => {
     setAnalysisResults([]);
     setCapturedImage(null);
     setCameraError(false);
@@ -1501,9 +1711,24 @@ export const ScannerView = () => {
       URL.revokeObjectURL(videoPreviewUrl);
       setVideoPreviewUrl(null);
     }
-    // Restart camera
-    startCamera();
-  }, [startCamera, videoPreviewUrl]);
+    
+    // Restart camera - use camera-preview on native platforms
+    if (Capacitor.isNativePlatform()) {
+      const started = await cameraPreview.start();
+      if (started) {
+        setUseCameraPreview(true);
+        setCameraActive(true);
+        setIsInitializing(false);
+      } else {
+        // Fallback to native camera UI
+        setUseNativeFallback(true);
+        setCameraActive(false);
+        setIsInitializing(false);
+      }
+    } else {
+      startCamera();
+    }
+  }, [startCamera, videoPreviewUrl, cameraPreview]);
 
   const handleClose = useCallback(() => {
     stopCamera();
@@ -1538,17 +1763,22 @@ export const ScannerView = () => {
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-background flex flex-col">
+    <div className={`fixed inset-0 z-50 flex flex-col ${useCameraPreview ? 'native-camera-mode' : 'bg-background'}`}>
+      {/* Camera-preview container - native layer renders behind WebView */}
+      {useCameraPreview && (
+        <div id="camera-preview-container" className="fixed inset-0 z-0" />
+      )}
+      
       {/* Camera/Preview View */}
-      <div className="relative flex-1 bg-black overflow-hidden">
-        {/* Video element is ALWAYS rendered, visibility controlled by CSS */}
+      <div className={`relative flex-1 overflow-hidden ${useCameraPreview ? 'bg-transparent' : 'bg-black'}`}>
+        {/* Video element for web camera - ALWAYS rendered, visibility controlled by CSS */}
         <video
           ref={videoRef}
           autoPlay
           playsInline
           muted
           className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-200 ${
-            cameraActive && !capturedImage && !videoPreviewUrl ? 'opacity-100' : 'opacity-0 pointer-events-none'
+            cameraActive && !useCameraPreview && !capturedImage && !videoPreviewUrl ? 'opacity-100' : 'opacity-0 pointer-events-none'
           }`}
         />
 
@@ -1571,12 +1801,13 @@ export const ScannerView = () => {
           />
         )}
 
-        {!cameraActive && !capturedImage && !videoPreviewUrl && !useNativeFallback && (
+        {/* Gradient overlay when camera is not active (web only) */}
+        {!cameraActive && !capturedImage && !videoPreviewUrl && !useNativeFallback && !useCameraPreview && (
           <div className="absolute inset-0 bg-gradient-to-b from-background-secondary to-background opacity-50" />
         )}
         
-        {/* Native fallback background - full black with centered instructions */}
-        {useNativeFallback && !capturedImage && !isScanning && (
+        {/* Native fallback background - full black with centered instructions (only if camera-preview failed) */}
+        {useNativeFallback && !useCameraPreview && !capturedImage && !isScanning && (
           <div className="absolute inset-0 bg-black flex flex-col items-center justify-center gap-4 px-8">
             <div className="w-20 h-20 rounded-full bg-white/10 flex items-center justify-center">
               <CameraIcon className="h-10 w-10 text-white/60" />
@@ -1598,7 +1829,7 @@ export const ScannerView = () => {
         )}
 
         {/* Paddock watermark - positioned below notch */}
-        {(cameraActive || useNativeFallback) && !isScanning && !capturedImage && (
+        {(cameraActive || useNativeFallback || useCameraPreview) && !isScanning && !capturedImage && (
           <div className="absolute left-1/2 -translate-x-1/2 z-10 pointer-events-none" style={{ top: "calc(env(safe-area-inset-top, 0px) + 1rem)" }}>
             <PaddockLogo 
               variant="wordmark" 
@@ -1611,7 +1842,7 @@ export const ScannerView = () => {
         {/* Auto-detect hint - no manual toggle needed */}
 
         {/* Minimal corner guides - subtle like Instagram/TikTok - positioned below notch */}
-        {cameraActive && !isScanning && (
+        {(cameraActive || useCameraPreview) && !isScanning && !capturedImage && (
           <div className="absolute inset-0 pointer-events-none">
             {/* Top left corner */}
             <div className="absolute left-6 w-10 h-10" style={{ top: "calc(env(safe-area-inset-top, 0px) + 4rem)" }}>
@@ -1653,7 +1884,7 @@ export const ScannerView = () => {
         </button>
 
         {/* Switch camera button - positioned below notch */}
-        {cameraActive && !isRecording && (
+        {(cameraActive || useCameraPreview) && !isRecording && !capturedImage && (
           <button
             onClick={switchCamera}
             data-tip="flip-camera"
@@ -1714,8 +1945,31 @@ export const ScannerView = () => {
                   {t.scanner.tryAgain}
                 </Button>
               </div>
+            ) : useCameraPreview ? (
+              /* Camera-preview mode - immersive embedded camera */
+              <div className="relative w-full flex items-center justify-center">
+                {/* Gallery button - bottom left */}
+                <button
+                  onClick={openNativeGallery}
+                  disabled={isScanning}
+                  className="absolute left-6 bottom-0 p-3 bg-background/50 backdrop-blur-sm rounded-full z-10 disabled:opacity-50"
+                  aria-label={t.scanner.selectFromGallery}
+                >
+                  <ImageIcon className="h-6 w-6 text-white" />
+                </button>
+                
+                <div className="flex flex-col items-center gap-3">
+                  <p className="text-[11px] text-white/50 text-center tracking-wide">
+                    {t.scanner.tapToCapture}
+                  </p>
+                  <CaptureButton
+                    disabled={isScanning}
+                    onClick={captureCameraPreviewPhoto}
+                  />
+                </div>
+              </div>
             ) : useNativeFallback ? (
-              /* Native camera fallback mode - no live preview */
+              /* Native camera fallback mode - no live preview (only if camera-preview failed) */
               <div className="relative w-full flex items-center justify-center">
                 {/* Gallery button - bottom left */}
                 <button
