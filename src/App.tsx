@@ -28,6 +28,7 @@ import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 import ListingDetails from "./pages/ListingDetails";
 import PaymentSuccess from "./pages/PaymentSuccess";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
 import PaymentCanceled from "./pages/PaymentCanceled";
 
 const queryClient = new QueryClient();
@@ -286,6 +287,7 @@ const AppContent = () => {
           <Route path="/admin" element={<Admin />} />
           <Route path="/listing/:id" element={<ListingDetails />} />
           <Route path="/user/:userId" element={<UserProfile />} />
+          <Route path="/privacy" element={<PrivacyPolicy />} />
           <Route path="/payment-success" element={<PaymentSuccess />} />
           <Route path="/payment-canceled" element={<PaymentCanceled />} />
           <Route path="/subscription-success" element={<PaymentSuccess />} />
