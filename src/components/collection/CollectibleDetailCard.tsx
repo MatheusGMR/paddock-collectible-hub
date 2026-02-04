@@ -128,12 +128,12 @@ export const CollectibleDetailCard = ({ item, open, onOpenChange, onDelete }: Co
           
           <ScrollArea className="flex-1 px-4">
             <div className="py-4 space-y-4">
-              {/* Hero Image - square format with object-cover for perfect fit */}
+              {/* Hero Image - square format with object-contain to show full vehicle */}
               <div className="relative aspect-square rounded-xl overflow-hidden bg-gradient-to-b from-muted to-muted/50">
                 <img
                   src={item.image_url || "/placeholder.svg"}
                   alt={`${data.real_car_brand} ${data.real_car_model}`}
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-contain"
                 />
               </div>
               
