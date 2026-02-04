@@ -18,7 +18,7 @@ import { PriceIndex } from "@/lib/priceIndex";
 import { cropImageByBoundingBox, BoundingBox, extractFrameFromVideo } from "@/lib/imageCrop";
 import { PaddockLogo } from "@/components/icons/PaddockLogo";
 import { trackInteraction, trackEvent } from "@/lib/analytics";
-import { usePermissions } from "@/hooks/usePermissions";
+import { useNativeCamera } from "@/hooks/useNativeCamera";
 interface AnalysisResult {
   boundingBox?: BoundingBox;
   realCar: {
@@ -140,7 +140,10 @@ export const ScannerView = () => {
   const { user } = useAuth();
   const { t } = useLanguage();
   const navigate = useNavigate();
-  const { hasRequestedPermissions, requestAllPermissions, camera: cameraPermission } = usePermissions();
+  const nativeCamera = useNativeCamera();
+  
+  // Track if we're using native camera fallback (no live preview)
+  const [useNativeFallback, setUseNativeFallback] = useState(false);
   
   // Only trigger guided tips when camera is active and not in error state
   const { startScreenTips } = useGuidedTips();
@@ -188,6 +191,7 @@ export const ScannerView = () => {
       console.log("[Scanner] Initializing camera automatically...");
       setIsInitializing(true);
       setCameraError(false);
+      setUseNativeFallback(false);
       
       try {
         // Stop any existing stream first
@@ -196,8 +200,12 @@ export const ScannerView = () => {
           streamRef.current = null;
         }
 
-        // Always attempt to get camera stream directly
-        // This is the most reliable way on iOS native apps
+        // Check if getUserMedia is available
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          console.log("[Scanner] getUserMedia not available, checking native fallback...");
+          throw new Error("getUserMedia not supported");
+        }
+
         console.log("[Scanner] Requesting camera stream...");
         
         const stream = await navigator.mediaDevices.getUserMedia({
@@ -206,24 +214,39 @@ export const ScannerView = () => {
             width: { ideal: 1280 },
             height: { ideal: 720 }
           },
-          audio: false // No audio needed for photo capture - prevents iOS permission issues
+          audio: false
         });
 
         console.log("[Scanner] Camera stream acquired successfully");
         
-        // Store stream immediately
         streamRef.current = stream;
-        
-        // Set camera active - the other useEffect will attach the stream
         setCameraActive(true);
         setIsInitializing(false);
         
       } catch (error: unknown) {
         console.error("[Scanner] Camera access error:", error);
+        
+        // Check if we can use native camera as fallback
+        if (nativeCamera.isNative) {
+          console.log("[Scanner] Falling back to native camera...");
+          const hasPermission = await nativeCamera.checkPermissions();
+          
+          if (hasPermission) {
+            console.log("[Scanner] Native camera permission granted, using native fallback");
+            setUseNativeFallback(true);
+            setCameraActive(false);
+            setCameraError(false);
+            setIsInitializing(false);
+            return;
+          } else {
+            console.log("[Scanner] Native camera permission denied");
+          }
+        }
+        
+        // No fallback available
         setCameraError(true);
         setIsInitializing(false);
         
-        // Provide more specific error message for permission issues
         const errorName = error instanceof Error ? error.name : "";
         const errorMessage = error instanceof Error ? error.message : "";
         
@@ -235,14 +258,10 @@ export const ScannerView = () => {
           errorMessage.includes("permission") ||
           errorMessage.includes("Permission");
         
-        const isNotFoundError = errorName === "NotFoundError" || errorName === "DevicesNotFoundError";
-        
         let errorDescription = t.scanner.cameraError;
         
         if (isPermissionError) {
           errorDescription = "Permissão de câmera negada. Vá em Ajustes > Paddock > Câmera para habilitar.";
-        } else if (isNotFoundError) {
-          errorDescription = "Nenhuma câmera encontrada no dispositivo.";
         }
         
         toast({
@@ -272,7 +291,7 @@ export const ScannerView = () => {
         clearInterval(recordingTimerRef.current);
       }
     };
-  }, [toast, t]);
+  }, [toast, t, nativeCamera]);
 
   const startCamera = useCallback(async () => {
     console.log("[Scanner] Manual startCamera called");
@@ -497,6 +516,237 @@ export const ScannerView = () => {
       setIsScanning(false);
     }
   }, [stopCamera, toast, t, user]);
+
+  // Native camera capture function (fallback for iOS native app)
+  const captureNativePhoto = useCallback(async () => {
+    console.log("[Scanner] Capturing via native camera...");
+    setIsScanning(true);
+    
+    try {
+      const result = await nativeCamera.takePhoto();
+      
+      if (!result) {
+        setIsScanning(false);
+        toast({
+          title: t.common.error,
+          description: "Não foi possível capturar a foto.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      const imageBase64 = result.base64Image;
+      setCapturedImage(imageBase64);
+      
+      // Track scan event
+      trackEvent("scan_initiated", { source: "native_camera" });
+
+      // Analyze the captured image
+      const { data, error } = await supabase.functions.invoke("analyze-collectible", {
+        body: { imageBase64 },
+      });
+
+      if (error) throw error;
+
+      const response = data as MultiCarAnalysisResponse;
+      const responseType = response.detectedType || "collectible";
+      setDetectedType(responseType);
+
+      trackEvent("scan_completed", { 
+        detected_type: responseType, 
+        identified: response.identified,
+        items_count: response.count || (response.identified ? 1 : 0)
+      });
+
+      console.log("[Scanner] Detected type:", responseType);
+
+      if (responseType === "real_car") {
+        if (!response.identified || !response.car) {
+          toast({
+            title: t.scanner.couldNotIdentify,
+            description: response.error || t.scanner.tryDifferentAngle,
+            variant: "destructive",
+          });
+          setRealCarResult(null);
+        } else {
+          setRealCarResult({
+            identified: response.identified,
+            car: response.car,
+            searchTerms: response.searchTerms || [],
+            confidence: response.confidence || "medium",
+          });
+        }
+      } else {
+        if (response.imageQuality && !response.imageQuality.isValid) {
+          const hasValidItems = response.items && response.items.length > 0 && response.identified;
+          const tooManyIssue = response.imageQuality.issues?.find((i: { type: string }) => i.type === "too_many_cars");
+          const isFalseTooMany = tooManyIssue && response.count && response.count <= 5;
+          
+          if (!hasValidItems && !isFalseTooMany) {
+            setImageQualityError(response.imageQuality);
+            setAnalysisResults([]);
+            setIsScanning(false);
+            return;
+          }
+        }
+
+        setImageQualityError(null);
+
+        if (!response.identified || response.count === 0) {
+          toast({
+            title: t.scanner.itemNotIdentified,
+            description: t.scanner.itemNotIdentifiedDesc,
+            variant: "destructive",
+          });
+          setAnalysisResults([]);
+        } else {
+          const itemsWithCrops = await Promise.all(
+            response.items.map(async (item) => {
+              if (item.boundingBox && imageBase64) {
+                try {
+                  const croppedImage = await cropImageByBoundingBox(imageBase64, item.boundingBox as BoundingBox);
+                  return { ...item, croppedImage };
+                } catch (error) {
+                  console.error("Failed to crop image:", error);
+                  return { ...item, croppedImage: imageBase64 };
+                }
+              }
+              return { ...item, croppedImage: imageBase64 };
+            })
+          );
+          
+          const itemsWithDuplicateCheck = await Promise.all(
+            itemsWithCrops.map(async (item) => {
+              if (user) {
+                try {
+                  const duplicate = await checkDuplicateInCollection(
+                    user.id,
+                    item.realCar.brand,
+                    item.realCar.model,
+                    item.collectible?.color
+                  );
+                  return {
+                    ...item,
+                    isDuplicate: duplicate.isDuplicate,
+                    existingItemImage: duplicate.existingItemImage
+                  };
+                } catch (error) {
+                  console.error("Failed to check duplicate:", error);
+                  return item;
+                }
+              }
+              return item;
+            })
+          );
+          
+          setAnalysisResults(itemsWithDuplicateCheck);
+          setAddedIndices(new Set());
+          setSkippedIndices(new Set());
+          
+          if (response.warning) {
+            setWarningMessage(response.warning);
+            toast({
+              title: t.scanner.maxCarsWarning,
+              description: response.warning,
+            });
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Analysis error:", error);
+      toast({
+        title: t.scanner.analysisFailed,
+        description: t.scanner.analysisFailedDesc,
+        variant: "destructive",
+      });
+    } finally {
+      setIsScanning(false);
+    }
+  }, [nativeCamera, toast, t, user]);
+
+  // Native gallery picker (fallback)
+  const openNativeGallery = useCallback(async () => {
+    console.log("[Scanner] Opening native gallery...");
+    
+    try {
+      const result = await nativeCamera.pickFromGallery();
+      
+      if (!result) {
+        return;
+      }
+      
+      const imageBase64 = result.base64Image;
+      setCapturedImage(imageBase64);
+      setIsScanning(true);
+      
+      trackEvent("scan_initiated", { source: "native_gallery" });
+
+      const { data, error } = await supabase.functions.invoke("analyze-collectible", {
+        body: { imageBase64 },
+      });
+
+      if (error) throw error;
+
+      const response = data as MultiCarAnalysisResponse;
+      const responseType = response.detectedType || "collectible";
+      setDetectedType(responseType);
+
+      // Same analysis flow as captureNativePhoto...
+      if (responseType === "real_car") {
+        if (!response.identified || !response.car) {
+          toast({
+            title: t.scanner.couldNotIdentify,
+            description: response.error || t.scanner.tryDifferentAngle,
+            variant: "destructive",
+          });
+          setRealCarResult(null);
+        } else {
+          setRealCarResult({
+            identified: response.identified,
+            car: response.car,
+            searchTerms: response.searchTerms || [],
+            confidence: response.confidence || "medium",
+          });
+        }
+      } else {
+        if (!response.identified || response.count === 0) {
+          toast({
+            title: t.scanner.itemNotIdentified,
+            description: t.scanner.itemNotIdentifiedDesc,
+            variant: "destructive",
+          });
+          setAnalysisResults([]);
+        } else {
+          const itemsWithCrops = await Promise.all(
+            response.items.map(async (item) => {
+              if (item.boundingBox && imageBase64) {
+                try {
+                  const croppedImage = await cropImageByBoundingBox(imageBase64, item.boundingBox as BoundingBox);
+                  return { ...item, croppedImage };
+                } catch (error) {
+                  return { ...item, croppedImage: imageBase64 };
+                }
+              }
+              return { ...item, croppedImage: imageBase64 };
+            })
+          );
+          
+          setAnalysisResults(itemsWithCrops);
+          setAddedIndices(new Set());
+          setSkippedIndices(new Set());
+        }
+      }
+    } catch (error) {
+      console.error("Gallery analysis error:", error);
+      toast({
+        title: t.scanner.analysisFailed,
+        description: t.scanner.analysisFailedDesc,
+        variant: "destructive",
+      });
+    } finally {
+      setIsScanning(false);
+    }
+  }, [nativeCamera, toast, t]);
 
   // Video analysis function
   const analyzeVideo = useCallback(async (videoBlob: Blob) => {
@@ -1088,8 +1338,23 @@ export const ScannerView = () => {
           />
         )}
 
-        {!cameraActive && !capturedImage && !videoPreviewUrl && (
+        {!cameraActive && !capturedImage && !videoPreviewUrl && !useNativeFallback && (
           <div className="absolute inset-0 bg-gradient-to-b from-background-secondary to-background opacity-50" />
+        )}
+        
+        {/* Native fallback background - full black with centered instructions */}
+        {useNativeFallback && !capturedImage && !isScanning && (
+          <div className="absolute inset-0 bg-black flex flex-col items-center justify-center gap-4 px-8">
+            <div className="w-20 h-20 rounded-full bg-white/10 flex items-center justify-center">
+              <Camera className="h-10 w-10 text-white/60" />
+            </div>
+            <p className="text-white/80 text-center font-medium">
+              Toque no botão para abrir a câmera
+            </p>
+            <p className="text-white/40 text-center text-sm">
+              A foto será capturada pela câmera nativa do seu dispositivo
+            </p>
+          </div>
         )}
 
         <canvas ref={canvasRef} className="hidden" />
@@ -1100,7 +1365,7 @@ export const ScannerView = () => {
         )}
 
         {/* Paddock watermark - positioned below notch */}
-        {cameraActive && !isScanning && !capturedImage && (
+        {(cameraActive || useNativeFallback) && !isScanning && !capturedImage && (
           <div className="absolute left-1/2 -translate-x-1/2 z-10 pointer-events-none" style={{ top: "calc(env(safe-area-inset-top, 0px) + 1rem)" }}>
             <PaddockLogo 
               variant="wordmark" 
@@ -1215,6 +1480,29 @@ export const ScannerView = () => {
                   <RotateCcw className="h-4 w-4 mr-2" />
                   {t.scanner.tryAgain}
                 </Button>
+              </div>
+            ) : useNativeFallback ? (
+              /* Native camera fallback mode - no live preview */
+              <div className="relative w-full flex items-center justify-center">
+                {/* Gallery button - bottom left */}
+                <button
+                  onClick={openNativeGallery}
+                  disabled={isScanning}
+                  className="absolute left-6 bottom-0 p-3 bg-background/50 backdrop-blur-sm rounded-full z-10 disabled:opacity-50"
+                  aria-label={t.scanner.selectFromGallery}
+                >
+                  <ImageIcon className="h-6 w-6 text-white" />
+                </button>
+                
+                <div className="flex flex-col items-center gap-3">
+                  <p className="text-[11px] text-white/50 text-center tracking-wide">
+                    {t.scanner.tapToCapture}
+                  </p>
+                  <CaptureButton
+                    disabled={isScanning}
+                    onClick={captureNativePhoto}
+                  />
+                </div>
               </div>
             ) : cameraActive && (
               <div className="relative w-full flex items-center justify-center">
