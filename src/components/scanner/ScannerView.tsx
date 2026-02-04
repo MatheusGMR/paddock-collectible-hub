@@ -307,6 +307,19 @@ export const ScannerView = () => {
           
           // Permission granted - start camera preview
           console.log("[Scanner] Permission granted, starting camera-preview...");
+          
+          // Ensure container exists before starting
+          const container = document.getElementById("camera-preview-container");
+          console.log("[Scanner] camera-preview-container exists:", !!container);
+          if (!container) {
+            console.warn("[Scanner] Container not found! Creating dynamically...");
+            const newContainer = document.createElement("div");
+            newContainer.id = "camera-preview-container";
+            newContainer.style.cssText = "position:fixed;top:0;left:0;right:0;bottom:0;z-index:0;";
+            document.body.insertBefore(newContainer, document.body.firstChild);
+            console.log("[Scanner] Created container dynamically");
+          }
+          
           const started = await cameraPreview.start();
           
           if (!mounted) {
@@ -317,6 +330,12 @@ export const ScannerView = () => {
           
           if (started) {
             console.log("[Scanner] Camera-preview started successfully");
+            console.log("[Scanner] useCameraPreview will be set to true");
+            
+            // Debug: check backgrounds
+            console.log("[Scanner] body bg:", window.getComputedStyle(document.body).backgroundColor);
+            console.log("[Scanner] html bg:", window.getComputedStyle(document.documentElement).backgroundColor);
+            
             setUseCameraPreview(true);
             setCameraActive(true);
             setIsInitializing(false);
