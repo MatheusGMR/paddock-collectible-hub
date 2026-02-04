@@ -37,6 +37,8 @@ import {
 } from "@/lib/pushNotifications";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { Capacitor } from "@capacitor/core";
+import { App } from "@capacitor/app";
 
 interface SettingsSheetProps {
   open: boolean;
@@ -50,12 +52,33 @@ export const SettingsSheet = ({ open, onOpenChange, onSignOut }: SettingsSheetPr
   const { status, daysLeft } = useSubscription();
   const { isAdmin } = useAdmin();
   const { resetAllTips } = useGuidedTips();
+  
+  // Native app info state
+  const [nativeInfo, setNativeInfo] = useState<{ version: string; build: string } | null>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
   
   const [pushEnabled, setPushEnabled] = useState(false);
   const [pushLoading, setPushLoading] = useState(false);
   const [pushSupported] = useState(isPushSupported());
+
+  // Fetch native app info on mount (iOS/Android)
+  useEffect(() => {
+    const fetchNativeInfo = async () => {
+      if (Capacitor.isNativePlatform()) {
+        try {
+          const info = await App.getInfo();
+          setNativeInfo({ version: info.version, build: info.build });
+        } catch (error) {
+          console.error("Failed to get native app info:", error);
+        }
+      }
+    };
+    
+    if (open) {
+      fetchNativeInfo();
+    }
+  }, [open]);
 
   // Check push subscription status on mount
   useEffect(() => {
@@ -339,15 +362,19 @@ export const SettingsSheet = ({ open, onOpenChange, onSignOut }: SettingsSheetPr
             </div>
           </motion.section>
 
-          {/* App Version */}
+          {/* App Version with Build ID */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.4 }}
-            className="text-center pt-4 pb-8"
+            className="text-center pt-4 pb-8 space-y-1"
           >
             <p className="text-xs text-muted-foreground">
               Paddock v1.0.0
+            </p>
+            <p className="text-[10px] text-muted-foreground/60 font-mono">
+              web: {__WEB_BUILD_ID__}
+              {nativeInfo && ` • app: ${nativeInfo.version} (${nativeInfo.build})`}
             </p>
           </motion.div>
         </div>
