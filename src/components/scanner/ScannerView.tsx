@@ -346,143 +346,184 @@ export const ScannerView = () => {
   
   useEffect(() => {
     // Only trigger once when useNativeFallback becomes true
-    if (useNativeFallback && !isInitializing && !capturedImage && !isScanning && !hasOpenedNativeCameraRef.current) {
-      hasOpenedNativeCameraRef.current = true;
-      console.log("[Scanner] Auto-opening native camera...");
-      
-      // Small delay to ensure UI is ready
-      const timer = setTimeout(() => {
-        nativeCamera.takePhoto().then((result) => {
-          if (result) {
-            console.log("[Scanner] Native camera photo captured");
-            setCapturedImage(result.base64Image);
-            setIsScanning(true);
-            
-            trackEvent("scan_initiated", { source: "native_camera_auto" });
-            
-            // Analyze the image
-            supabase.functions.invoke("analyze-collectible", {
-              body: { imageBase64: result.base64Image },
-            }).then(async ({ data, error }) => {
-              if (error) {
-                console.error("[Scanner] Analysis error:", error);
-                toast({
-                  title: t.scanner.analysisFailed,
-                  description: t.scanner.analysisFailedDesc,
-                  variant: "destructive",
-                });
-                setIsScanning(false);
-                return;
-              }
-              
-              const response = data as MultiCarAnalysisResponse;
-              const responseType = response.detectedType || "collectible";
-              setDetectedType(responseType);
-              
-              trackEvent("scan_completed", { 
-                detected_type: responseType, 
-                identified: response.identified,
-                items_count: response.count || (response.identified ? 1 : 0)
-              });
-              
-              if (responseType === "real_car") {
-                if (!response.identified || !response.car) {
-                  toast({
-                    title: t.scanner.couldNotIdentify,
-                    description: response.error || t.scanner.tryDifferentAngle,
-                    variant: "destructive",
-                  });
-                  setRealCarResult(null);
-                } else {
-                  setRealCarResult({
-                    identified: response.identified,
-                    car: response.car,
-                    searchTerms: response.searchTerms || [],
-                    confidence: response.confidence || "medium",
-                  });
-                }
-              } else {
-                if (response.imageQuality && !response.imageQuality.isValid) {
-                  const hasValidItems = response.items && response.items.length > 0 && response.identified;
-                  const tooManyIssue = response.imageQuality.issues?.find((i: { type: string }) => i.type === "too_many_cars");
-                  const isFalseTooMany = tooManyIssue && response.count && response.count <= 5;
-                  
-                  if (!hasValidItems && !isFalseTooMany) {
-                    setImageQualityError(response.imageQuality);
-                    setAnalysisResults([]);
-                    setIsScanning(false);
-                    return;
-                  }
-                }
-                
-                setImageQualityError(null);
-                
-                if (!response.identified || response.count === 0) {
-                  toast({
-                    title: t.scanner.itemNotIdentified,
-                    description: t.scanner.itemNotIdentifiedDesc,
-                    variant: "destructive",
-                  });
-                  setAnalysisResults([]);
-                } else {
-                  const itemsWithCrops = await Promise.all(
-                    response.items.map(async (item) => {
-                      if (item.boundingBox && result.base64Image) {
-                        try {
-                          const croppedImage = await cropImageByBoundingBox(result.base64Image, item.boundingBox as BoundingBox);
-                          return { ...item, croppedImage };
-                        } catch (err) {
-                          return { ...item, croppedImage: result.base64Image };
-                        }
-                      }
-                      return { ...item, croppedImage: result.base64Image };
-                    })
-                  );
-                  
-                  const itemsWithDuplicateCheck = await Promise.all(
-                    itemsWithCrops.map(async (item) => {
-                      if (user) {
-                        try {
-                          const duplicate = await checkDuplicateInCollection(
-                            user.id,
-                            item.realCar.brand,
-                            item.realCar.model,
-                            item.collectible?.color
-                          );
-                          return { ...item, isDuplicate: duplicate.isDuplicate, existingItemImage: duplicate.existingItemImage };
-                        } catch (err) {
-                          return item;
-                        }
-                      }
-                      return item;
-                    })
-                  );
-                  
-                  setAnalysisResults(itemsWithDuplicateCheck);
-                  setAddedIndices(new Set());
-                  setSkippedIndices(new Set());
-                  
-                  if (response.warning) {
-                    setWarningMessage(response.warning);
-                  }
-                }
-              }
-              
-              setIsScanning(false);
-            });
-          } else {
-            // User cancelled - allow retry
-            console.log("[Scanner] Native camera cancelled by user");
-            hasOpenedNativeCameraRef.current = false;
-          }
-        }).catch((err) => {
-          console.error("[Scanner] Native camera error:", err);
-          hasOpenedNativeCameraRef.current = false;
-        });
-      }, 100);
-      
-      return () => clearTimeout(timer);
+    if (!useNativeFallback || isInitializing || capturedImage || isScanning || hasOpenedNativeCameraRef.current) {
+      return;
     }
+    
+    hasOpenedNativeCameraRef.current = true;
+    console.log("[Scanner] Auto-opening native camera...");
+    
+    const openCameraWithPermissions = async () => {
+      try {
+        // First ensure we have camera permission
+        const permissions = await CapacitorCamera.checkPermissions();
+        console.log("[Scanner] Current permissions:", permissions.camera);
+        
+        // Request permission if in prompt state
+        if (permissions.camera === 'prompt' || permissions.camera === 'prompt-with-rationale') {
+          console.log("[Scanner] Requesting camera permission...");
+          const requested = await CapacitorCamera.requestPermissions({ permissions: ['camera'] });
+          console.log("[Scanner] Permission result:", requested.camera);
+          
+          if (requested.camera === 'denied') {
+            console.log("[Scanner] Permission denied by user");
+            setCameraError(true);
+            hasOpenedNativeCameraRef.current = false;
+            toast({
+              title: t.common.error,
+              description: "Permissão de câmera negada. Vá em Ajustes > Paddock > Câmera para habilitar.",
+              variant: "destructive",
+            });
+            return;
+          }
+        } else if (permissions.camera === 'denied') {
+          console.log("[Scanner] Permission already denied");
+          setCameraError(true);
+          hasOpenedNativeCameraRef.current = false;
+          toast({
+            title: t.common.error,
+            description: "Permissão de câmera negada. Vá em Ajustes > Paddock > Câmera para habilitar.",
+            variant: "destructive",
+          });
+          return;
+        }
+        
+        // Now open the camera
+        console.log("[Scanner] Opening native camera...");
+        const result = await nativeCamera.takePhoto();
+        
+        if (!result) {
+          // User cancelled - allow retry
+          console.log("[Scanner] Native camera cancelled by user");
+          hasOpenedNativeCameraRef.current = false;
+          return;
+        }
+        
+        console.log("[Scanner] Native camera photo captured");
+        setCapturedImage(result.base64Image);
+        setIsScanning(true);
+        
+        trackEvent("scan_initiated", { source: "native_camera_auto" });
+        
+        // Analyze the image
+        const { data, error } = await supabase.functions.invoke("analyze-collectible", {
+          body: { imageBase64: result.base64Image },
+        });
+        
+        if (error) {
+          console.error("[Scanner] Analysis error:", error);
+          toast({
+            title: t.scanner.analysisFailed,
+            description: t.scanner.analysisFailedDesc,
+            variant: "destructive",
+          });
+          setIsScanning(false);
+          return;
+        }
+        
+        const response = data as MultiCarAnalysisResponse;
+        const responseType = response.detectedType || "collectible";
+        setDetectedType(responseType);
+        
+        trackEvent("scan_completed", { 
+          detected_type: responseType, 
+          identified: response.identified,
+          items_count: response.count || (response.identified ? 1 : 0)
+        });
+        
+        if (responseType === "real_car") {
+          if (!response.identified || !response.car) {
+            toast({
+              title: t.scanner.couldNotIdentify,
+              description: response.error || t.scanner.tryDifferentAngle,
+              variant: "destructive",
+            });
+            setRealCarResult(null);
+          } else {
+            setRealCarResult({
+              identified: response.identified,
+              car: response.car,
+              searchTerms: response.searchTerms || [],
+              confidence: response.confidence || "medium",
+            });
+          }
+        } else {
+          if (response.imageQuality && !response.imageQuality.isValid) {
+            const hasValidItems = response.items && response.items.length > 0 && response.identified;
+            const tooManyIssue = response.imageQuality.issues?.find((i: { type: string }) => i.type === "too_many_cars");
+            const isFalseTooMany = tooManyIssue && response.count && response.count <= 5;
+            
+            if (!hasValidItems && !isFalseTooMany) {
+              setImageQualityError(response.imageQuality);
+              setAnalysisResults([]);
+              setIsScanning(false);
+              return;
+            }
+          }
+          
+          setImageQualityError(null);
+          
+          if (!response.identified || response.count === 0) {
+            toast({
+              title: t.scanner.itemNotIdentified,
+              description: t.scanner.itemNotIdentifiedDesc,
+              variant: "destructive",
+            });
+            setAnalysisResults([]);
+          } else {
+            const itemsWithCrops = await Promise.all(
+              response.items.map(async (item) => {
+                if (item.boundingBox && result.base64Image) {
+                  try {
+                    const croppedImage = await cropImageByBoundingBox(result.base64Image, item.boundingBox as BoundingBox);
+                    return { ...item, croppedImage };
+                  } catch (err) {
+                    return { ...item, croppedImage: result.base64Image };
+                  }
+                }
+                return { ...item, croppedImage: result.base64Image };
+              })
+            );
+            
+            const itemsWithDuplicateCheck = await Promise.all(
+              itemsWithCrops.map(async (item) => {
+                if (user) {
+                  try {
+                    const duplicate = await checkDuplicateInCollection(
+                      user.id,
+                      item.realCar.brand,
+                      item.realCar.model,
+                      item.collectible?.color
+                    );
+                    return { ...item, isDuplicate: duplicate.isDuplicate, existingItemImage: duplicate.existingItemImage };
+                  } catch (err) {
+                    return item;
+                  }
+                }
+                return item;
+              })
+            );
+            
+            setAnalysisResults(itemsWithDuplicateCheck);
+            setAddedIndices(new Set());
+            setSkippedIndices(new Set());
+            
+            if (response.warning) {
+              setWarningMessage(response.warning);
+            }
+          }
+        }
+        
+        setIsScanning(false);
+      } catch (err) {
+        console.error("[Scanner] Native camera error:", err);
+        hasOpenedNativeCameraRef.current = false;
+      }
+    };
+    
+    // Small delay to ensure UI is ready
+    const timer = setTimeout(openCameraWithPermissions, 100);
+    return () => clearTimeout(timer);
   }, [useNativeFallback, isInitializing, capturedImage, isScanning, nativeCamera, toast, t, user]);
 
   const startCamera = useCallback(async () => {
