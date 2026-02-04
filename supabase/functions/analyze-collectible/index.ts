@@ -273,16 +273,9 @@ NEVER DEFAULT TO HOT WHEELS. If unsure, analyze the characteristics carefully:
 STEP 3 - CAR ANALYSIS:
 For each collectible (max 5), provide full analysis with boundingBox, realCar, collectible, priceIndex, musicSuggestion, musicSelectionReason, realCarPhotos.
 
-STEP 4 - REAL CAR PHOTOS (REQUIRED):
-For the realCarPhotos array, you MUST provide exactly 5 high-quality image URLs of the REAL car (not the toy).
-Search for iconic, beautiful photos that showcase:
-1. A dramatic hero shot of the car
-2. The car in motion or racing context  
-3. A classic/vintage photograph of the model
-4. Interior or detail shot
-5. The car in its natural environment (track, road, show)
-
-Use real, working image URLs from reputable automotive sources. These photos create an immersive experience for collectors.
+STEP 4 - REAL CAR PHOTOS:
+⚠️ IMPORTANT: Do NOT generate realCarPhotos URLs yourself. They will be fetched automatically by a separate service.
+Leave the realCarPhotos array EMPTY or omit it entirely. The system will populate it with real photos from Wikimedia Commons.
 
 ---
 

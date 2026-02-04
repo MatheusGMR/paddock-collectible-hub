@@ -9,6 +9,7 @@ import { useGuidedTips } from "@/contexts/GuidedTipsContext";
 import { useThemeColor } from "@/hooks/useThemeColor";
 import { addToCollection, checkDuplicateInCollection } from "@/lib/database";
 import { uploadCollectionImage, isBase64DataUri } from "@/lib/uploadImage";
+import { enrichResultsWithPhotos } from "@/lib/api/carPhotos";
 import { useNavigate } from "react-router-dom";
 import { CaptureButton } from "@/components/scanner/CaptureButton";
 import { ResultCarousel } from "@/components/scanner/ResultCarousel";
@@ -173,6 +174,45 @@ export const ScannerView = () => {
       }
     };
   }, [videoPreviewUrl]);
+
+  // Enrich analysis results with real car photos from Wikimedia
+  // This runs whenever analysisResults changes and photos are missing
+  useEffect(() => {
+    const enrichPhotos = async () => {
+      if (analysisResults.length === 0) return;
+      
+      // Check if any result is missing photos
+      const needsPhotos = analysisResults.some(
+        (r) => !r.realCarPhotos || r.realCarPhotos.length === 0
+      );
+      
+      if (!needsPhotos) return;
+      
+      console.log("[Scanner] Enriching results with real car photos...");
+      
+      try {
+        const enrichedResults = await enrichResultsWithPhotos(analysisResults);
+        
+        // Only update if we actually got new photos
+        const hasNewPhotos = enrichedResults.some(
+          (r, i) => 
+            r.realCarPhotos && 
+            r.realCarPhotos.length > 0 && 
+            (!analysisResults[i].realCarPhotos || analysisResults[i].realCarPhotos.length === 0)
+        );
+        
+        if (hasNewPhotos) {
+          console.log("[Scanner] Photos enriched, updating results");
+          setAnalysisResults(enrichedResults);
+        }
+      } catch (err) {
+        console.error("[Scanner] Failed to enrich photos:", err);
+      }
+    };
+    
+    enrichPhotos();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [analysisResults.length]); // Only run when results count changes, not on every update
 
   // Make html/body/#root transparent when using native camera preview
   // This is CRITICAL for iOS where the camera renders behind the WebView
