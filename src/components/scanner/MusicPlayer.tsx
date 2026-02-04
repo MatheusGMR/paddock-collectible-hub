@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Music2, Play, Pause, Loader2, ExternalLink, X, AlertCircle, Volume2, VolumeX } from "lucide-react";
+import { Music2, Play, Loader2, X, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -38,7 +38,7 @@ const getYouTubeMusicUrl = (title: string, artist: string) => {
   return `https://music.youtube.com/search?q=${query}`;
 };
 
-type PlayerState = 'idle' | 'loading' | 'playing' | 'error';
+type PlayerState = 'idle' | 'loading' | 'ready' | 'playing' | 'error';
 
 export const MusicPlayer = ({ 
   suggestion, 
@@ -56,6 +56,11 @@ export const MusicPlayer = ({
 
   const { title, artist, year } = parseMusicSuggestion(suggestion);
   const isNative = Capacitor.isNativePlatform();
+  const isIOSWeb =
+    typeof navigator !== 'undefined' && /iPad|iPhone|iPod/i.test(navigator.userAgent);
+  // iOS (Safari/WKWebView) é bem rígido com autoplay: iniciar mídia depois de um fetch async
+  // frequentemente não conta como “gesture” do usuário.
+  const requiresUserGestureToStart = isNative || isIOSWeb;
 
   // Animate equalizer bars when playing
   useEffect(() => {
@@ -97,65 +102,172 @@ export const MusicPlayer = ({
         playsinline: '1',
         rel: '0',
         modestbranding: '1',
-        enablejsapi: '0', // Disable JS API to avoid origin issues
+        enablejsapi: '0', // mantemos desabilitado; iOS tende a exigir “gesture” de qualquer forma
       });
       return `https://www.youtube-nocookie.com/embed/${videoId}?${params.toString()}`;
     }
   }, [isNative]);
 
-  const searchYouTube = useCallback(async () => {
-    setPlayerState('loading');
-    setErrorMessage('');
+  const resolveYouTubeVideo = useCallback(
+    async ({ mode }: { mode: 'preload' | 'user' }) => {
+      // Evita refazer busca se já temos um vídeo resolvido
+      if (youtubeVideoId) return { videoId: youtubeVideoId, thumbnail: videoThumbnail };
 
-    try {
-      console.log('[MusicPlayer] Searching YouTube for:', title, artist);
-      
-      const { data, error } = await supabase.functions.invoke('youtube-search', {
-        body: { title, artist }
+      if (mode === 'user') {
+        setPlayerState('loading');
+        setErrorMessage('');
+      } else {
+        // Preload não deve “quebrar” a UI em caso de falha
+        console.log('[MusicPlayer] Preloading YouTube video for:', title, artist);
+      }
+
+      try {
+        console.log('[MusicPlayer] Searching YouTube for:', title, artist, { mode });
+
+        const { data, error } = await supabase.functions.invoke('youtube-search', {
+          body: { title, artist },
+        });
+
+        if (error) {
+          console.error('[MusicPlayer] YouTube search error:', error, { mode });
+          if (mode === 'user') {
+            setErrorMessage('Não foi possível buscar a música');
+            setPlayerState('error');
+          } else {
+            setPlayerState('idle');
+          }
+          return null;
+        }
+
+        if (data?.videoId) {
+          console.log('[MusicPlayer] Found video:', data.videoId);
+          setYoutubeVideoId(data.videoId);
+          setVideoThumbnail(data.thumbnail || null);
+
+          // Importante: em iOS/native, iniciar autoplay depois de um fetch async costuma ser bloqueado.
+          // Então a gente apenas “prepara” e pede um toque para iniciar.
+          if (mode === 'user') {
+            setPlayerState(requiresUserGestureToStart ? 'ready' : 'playing');
+          } else {
+            setPlayerState('idle');
+          }
+
+          return { videoId: data.videoId as string, thumbnail: (data.thumbnail as string) || null };
+        }
+
+        if (mode === 'user') {
+          setErrorMessage('Música não encontrada no YouTube');
+          setPlayerState('error');
+        } else {
+          setPlayerState('idle');
+        }
+        return null;
+      } catch (err) {
+        console.error('[MusicPlayer] YouTube search failed:', err, { mode });
+        if (mode === 'user') {
+          setErrorMessage('Erro ao buscar música');
+          setPlayerState('error');
+        } else {
+          setPlayerState('idle');
+        }
+        return null;
+      }
+    },
+    [artist, requiresUserGestureToStart, title, videoThumbnail, youtubeVideoId]
+  );
+
+  const startPlayback = useCallback(
+    (videoId: string) => {
+      const src = getPlayerUrl(videoId);
+      console.log('[MusicPlayer] Starting playback', {
+        videoId,
+        isNative,
+        isIOSWeb,
+        requiresUserGestureToStart,
+        src,
       });
 
-      if (error) {
-        console.error('[MusicPlayer] YouTube search error:', error);
-        setErrorMessage('Não foi possível buscar a música');
-        setPlayerState('error');
-        return;
-      }
+      setErrorMessage('');
+      setPlayerState('playing');
 
-      if (data?.videoId) {
-        console.log('[MusicPlayer] Found video:', data.videoId);
-        setYoutubeVideoId(data.videoId);
-        setVideoThumbnail(data.thumbnail || null);
-        setPlayerState('playing');
-      } else {
-        setErrorMessage('Música não encontrada no YouTube');
-        setPlayerState('error');
+      // Define src diretamente (melhora a chance de ser contabilizado como gesto do usuário)
+      if (iframeRef.current) {
+        iframeRef.current.src = src;
       }
-    } catch (err) {
-      console.error('[MusicPlayer] YouTube search failed:', err);
-      setErrorMessage('Erro ao buscar música');
-      setPlayerState('error');
-    }
-  }, [title, artist]);
+    },
+    [getPlayerUrl, isIOSWeb, isNative, requiresUserGestureToStart]
+  );
+
+  // Preload: resolve o vídeo assim que a sugestão aparece, para o clique do usuário ser “só play”
+  useEffect(() => {
+    setPlayerState('idle');
+    setErrorMessage('');
+    setYoutubeVideoId(null);
+    setVideoThumbnail(null);
+
+    if (!suggestion) return;
+    if (!autoPreload) return;
+
+    // não await para não bloquear render
+    resolveYouTubeVideo({ mode: 'preload' });
+  }, [autoPreload, resolveYouTubeVideo, suggestion]);
 
   const handlePlayClick = useCallback(() => {
-    if (playerState === 'idle' || playerState === 'error') {
-      searchYouTube();
-    } else if (playerState === 'playing') {
+    console.log('[MusicPlayer] Play click', {
+      playerState,
+      hasVideoId: Boolean(youtubeVideoId),
+      isNative,
+      isIOSWeb,
+      requiresUserGestureToStart,
+    });
+
+    if (playerState === 'playing') {
       // Stop playback
       if (iframeRef.current) {
         iframeRef.current.src = 'about:blank';
       }
+      setErrorMessage('');
       setPlayerState('idle');
-      setYoutubeVideoId(null);
+      return;
     }
-  }, [playerState, searchYouTube]);
+
+    // Se já resolvemos o vídeo, iniciamos imediatamente pelo gesto do usuário
+    if (youtubeVideoId) {
+      startPlayback(youtubeVideoId);
+      return;
+    }
+
+    // Caso contrário, buscamos (pode exigir um novo toque em iOS/native)
+    void (async () => {
+      const resolved = await resolveYouTubeVideo({ mode: 'user' });
+      if (!resolved?.videoId) return;
+
+      if (requiresUserGestureToStart) {
+        // iOS/native: pede novo toque (ou o preload já terá resolvido antes)
+        console.log('[MusicPlayer] Video resolved; waiting for user gesture to start');
+        setErrorMessage('Pronto! Toque em Play novamente para iniciar o áudio.');
+        setPlayerState('ready');
+        return;
+      }
+
+      startPlayback(resolved.videoId);
+    })();
+  }, [
+    isIOSWeb,
+    isNative,
+    playerState,
+    requiresUserGestureToStart,
+    resolveYouTubeVideo,
+    startPlayback,
+    youtubeVideoId,
+  ]);
 
   const handleClose = useCallback(() => {
     if (iframeRef.current) {
       iframeRef.current.src = 'about:blank';
     }
+    setErrorMessage('');
     setPlayerState('idle');
-    setYoutubeVideoId(null);
   }, []);
 
   const handleSpotifyClick = () => {
@@ -200,7 +312,8 @@ export const MusicPlayer = ({
           <div className="flex-1">
             <p className="text-xs font-semibold text-primary">Trilha Sonora</p>
             <p className="text-[10px] text-muted-foreground">
-              {playerState === 'loading' ? 'Buscando música...' : 
+              {playerState === 'loading' ? 'Buscando música...' :
+               playerState === 'ready' ? 'Pronto para tocar' :
                playerState === 'playing' ? 'Tocando agora' :
                playerState === 'error' ? 'Erro ao carregar' :
                'Toque para ouvir'}
@@ -220,18 +333,20 @@ export const MusicPlayer = ({
 
         {/* YouTube Player iframe - Minimal visible size to enable audio playback on iOS */}
         {/* iOS blocks audio from completely hidden/off-screen iframes */}
-        {playerState === 'playing' && youtubeVideoId && (
+        {youtubeVideoId && (
           <div className="relative w-full h-1 overflow-hidden rounded bg-muted/20 mb-4">
             <iframe
               ref={iframeRef}
-              src={getPlayerUrl(youtubeVideoId)}
-              className="absolute top-0 left-0 w-full h-[200px] opacity-0 pointer-events-none"
+              src={playerState === 'playing' ? getPlayerUrl(youtubeVideoId) : 'about:blank'}
+              className="absolute top-0 left-0 w-full h-[200px] opacity-[0.01] pointer-events-none"
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
               onLoad={handleIframeLoad}
               onError={handleIframeError}
             />
             {/* Visual progress bar effect */}
-            <div className="absolute inset-0 bg-gradient-to-r from-primary/50 via-primary to-primary/50 animate-pulse" />
+            {playerState === 'playing' && (
+              <div className="absolute inset-0 bg-gradient-to-r from-primary/50 via-primary to-primary/50 animate-pulse" />
+            )}
           </div>
         )}
 
@@ -239,6 +354,12 @@ export const MusicPlayer = ({
         {playerState === 'loading' && (
           <div className="mb-4 rounded-lg bg-muted/30 aspect-video flex items-center justify-center animate-fade-in">
             <Loader2 className="h-8 w-8 text-primary animate-spin" />
+          </div>
+        )}
+
+        {playerState === 'ready' && errorMessage && (
+          <div className="mb-4 p-3 rounded-lg bg-primary/5 border border-primary/10 animate-fade-in">
+            <p className="text-sm text-foreground">{errorMessage}</p>
           </div>
         )}
 
@@ -253,7 +374,7 @@ export const MusicPlayer = ({
         )}
 
         {/* Song info and main play button (hidden when playing) */}
-        {(playerState === 'idle' || playerState === 'error') && (
+        {(playerState === 'idle' || playerState === 'error' || playerState === 'ready') && (
           <div className="flex items-center gap-3">
             {/* Album art with play icon */}
             <div 
