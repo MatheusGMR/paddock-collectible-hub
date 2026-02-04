@@ -376,14 +376,12 @@ export const MusicPlayer = ({
         {/* Song info and main play button (hidden when playing) */}
         {(playerState === 'idle' || playerState === 'error' || playerState === 'ready') && (
           <div className="flex items-center gap-3">
-            {/* Album art with play icon */}
+            {/* Album art (thumbnail only, no play icon) */}
             <div 
-              className="relative w-16 h-16 rounded-lg bg-gradient-to-br from-primary/30 to-primary/10 flex items-center justify-center overflow-hidden cursor-pointer"
-              onClick={handlePlayClick}
+              className="relative w-16 h-16 rounded-lg bg-gradient-to-br from-primary/30 to-primary/10 flex items-center justify-center overflow-hidden"
               style={videoThumbnail ? { backgroundImage: `url(${videoThumbnail})`, backgroundSize: 'cover', backgroundPosition: 'center' } : {}}
             >
-              <div className="absolute inset-0 bg-black/30" />
-              <Play className="h-7 w-7 text-white relative z-10 ml-0.5" />
+              {!videoThumbnail && <Music2 className="h-6 w-6 text-primary/60" />}
             </div>
 
             {/* Song details */}
