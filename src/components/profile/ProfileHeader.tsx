@@ -1,13 +1,17 @@
 import { useState } from "react";
-import { Settings, Search, QrCode } from "lucide-react";
+import { Settings, Search, QrCode, UserPen, LogOut } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { UserSearchSheet } from "@/components/social/UserSearchSheet";
 import { QRCodeSheet } from "@/components/social/QRCodeSheet";
 import { QRScannerSheet } from "@/components/social/QRScannerSheet";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import paddockWordmark from "@/assets/paddock-wordmark-new.png";
-
 interface ProfileHeaderProps {
   user: {
     username: string;
@@ -58,13 +62,26 @@ export const ProfileHeader = ({ user, onEditProfile, onSettings }: ProfileHeader
             >
               <QrCode className="h-5 w-5" />
             </button>
-            <button 
-              onClick={onSettings}
-              className="p-2 rounded-lg bg-blue-subtle text-foreground-secondary hover:text-primary hover:bg-primary/20 transition-colors"
-              title="Configurações"
-            >
-              <Settings className="h-5 w-5" />
-            </button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button 
+                  className="p-2 rounded-lg bg-blue-subtle text-foreground-secondary hover:text-primary hover:bg-primary/20 transition-colors"
+                  title="Configurações"
+                >
+                  <Settings className="h-5 w-5" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuItem onClick={onEditProfile} className="gap-2">
+                  <UserPen className="h-4 w-4" />
+                  {t.profile.editProfile}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={onSettings} className="gap-2">
+                  <Settings className="h-4 w-4" />
+                  {t.profile.settings || "Configurações"}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </header>
@@ -109,14 +126,6 @@ export const ProfileHeader = ({ user, onEditProfile, onSettings }: ProfileHeader
             )}
           </div>
 
-          {/* Edit Profile Button - with subtle blue shadow */}
-          <Button 
-            variant="outline" 
-            onClick={onEditProfile}
-            className="w-full mt-4 border-primary/30 bg-background text-foreground hover:bg-primary/20 hover:border-primary/50 shadow-[0_0_12px_rgba(59,130,246,0.15)]"
-          >
-            {t.profile.editProfile}
-          </Button>
         </div>
       </div>
 
