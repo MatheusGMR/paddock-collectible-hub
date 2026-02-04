@@ -1904,6 +1904,7 @@ export const ScannerView = () => {
       {hasResults ? (
         <ResultCarousel
           results={analysisResults}
+          originalImage={capturedImage || undefined}
           onAddToCollection={handleAddToCollection}
           onSkip={handleSkipItem}
           onComplete={handleComplete}

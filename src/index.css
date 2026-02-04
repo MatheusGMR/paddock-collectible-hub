@@ -233,4 +233,18 @@
     padding-right: constant(safe-area-inset-right, 0px);
     padding-right: env(safe-area-inset-right, 0px);
   }
+  
+  /* Bounding box highlight animation for scanner results */
+  @keyframes pulse-subtle {
+    0%, 100% { 
+      box-shadow: 0 0 0 0 hsl(var(--primary) / 0.4);
+    }
+    50% { 
+      box-shadow: 0 0 20px 4px hsl(var(--primary) / 0.3);
+    }
+  }
+  
+  .animate-pulse-subtle {
+    animation: pulse-subtle 2s ease-in-out infinite;
+  }
 }

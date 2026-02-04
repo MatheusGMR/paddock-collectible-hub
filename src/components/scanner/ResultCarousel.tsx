@@ -43,6 +43,7 @@ interface AnalysisResult {
 
 interface ResultCarouselProps {
   results: AnalysisResult[];
+  originalImage?: string;
   onAddToCollection: (index: number) => Promise<void>;
   onSkip: (index: number) => void;
   onComplete: () => void;
@@ -51,6 +52,96 @@ interface ResultCarouselProps {
   skippedIndices: Set<number>;
   warning?: string;
 }
+
+// Component to show original image with highlighted bounding box
+interface HighlightedImageProps {
+  originalImage: string;
+  croppedImage?: string;
+  boundingBox?: BoundingBox;
+  carName: string;
+  carYear: string;
+}
+
+const HighlightedImage = ({ originalImage, croppedImage, boundingBox, carName, carYear }: HighlightedImageProps) => {
+  // If no bounding box available, show cropped image or original without highlight
+  if (!boundingBox) {
+    return (
+      <div className="relative w-full aspect-[4/3] rounded-2xl overflow-hidden bg-gradient-to-b from-muted to-muted/50">
+        <img
+          src={croppedImage || originalImage}
+          alt={carName}
+          className="w-full h-full object-contain"
+        />
+        {/* Car badge */}
+        <div className="absolute top-3 left-3 flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/60 backdrop-blur-sm">
+          <Car className="h-3.5 w-3.5 text-primary" />
+          <span className="text-xs font-medium text-white">{carYear}</span>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative w-full aspect-[4/3] rounded-2xl overflow-hidden bg-black">
+      {/* Full original image */}
+      <img
+        src={originalImage}
+        alt="Captura original"
+        className="w-full h-full object-cover"
+      />
+      
+      {/* Dark overlay with cutout for the highlighted car */}
+      <div 
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          background: `linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6))`
+        }}
+      />
+      
+      {/* Clear window for the car (no darkening) */}
+      <div 
+        className="absolute overflow-hidden"
+        style={{
+          left: `${boundingBox.x}%`,
+          top: `${boundingBox.y}%`,
+          width: `${boundingBox.width}%`,
+          height: `${boundingBox.height}%`,
+        }}
+      >
+        <img
+          src={originalImage}
+          alt={carName}
+          className="absolute object-cover"
+          style={{
+            left: `-${(boundingBox.x / boundingBox.width) * 100}%`,
+            top: `-${(boundingBox.y / boundingBox.height) * 100}%`,
+            width: `${100 / boundingBox.width * 100}%`,
+            height: `${100 / boundingBox.height * 100}%`,
+          }}
+        />
+      </div>
+      
+      {/* Animated border around the car */}
+      <div 
+        className="absolute border-2 border-primary rounded-xl animate-pulse-subtle"
+        style={{
+          left: `${boundingBox.x}%`,
+          top: `${boundingBox.y}%`,
+          width: `${boundingBox.width}%`,
+          height: `${boundingBox.height}%`,
+          boxShadow: '0 0 15px 2px hsl(var(--primary) / 0.4)',
+        }}
+      />
+      
+      {/* Badge with car name at bottom */}
+      <div className="absolute bottom-3 left-1/2 -translate-x-1/2">
+        <div className="px-4 py-1.5 rounded-full bg-primary text-primary-foreground text-xs font-semibold whitespace-nowrap shadow-lg">
+          {carName} • {carYear}
+        </div>
+      </div>
+    </div>
+  );
+};
 
 // Collapsible section component - same pattern as profile
 interface CollapsibleSectionProps {
@@ -96,6 +187,7 @@ const DetailRow = ({ label, value }: { label: string; value: string | null | und
 
 export const ResultCarousel = ({
   results,
+  originalImage,
   onAddToCollection,
   onSkip,
   onComplete,
@@ -260,25 +352,14 @@ export const ResultCarousel = ({
                 )}
               >
                 <div className="space-y-4 max-h-[65vh] overflow-y-auto pb-2">
-                  {/* Hero image with gradient overlay - always show car image */}
-                  <div className="relative w-full aspect-[4/3] rounded-2xl overflow-hidden bg-gradient-to-b from-muted to-muted/50">
-                    {result.croppedImage ? (
-                      <img
-                        src={result.croppedImage}
-                        alt={`${result.realCar.brand} ${result.realCar.model}`}
-                        className="w-full h-full object-contain"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center">
-                        <Car className="h-16 w-16 text-muted-foreground/50" />
-                      </div>
-                    )}
-                    {/* Car badge */}
-                    <div className="absolute top-3 left-3 flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/60 backdrop-blur-sm">
-                      <Car className="h-3.5 w-3.5 text-primary" />
-                      <span className="text-xs font-medium text-white">{result.realCar.year}</span>
-                    </div>
-                  </div>
+                  {/* Hero image with highlighted bounding box for context */}
+                  <HighlightedImage
+                    originalImage={originalImage || result.croppedImage || ""}
+                    croppedImage={result.croppedImage}
+                    boundingBox={result.boundingBox}
+                    carName={`${result.realCar.brand} ${result.realCar.model}`}
+                    carYear={result.realCar.year}
+                  />
 
                   {/* Car title */}
                   <div className="text-center space-y-1">
