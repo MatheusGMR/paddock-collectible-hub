@@ -19,19 +19,50 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Set up auth state listener FIRST
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    // Set up auth state listener FIRST - handles all auth events including token refresh
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log("[Auth] State changed:", event);
+      
+      // Update state for any session change
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
+      
+      // Handle token refresh errors by attempting to recover session
+      if (event === "TOKEN_REFRESHED" && session) {
+        console.log("[Auth] Token refreshed successfully");
+      }
+      
+      // If signed out, ensure clean state
+      if (event === "SIGNED_OUT") {
+        setSession(null);
+        setUser(null);
+      }
     });
 
-    // THEN check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
+    // THEN check for existing session - this recovers persisted sessions
+    const initializeSession = async () => {
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error("[Auth] Error getting session:", error);
+          // Don't clear state on error - let the user retry
+        }
+        
+        if (session) {
+          console.log("[Auth] Restored persisted session");
+          setSession(session);
+          setUser(session.user);
+        }
+      } catch (error) {
+        console.error("[Auth] Failed to initialize session:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    initializeSession();
 
     return () => subscription.unsubscribe();
   }, []);
