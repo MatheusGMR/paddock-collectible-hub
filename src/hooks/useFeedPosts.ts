@@ -5,7 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 export interface FeedPost {
   id: string;
   user: {
-    id: string;
+    id?: string;
     username: string;
     avatar: string;
   };
@@ -30,6 +30,10 @@ export interface FeedPost {
   } | null;
   isFromFollowing?: boolean;
   isCuriosity?: boolean;
+  originalOwner?: {
+    id: string;
+    username: string;
+  };
 }
 
 const PAGE_SIZE = 10;
