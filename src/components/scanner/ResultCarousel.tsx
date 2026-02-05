@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { Check, Plus, RotateCcw, ChevronLeft, ChevronRight, Loader2, CheckCircle2, SkipForward, AlertTriangle, Car, Package, History, ChevronDown, ChevronUp, Minus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
 import { MusicPlayer } from "./MusicPlayer";
 import { RealCarGallery } from "./RealCarGallery";
 import { ScanFeedback } from "./ScanFeedback";
-import { motion, AnimatePresence } from "framer-motion";
+import { Drawer, DrawerContent } from "@/components/ui/drawer";
 
 import { BoundingBox } from "@/lib/imageCrop";
 
@@ -164,8 +164,6 @@ export const ResultCarousel = ({
   onComplete,
   onScanAgain,
   addedIndices,
-  skippedIndices,
-  warning,
 }: ResultCarouselProps) => {
   const { t } = useLanguage();
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -173,7 +171,7 @@ export const ResultCarousel = ({
   const [justAddedIndex, setJustAddedIndex] = useState<number | null>(null);
   const [breakdownOpen, setBreakdownOpen] = useState(false);
   const [breakdownResult, setBreakdownResult] = useState<AnalysisResult | null>(null);
-  const [isExpanded, setIsExpanded] = useState(true);
+  const [snapPoint, setSnapPoint] = useState<string | number>("85%");
 
   // Get remaining items (not added)
   const remainingResults = results.filter((_, idx) => !addedIndices.has(idx));
@@ -228,11 +226,7 @@ export const ResultCarousel = ({
   // All items processed - show completion screen
   if (allProcessed) {
     return (
-      <motion.div 
-        initial={{ y: 100, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        className="absolute bottom-0 left-0 right-0 bg-card rounded-t-3xl p-6 safe-bottom z-20 shadow-[0_-8px_30px_rgba(0,0,0,0.3)]"
-      >
+      <div className="bg-card rounded-t-3xl p-6 safe-bottom animate-slide-up-card relative z-10 -mt-6 shadow-[0_-8px_30px_rgba(0,0,0,0.3)]">
         <div className="flex flex-col items-center gap-4 py-6">
           <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center">
             <CheckCircle2 className="h-8 w-8 text-primary" />
@@ -262,7 +256,7 @@ export const ResultCarousel = ({
             </Button>
           </div>
         </div>
-      </motion.div>
+      </div>
     );
   }
 
@@ -273,17 +267,18 @@ export const ResultCarousel = ({
   const { result, originalIndex } = currentItem;
 
   return (
-    <motion.div
-      initial={{ y: "100%" }}
-      animate={{ y: isExpanded ? 0 : "calc(100% - 120px)" }}
-      transition={{ type: "spring", damping: 25, stiffness: 300 }}
-      className="absolute bottom-0 left-0 right-0 bg-card rounded-t-[28px] z-20 shadow-[0_-8px_30px_rgba(0,0,0,0.3)] overflow-hidden"
-      style={{ maxHeight: "92vh" }}
+    <Drawer 
+      open={true}
+      snapPoints={["15%", "85%"]}
+      activeSnapPoint={snapPoint}
+      setActiveSnapPoint={setSnapPoint}
+      modal={false}
+      dismissible={false}
     >
+      <DrawerContent className="h-[92vh] rounded-t-[28px] bg-card border-0 overflow-hidden pb-safe">
         {/* Drag handle with car title */}
         <div 
-          className="sticky top-0 z-20 bg-card pt-3 pb-2 cursor-pointer"
-          onClick={() => setIsExpanded(!isExpanded)}
+          className="sticky top-0 z-20 bg-card pt-3 pb-2 cursor-grab active:cursor-grabbing"
         >
           {/* Visual drag indicator */}
           <div className="mx-auto w-12 h-1.5 rounded-full bg-muted-foreground/30 mb-3" />
@@ -304,15 +299,8 @@ export const ResultCarousel = ({
           )}
         </div>
 
-      {/* Single item view - vertical scroll only */}
-      <AnimatePresence>
-        {isExpanded && (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="relative overflow-hidden overflow-x-hidden"
-          >
+      {/* Single item view - vertical scroll only, no horizontal scroll */}
+      <div className="relative overflow-hidden overflow-x-hidden">
         {/* Navigation arrows for multiple items */}
         {remainingResults.length > 1 && (
           <>
@@ -538,9 +526,8 @@ export const ResultCarousel = ({
         
         {/* Bottom safe area fill */}
         <div className="bg-card pb-safe" />
-          </motion.div>
-        )}
-      </AnimatePresence>
+      </div>
+      </DrawerContent>
 
       {/* Breakdown sheet */}
       {breakdownResult?.priceIndex && (
@@ -552,6 +539,6 @@ export const ResultCarousel = ({
           breakdown={breakdownResult.priceIndex.breakdown}
         />
       )}
-    </motion.div>
+    </Drawer>
   );
 };

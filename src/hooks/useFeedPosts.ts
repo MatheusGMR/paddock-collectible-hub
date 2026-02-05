@@ -251,16 +251,7 @@ export const useFeedPosts = () => {
       }
     } catch (err) {
       console.error("Error fetching posts:", err);
-      // Detect network-specific errors for better UX
-      const isNetworkError = err instanceof Error && 
-        (err.message?.includes("Load failed") || 
-         err.message?.includes("Failed to fetch") ||
-         err.message?.includes("NetworkError"));
-      
-      setError(isNetworkError 
-        ? "Verifique sua conexão com a internet" 
-        : "Erro ao carregar posts"
-      );
+      setError("Erro ao carregar posts");
     } finally {
       setLoading(false);
       setLoadingMore(false);

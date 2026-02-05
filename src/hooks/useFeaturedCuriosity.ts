@@ -122,16 +122,7 @@ export const useFeaturedCuriosity = () => {
       });
     } catch (err) {
       console.error("Error fetching featured curiosity:", err);
-      // Detect network-specific errors for better UX
-      const isNetworkError = err instanceof Error && 
-        (err.message?.includes("Load failed") || 
-         err.message?.includes("Failed to fetch") ||
-         err.message?.includes("NetworkError"));
-      
-      setError(isNetworkError 
-        ? "Verifique sua conexão" 
-        : "Erro ao carregar curiosidade"
-      );
+      setError("Erro ao carregar curiosidade");
       setCuriosity(null);
     } finally {
       setLoading(false);
