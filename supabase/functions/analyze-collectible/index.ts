@@ -157,20 +157,28 @@ COUNTING CARS - EXTREMELY IMPORTANT:
 - Parts of the same car visible (wheels, hood, side) = still 1 car total
 - Reflections or shadows of a car do NOT count as additional cars
 - A car and its packaging/blister = 1 car
-- ONLY set "too_many_cars" if you can clearly see MORE THAN 5 SEPARATE PHYSICAL CAR OBJECTS
+- ONLY set "too_many_cars" if you can clearly see MORE THAN 7 SEPARATE PHYSICAL CAR OBJECTS
 
 REJECTION CRITERIA (apply ONLY when truly necessary):
-1. "too_many_cars": ONLY if there are MORE than 5 COMPLETELY SEPARATE miniature cars
+1. "too_many_cars": ONLY if there are MORE than 7 COMPLETELY SEPARATE miniature cars
    - If there's 1 car with visible reflections = 1 car, NOT multiple
    - If there's 1 car with parts visible at edges = 1 car, NOT multiple
 2. "poor_lighting": ONLY if you literally cannot see ANY details
 3. "too_far" or "too_close": ONLY if you cannot identify the car at all
 4. "blurry": ONLY if details are completely unreadable
 
-DEFAULT BEHAVIOR: If you can see 1-5 cars reasonably well, set imageQuality.isValid = true and PROCEED.
+DEFAULT BEHAVIOR: If you can see 1-7 cars reasonably well, set imageQuality.isValid = true and PROCEED.
 When in doubt, ACCEPT and ANALYZE. False rejection is worse than attempting analysis.
 
 STEP 2 - MANUFACTURER IDENTIFICATION (CRITICAL - BE EXTREMELY PRECISE):
+
+🚨 ANÁLISE INDIVIDUAL OBRIGATÓRIA (CRÍTICO) 🚨:
+- Trate CADA carro como análise COMPLETAMENTE INDEPENDENTE
+- NUNCA assuma que todos os carros são do mesmo fabricante
+- Examine a BASE de CADA carro individualmente para identificar o fabricante
+- Diferentes fabricantes podem estar na mesma foto (Hot Wheels + Matchbox + Greenlight)
+- Se não conseguir ver a base de um carro específico, analise proporções e estilo individualmente
+- Se houver 3 carros na foto, forneça 3 análises SEPARADAS com fabricantes potencialmente DIFERENTES
 
 This is the MOST IMPORTANT step. Look for these VISUAL CUES to identify the manufacturer:
 
@@ -271,7 +279,8 @@ NEVER DEFAULT TO HOT WHEELS. If unsure, analyze the characteristics carefully:
 - M2/Auto World = premium muscle cars, opening features
 
 STEP 3 - CAR ANALYSIS:
-For each collectible (max 5), provide full analysis with boundingBox, realCar, collectible, priceIndex, musicSuggestion, musicSelectionReason, realCarPhotos.
+For each collectible (max 7), provide full analysis with boundingBox, realCar, collectible, priceIndex, musicSuggestion, musicSelectionReason, realCarPhotos.
+Remember: Each car gets its OWN independent analysis - do NOT copy manufacturer from one car to another!
 
 STEP 4 - REAL CAR PHOTOS:
 ⚠️ IMPORTANT: Do NOT generate realCarPhotos URLs yourself. They will be fetched automatically by a separate service.

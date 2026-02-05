@@ -290,3 +290,67 @@ export const useAdminAIUsage = (daysBack: number = 30) => {
 
   return { stats, isLoading, refetch: fetchStats };
 };
+
+// Scanner Performance Stats types
+export interface ScannerPerformanceStats {
+  total_scans: number;
+  successful_scans: number;
+  failed_scans: number;
+  success_rate: number;
+  errors_by_type: Array<{
+    error_type: string;
+    count: number;
+    percentage: number;
+  }>;
+  recent_errors: Array<{
+    id: string;
+    created_at: string;
+    user_id: string;
+    username: string;
+    error_type: string;
+    error_message: string;
+    function_name: string;
+  }>;
+  daily_stats: Array<{
+    date: string;
+    total: number;
+    success: number;
+    failed: number;
+  }>;
+  accuracy_feedback: {
+    total: number;
+    positive: number;
+    negative: number;
+    by_field: Array<{
+      field: string;
+      reports: number;
+    }>;
+  };
+}
+
+export const useAdminScannerPerformance = (daysBack: number = 7) => {
+  const [stats, setStats] = useState<ScannerPerformanceStats | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const fetchStats = async () => {
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase.rpc("get_admin_scanner_performance", {
+        days_back: daysBack
+      });
+      
+      if (error) throw error;
+      setStats(data as unknown as ScannerPerformanceStats);
+    } catch (err) {
+      console.error("Error fetching scanner performance:", err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchStats();
+  }, [daysBack]);
+
+  return { stats, isLoading, refetch: fetchStats };
+};

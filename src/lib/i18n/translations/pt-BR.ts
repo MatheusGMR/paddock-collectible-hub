@@ -125,7 +125,7 @@ export const ptBR = {
     addingProgress: "de",
     allItemsProcessed: "Todos processados!",
     itemsAdded: "itens adicionados",
-    maxCarsWarning: "Muitos carros na foto. Exibindo os 5 mais visíveis.",
+    maxCarsWarning: "Muitos carros na foto. Exibindo os 7 mais visíveis.",
     viewCollection: "Ver Coleção",
     // Image quality errors
     imageQualityError: "Ops! Temos um problema",
@@ -140,7 +140,7 @@ export const ptBR = {
     tipClearView: "Sem obstruções na frente",
     issueTypes: {
       too_many_cars: "Muitos carrinhos na foto!",
-      too_many_cars_desc: "Detectamos {{count}} carros, mas o máximo é 5.",
+      too_many_cars_desc: "Detectamos {{count}} carros, mas o máximo é 7.",
       too_many_cars_tip: "Fotografe grupos menores para melhor precisão.",
       poor_lighting: "Iluminação inadequada",
       poor_lighting_desc: "A foto está muito escura ou muito clara.",
