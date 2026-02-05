@@ -43,9 +43,19 @@ serve(async (req) => {
 
     if (data.error) {
       console.error('YouTube API error:', data.error);
+      
+      // Check for quota exceeded error
+      const isQuotaExceeded = data.error.errors?.some(
+        (e: { reason?: string }) => e.reason === 'quotaExceeded'
+      );
+      
       return new Response(
-        JSON.stringify({ error: 'YouTube search failed', details: data.error.message }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ 
+          error: isQuotaExceeded ? 'quota_exceeded' : 'YouTube search failed', 
+          details: data.error.message,
+          isQuotaExceeded
+        }),
+        { status: isQuotaExceeded ? 429 : 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
