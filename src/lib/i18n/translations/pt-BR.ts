@@ -445,9 +445,7 @@ export const ptBR = {
       all: "Todos",
       collectibles: "Colecionáveis",
       motorsport: "Automobilismo",
-      aeromodeling: "Aeromodelismo",
       cars: "Carros",
-      planes: "Aviões",
     },
     subcategories: {
       f1: "Fórmula 1",
@@ -458,8 +456,6 @@ export const ptBR = {
       tomica: "Tomica",
       matchbox: "Matchbox",
       diecast: "Diecast",
-      drones: "Drones",
-      rc_planes: "Aeromodelos RC",
     },
     preferences: {
       title: "Configurar Feed",

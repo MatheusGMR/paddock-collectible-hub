@@ -29,17 +29,13 @@ interface NewsPreferencesModalProps {
 const CATEGORIES = [
   { code: "collectibles", icon: "🎮" },
   { code: "motorsport", icon: "🏎️" },
-  { code: "aeromodeling", icon: "✈️" },
   { code: "cars", icon: "🚗" },
-  { code: "planes", icon: "🛩️" },
 ];
 
 const SUBCATEGORIES: Record<string, string[]> = {
   collectibles: ["hot_wheels", "tomica", "matchbox", "diecast"],
   motorsport: ["f1", "nascar", "rally", "lemans"],
-  aeromodeling: ["drones", "rc_planes"],
   cars: [],
-  planes: [],
 };
 
 export const NewsPreferencesModal = ({

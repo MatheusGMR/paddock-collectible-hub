@@ -447,9 +447,7 @@ export const en: Translations = {
       all: "All",
       collectibles: "Collectibles",
       motorsport: "Motorsport",
-      aeromodeling: "RC/Aeromodeling",
       cars: "Cars",
-      planes: "Planes",
     },
     subcategories: {
       f1: "Formula 1",
@@ -460,8 +458,6 @@ export const en: Translations = {
       tomica: "Tomica",
       matchbox: "Matchbox",
       diecast: "Diecast",
-      drones: "Drones",
-      rc_planes: "RC Planes",
     },
     preferences: {
       title: "Configure Feed",
