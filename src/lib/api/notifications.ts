@@ -60,7 +60,7 @@ export async function getNotifications(limit = 50): Promise<Notification[]> {
   }));
 }
 
-// Create a notification
+// Create a notification with push
 export async function createNotification(params: {
   userId: string;
   type: Notification["type"];
@@ -85,6 +85,88 @@ export async function createNotification(params: {
 
   if (error) {
     console.error("Error creating notification:", error);
+    return;
+  }
+
+  // Send push notification
+  try {
+    // Get actor username
+    const { data: actorProfile } = await supabase
+      .from("profiles")
+      .select("username")
+      .eq("user_id", actorId)
+      .single();
+
+    const actorName = actorProfile?.username || "Alguém";
+    let pushTitle = "Paddock";
+    let pushBody = "Nova interação!";
+    let carName: string | null = null;
+
+    // For likes, try to get the car name from the post's collection item
+    if (params.type === "like" && params.postId) {
+      const { data: post } = await supabase
+        .from("posts")
+        .select("collection_item_id")
+        .eq("id", params.postId)
+        .single();
+
+      if (post?.collection_item_id) {
+        const { data: collectionItem } = await supabase
+          .from("user_collection")
+          .select("item_id")
+          .eq("id", post.collection_item_id)
+          .single();
+
+        if (collectionItem?.item_id) {
+          const { data: item } = await supabase
+            .from("items")
+            .select("real_car_brand, real_car_model")
+            .eq("id", collectionItem.item_id)
+            .single();
+
+          if (item) {
+            carName = `${item.real_car_brand} ${item.real_car_model}`;
+          }
+        }
+      }
+    }
+
+    // Set push content based on type
+    switch (params.type) {
+      case "like":
+        if (carName) {
+          pushTitle = `${carName} recebeu uma curtida ❤️`;
+          pushBody = `${actorName} curtiu seu ${carName}`;
+        } else {
+          pushTitle = "Nova curtida ❤️";
+          pushBody = `${actorName} curtiu sua publicação`;
+        }
+        break;
+      case "comment":
+        pushTitle = "Novo comentário 💬";
+        pushBody = `${actorName} comentou na sua publicação`;
+        break;
+      case "follow":
+        pushTitle = "Novo seguidor 👤";
+        pushBody = `${actorName} começou a seguir você`;
+        break;
+      case "mention":
+        pushTitle = "Você foi mencionado 📣";
+        pushBody = `${actorName} mencionou você em uma publicação`;
+        break;
+    }
+
+    await supabase.functions.invoke("send-push", {
+      body: {
+        userId: params.userId,
+        title: pushTitle,
+        body: pushBody,
+        url: "/notifications",
+      },
+    });
+  } catch (pushError) {
+    console.error("Error sending push notification:", pushError);
+    // Don't fail the notification creation if push fails
   }
 }
 
