@@ -1,77 +1,93 @@
 
-## Objetivo
-Fazer o preview da câmera do plugin `@capacitor-community/camera-preview` aparecer no iOS (em vez de ficar um fundo preto), mantendo a UI do scanner por cima.
+# Plano: Corrigir Card de Resultados do Scanner (iOS)
 
-## Diagnóstico (por que ainda fica preto mesmo com “camera-preview started”)
-No iOS, o plugin realmente está iniciando (e você consegue capturar foto, então a sessão de câmera está funcionando). O que está acontecendo é:
+## Diagnóstico do Problema
 
-- O plugin renderiza a câmera **atrás da WebView** (`toBack: true`).
-- Mesmo que a WebView esteja transparente no nível nativo, o **HTML ainda está “pintando” um fundo escuro** (principalmente o `body`, que no seu `src/index.css` sempre aplica `bg-background`).
-- Resultado: você vê a UI (porque está no HTML), mas o “fundo” continua sendo o background do `body` (preto/escuro), e não a câmera.
+O card de resultados não está aparecendo no iOS após a análise do scanner. O usuário vê apenas:
+- A foto capturada (embaçada)
+- O botão X no canto superior direito
+- **Nenhum card de resultados**
 
-Importante: hoje vocês só deixam transparente o container do scanner (`native-camera-mode`), mas **o `body` continua opaco**, então ele ainda cobre a câmera.
-
-## Abordagem de correção (frontend, robusta)
-Vamos tornar o `html/body/#root` transparentes **somente enquanto o `useCameraPreview` estiver ativo**, e restaurar assim que sair do scanner ou quando o preview parar.
-
-### Mudanças propostas
-
-#### 1) `src/components/scanner/ScannerView.tsx`
-Adicionar um `useEffect` que, quando `useCameraPreview === true`:
-
-- Guarda os valores atuais do inline-style de `background-color` de:
-  - `document.documentElement` (html)
-  - `document.body`
-  - `#root`
-- Aplica:
-  - `background-color: transparent !important` (via `style.setProperty(..., 'important')`)
-- No cleanup (quando `useCameraPreview` virar false ou unmount), restaura os valores anteriores (ou remove a propriedade se não existia).
-
-Isso resolve o caso clássico “UI aparece, fundo preto, mas a câmera está atrás”.
-
-##### Observação importante sobre CSS atual
-Hoje existe isto em `src/index.css`:
-```css
-.native-camera-mode * {
-  background-color: transparent !important;
-}
+### Causa Raiz
+O componente `ResultCarousel` atualmente usa `DrawerPrimitive` do vaul com a configuração:
+```tsx
+<DrawerPrimitive.Root 
+  open={true}
+  snapPoints={["15%", "85%"]}
+  modal={false}
+  dismissible={false}
+  fixed={true}
+>
 ```
-Não vamos depender disso para resolver o problema do `body` (porque `body` não é filho do container). E, como esse seletor é agressivo, o ideal é **não precisar** adicionar `native-camera-mode` no `body` (para não “quebrar” fundos de cards/botões). A proposta acima (inline style só no `body/html/root`) evita esse efeito colateral.
 
-#### 2) (Opcional, mas recomendado) Log de verificação
-Adicionar logs temporários quando `useCameraPreview` ativar:
-- `getComputedStyle(document.body).backgroundColor`
-- `getComputedStyle(document.documentElement).backgroundColor`
-Antes e depois de setar transparent, para confirmar que a mudança está efetiva no device.
+Esta combinação de `modal={false}` + snap points tem **problemas conhecidos no iOS** (GitHub issue #349). O drawer não renderiza corretamente sem um Trigger explícito, especialmente em WebViews nativas.
 
-#### 3) (Opcional) Simplificar options do `CameraPreview.start` no iOS
-Hoje vocês passam `width/height/x/y`. No iOS o plugin já usa fullscreen por padrão quando não recebe isso.
-Podemos simplificar para reduzir variáveis:
-- Remover `width`, `height`, `x`, `y` (deixar o plugin usar `UIScreen.main.bounds`)
-- Manter `toBack: true`, `position`, `enableZoom`, `disableAudio`, `enableHighResolution`
+## Solução Proposta
 
-Isso não é o principal (o principal é o `body`), mas ajuda a reduzir chance de frame incorreto.
+Abandonar o uso do Drawer do vaul para o contexto do scanner e implementar um **card fixo com animação CSS simples**, que é mais confiável em todas as plataformas.
 
-## Como vamos testar (checklist bem objetivo)
-1) No iPhone físico, abrir `/scanner`.
-2) Confirmar:
-   - UI do scanner aparece (botões).
-   - Agora dá para ver o feed da câmera atrás da UI (não apenas preto).
-3) Tirar foto:
-   - O flash/efeitos funcionam
-   - A captura continua funcionando como antes
-4) Navegar para outra tela (ex: Home/Perfil):
-   - Confirmar que o fundo normal (tema escuro) voltou (ou seja, não “vazou” transparência para o app inteiro).
-5) Voltar para o scanner:
-   - Transparência reaplica corretamente.
+### Mudanças Técnicas
 
-## Riscos / Edge cases
-- Se algum elemento do scanner tiver um `bg-black` fullscreen proposital, ele continuará cobrindo a câmera. Porém no seu código atual, quando `useCameraPreview` é true, o container principal usa `bg-transparent`, então o esperado é a câmera aparecer.
-- O warning do `UIScene lifecycle...` não é a causa do preview preto; é um aviso de ciclo de vida do app (podemos tratar depois, mas não bloqueia esse bug).
+**Arquivo: `src/components/scanner/ResultCarousel.tsx`**
 
-## Arquivos que serão alterados
-- `src/components/scanner/ScannerView.tsx` (principal)
-- `src/hooks/useNativeCameraPreview.ts` (opcional – simplificar options no iOS)
+1. **Remover** a dependência do `DrawerPrimitive` do vaul
+2. **Substituir** por um `<div>` com posicionamento fixo e animações CSS
+3. **Manter** a funcionalidade de snap points através de um state simples (`expanded` / `collapsed`)
+4. **Implementar** gesture de arrastar via touch events nativos (simples)
 
-## Critério de sucesso
-- Em dispositivo físico iOS, ao entrar no scanner, a câmera aparece atrás da UI sem tela preta, e ao sair do scanner o app volta ao tema normal sem efeitos colaterais.
+### Estrutura do Novo Card
+
+```text
+┌─────────────────────────────────────────┐
+│  ═══════  (drag handle)                 │  ← Touch area para arrastar
+│  Ferrari 250 GTO                        │  ← Título sempre visível
+│  Hot Wheels • 1:64 • 1962               │
+├─────────────────────────────────────────┤
+│  [Conteúdo rolável quando expandido]    │  ← max-height: 65vh ou 15vh
+│  - Imagem destacada                     │
+│  - Índice de preço                      │
+│  - Dados colapsáveis                    │
+│  - Botões de ação                       │
+└─────────────────────────────────────────┘
+```
+
+### Lógica de Snap Points (CSS/State)
+
+```tsx
+// State simples para controlar expansão
+const [isExpanded, setIsExpanded] = useState(true);
+
+// Classes CSS baseadas no estado
+className={cn(
+  "fixed inset-x-0 bottom-0 z-50 bg-card rounded-t-[28px] transition-all duration-300",
+  isExpanded ? "max-h-[85vh]" : "max-h-[15vh]"
+)}
+```
+
+### Gesture de Arrastar (Simplificado)
+
+```tsx
+// Detectar direção do swipe no drag handle
+const handleDragEnd = (e: TouchEvent) => {
+  const deltaY = e.changedTouches[0].clientY - startY;
+  if (deltaY > 50) setIsExpanded(false);  // Swipe down = minimizar
+  if (deltaY < -50) setIsExpanded(true);  // Swipe up = expandir
+};
+```
+
+## Benefícios
+
+1. **Compatibilidade iOS garantida** - Sem dependência de bibliotecas com bugs conhecidos
+2. **Performance melhor** - CSS transitions nativas vs JavaScript animations
+3. **Código mais simples** - Menos dependências, mais fácil de manter
+4. **Comportamento previsível** - Funciona igual em web e nativo
+
+## Arquivos a Modificar
+
+| Arquivo | Ação |
+|---------|------|
+| `src/components/scanner/ResultCarousel.tsx` | Refatorar completamente para usar div fixo com CSS |
+
+## Cronograma Estimado
+
+Esta é uma refatoração focada em um único componente. A lógica interna (navegação entre carros, adicionar à coleção, etc.) permanece inalterada - apenas a "casca" do drawer muda.
