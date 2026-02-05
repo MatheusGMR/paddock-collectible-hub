@@ -64,12 +64,12 @@ const Index = () => {
     return {
       id: `curiosity-${curiosity.id}`,
       user: {
-        id: curiosity.owner.id,
+        id: undefined, // No direct profile link for "Coleções de Destaque"
         username: "Coleções de Destaque",
         avatar: "https://api.dicebear.com/7.x/shapes/svg?seed=destaque&backgroundColor=f59e0b",
       },
       image: curiosity.imageUrl,
-      caption: curiosity.historicalFact || `${curiosity.carBrand} ${curiosity.carModel}${curiosity.carYear ? ` (${curiosity.carYear})` : ""}`,
+      caption: `Da coleção de @${curiosity.owner.username}`,
       historicalFact: curiosity.historicalFact,
       likes: 0,
       comments: 0,
@@ -83,7 +83,11 @@ const Index = () => {
       createdAt: "Destaque",
       topComment: null,
       isFromFollowing: false,
-      isCuriosity: true, // Flag to disable interactions
+      isCuriosity: true,
+      originalOwner: {
+        id: curiosity.owner.id,
+        username: curiosity.owner.username,
+      },
     };
   }, [curiosity]);
 

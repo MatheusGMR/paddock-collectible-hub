@@ -43,6 +43,10 @@ interface PostCardProps {
     } | null;
     isFromFollowing?: boolean;
     isCuriosity?: boolean;
+    originalOwner?: {
+      id: string;
+      username: string;
+    };
   };
 }
 
@@ -115,6 +119,12 @@ export const PostCard = ({ post }: PostCardProps) => {
   const handleUserClick = () => {
     if (post.user.id) {
       navigate(`/user/${post.user.id}`);
+    }
+  };
+
+  const handleOriginalOwnerClick = () => {
+    if (post.originalOwner?.id) {
+      navigate(`/user/${post.originalOwner.id}`);
     }
   };
 
@@ -216,7 +226,31 @@ export const PostCard = ({ post }: PostCardProps) => {
 
       {/* Caption or Historical Fact */}
       <div className="px-4 py-2">
-        {hasHistoricalFact ? (
+        {isCuriosity && post.originalOwner ? (
+          // Curiosity post: show historical fact + mention original owner
+          <div className="space-y-2">
+            {post.historicalFact && (
+              <div className="flex items-start gap-2">
+                <Info className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+                <p className="text-sm text-foreground/90 leading-relaxed">
+                  {post.historicalFact}
+                </p>
+              </div>
+            )}
+            <p className="text-sm">
+              <span className="font-semibold">{post.user.username}</span>{" "}
+              <span className="text-foreground/90">
+                Da coleção de{" "}
+                <button 
+                  className="font-semibold text-primary hover:underline"
+                  onClick={handleOriginalOwnerClick}
+                >
+                  @{post.originalOwner.username}
+                </button>
+              </span>
+            </p>
+          </div>
+        ) : hasHistoricalFact ? (
           <div className="space-y-2">
             {/* Historical fact with icon */}
             <div className="flex items-start gap-2">
