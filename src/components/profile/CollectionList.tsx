@@ -280,11 +280,10 @@ export const CollectionList = ({ items, onItemDeleted }: CollectionListProps) =>
     return { grouped: true, groups: groupedArray };
   }, [items, sortOption]);
 
-  // Expand all groups initially when switching to grouped view
+  // Reset to collapsed state when switching sort options
+  // Groups start collapsed by default so users can expand as needed
   useMemo(() => {
-    if ('groups' in processedData && processedData.groups) {
-      setExpandedGroups(new Set(processedData.groups.map(g => g.key)));
-    }
+    setExpandedGroups(new Set());
   }, [sortOption]);
 
   return (
