@@ -269,17 +269,28 @@ export const PhotoUploadSheet = ({
 
   const currentMedia = mediaQueue[currentMediaIndex];
 
+  // Allow closing at any time - save state for later resumption
+  const handleSheetClose = useCallback(() => {
+    // Always save results if we have any
+    if (consolidatedResults.length > 0) {
+      saveResults(consolidatedResults);
+    }
+    // Cancel processing if ongoing (will be resumed when sheet reopens)
+    if (isProcessing) {
+      cancelProcessing();
+    }
+    onOpenChange(false);
+  }, [consolidatedResults, isProcessing, saveResults, cancelProcessing, onOpenChange]);
+
   return (
     <Sheet
       open={open}
       onOpenChange={(val) => {
-        if (!val && !isProcessing) {
-          // Don't reset if we have pending results
-          if (consolidatedResults.length > 0) {
-            saveResults(consolidatedResults);
-          }
+        if (!val) {
+          handleSheetClose();
+        } else {
+          onOpenChange(val);
         }
-        onOpenChange(val);
       }}
     >
       <SheetContent side="bottom" className="h-[90vh] p-0 rounded-t-2xl flex flex-col">
@@ -291,9 +302,8 @@ export const PhotoUploadSheet = ({
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => onOpenChange(false)}
+              onClick={handleSheetClose}
               className="h-8 w-8"
-              disabled={isProcessing}
             >
               <X className="h-4 w-4" />
             </Button>

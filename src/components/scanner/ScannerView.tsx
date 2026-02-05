@@ -23,6 +23,7 @@ import { PaddockLogo } from "@/components/icons/PaddockLogo";
 import { trackInteraction, trackEvent } from "@/lib/analytics";
 import { useNativeCamera } from "@/hooks/useNativeCamera";
 import { useNativeCameraPreview } from "@/hooks/useNativeCameraPreview";
+import { useScannerPersistence } from "@/hooks/useScannerPersistence";
 import { Capacitor } from "@capacitor/core";
 import { Camera as CapacitorCamera } from "@capacitor/camera";
 interface AnalysisResult {
@@ -163,6 +164,7 @@ export const ScannerView = () => {
   const navigate = useNavigate();
   const nativeCamera = useNativeCamera();
   const cameraPreview = useNativeCameraPreview();
+  const scannerPersistence = useScannerPersistence();
   
   // Track if we're using native camera preview (embedded live preview) vs fallback (opens native UI)
   const [useNativeFallback, setUseNativeFallback] = useState(false);
@@ -170,6 +172,20 @@ export const ScannerView = () => {
   const [useCameraPreview, setUseCameraPreview] = useState(false);
   // Batch upload sheet for multiple photo selection
   const [showBatchUpload, setShowBatchUpload] = useState(false);
+  
+  // Restore pending results from localStorage on mount
+  useEffect(() => {
+    if (scannerPersistence.hasPendingResult && scannerPersistence.pendingResult) {
+      const { capturedImage: savedImage, analysisResults: savedResults, detectedType: savedType } = scannerPersistence.pendingResult;
+      console.log("[Scanner] Restoring pending results from previous session");
+      setCapturedImage(savedImage);
+      setAnalysisResults(savedResults as AnalysisResult[]);
+      setDetectedType(savedType);
+      setIsInitializing(false);
+      // Clear the pending result after restoring
+      scannerPersistence.clearResult();
+    }
+  }, [scannerPersistence.hasPendingResult]);
   
   // Only trigger guided tips when camera is active and not in error state
   const { startScreenTips } = useGuidedTips();
@@ -1859,6 +1875,8 @@ export const ScannerView = () => {
   };
 
   const handleComplete = () => {
+    // Clear any saved pending results since user completed the flow
+    scannerPersistence.clearResult();
     navigate("/profile");
   };
 
@@ -1875,6 +1893,8 @@ export const ScannerView = () => {
     setRecordingDuration(0);
     setRealCarResult(null);
     setDetectedType(null);
+    // Clear any pending saved results
+    scannerPersistence.clearResult();
     if (videoPreviewUrl) {
       URL.revokeObjectURL(videoPreviewUrl);
       setVideoPreviewUrl(null);
@@ -1896,12 +1916,26 @@ export const ScannerView = () => {
     } else {
       startCamera();
     }
-  }, [startCamera, videoPreviewUrl, cameraPreview]);
+  }, [startCamera, videoPreviewUrl, cameraPreview, scannerPersistence]);
 
   const handleClose = useCallback(() => {
+    // Save results if we have any pending items to add
+    const remainingItems = analysisResults.filter((_, i) => !addedIndices.has(i) && !skippedIndices.has(i));
+    if (remainingItems.length > 0 && capturedImage && detectedType) {
+      scannerPersistence.saveResult({
+        capturedImage,
+        analysisResults: remainingItems,
+        detectedType,
+        timestamp: Date.now(),
+      });
+      toast({
+        title: "Resultados salvos",
+        description: "Você pode continuar adicionando carros quando voltar.",
+      });
+    }
     stopCamera();
     navigate("/");
-  }, [stopCamera, navigate]);
+  }, [stopCamera, navigate, analysisResults, addedIndices, skippedIndices, capturedImage, detectedType, scannerPersistence, toast]);
 
   const hasResults = analysisResults.length > 0;
 
