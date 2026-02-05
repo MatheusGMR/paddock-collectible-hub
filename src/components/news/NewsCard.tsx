@@ -13,17 +13,13 @@ interface NewsCardProps {
 const categoryIcons: Record<string, string> = {
   collectibles: "🎮",
   motorsport: "🏎️",
-  aeromodeling: "✈️",
   cars: "🚗",
-  planes: "🛩️",
 };
 
 const categoryColors: Record<string, string> = {
   collectibles: "bg-purple-500/20 text-purple-400 border-purple-500/30",
   motorsport: "bg-red-500/20 text-red-400 border-red-500/30",
-  aeromodeling: "bg-sky-500/20 text-sky-400 border-sky-500/30",
   cars: "bg-green-500/20 text-green-400 border-green-500/30",
-  planes: "bg-blue-500/20 text-blue-400 border-blue-500/30",
 };
 
 export const NewsCard = ({ article, variant = "default" }: NewsCardProps) => {
