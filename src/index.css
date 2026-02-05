@@ -250,4 +250,20 @@
   .animate-pulse-subtle {
     animation: pulse-subtle 2s ease-in-out infinite;
   }
+
+  /* Scanner result card slide-up animation - iOS compatible */
+  @keyframes slide-up-card {
+    from { 
+      transform: translateY(100%);
+      opacity: 0;
+    }
+    to { 
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+  
+  .animate-slide-up-card {
+    animation: slide-up-card 0.3s ease-out forwards;
+  }
 }
