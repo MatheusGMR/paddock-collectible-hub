@@ -77,7 +77,7 @@ export const en: Translations = {
     capture: "Capture",
     analyzing: "Analyzing collectible...",
     itemNotIdentified: "Item Not Identified",
-    itemNotIdentifiedDesc: "Could not identify a collectible car in the image. Please try again with a clearer photo.",
+    itemNotIdentifiedDesc: "Could not identify a collectible car in the image. Try getting closer, making the base visible, and avoiding glare.",
     addToCollection: "Add to Collection",
     addedToCollection: "Added to collection!",
     alreadyInCollection: "Already in your collection",

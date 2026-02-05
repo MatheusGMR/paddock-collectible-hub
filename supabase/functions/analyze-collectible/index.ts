@@ -77,29 +77,132 @@ serve(async (req) => {
       ? { type: "video_url" as const, video_url: { url: imageBase64 } }
       : { type: "image_url" as const, image_url: { url: imageBase64.startsWith("data:") ? imageBase64 : `data:image/jpeg;base64,${imageBase64}` } };
 
-    const uPrompt = isVid ? "Analyze video of collectible cars (max 7)." : "Analyze image. Determine if collectible or real vehicle.";
-    const model = "google/gemini-3-flash-preview";
+    const uPrompt = isVid
+      ? "Analyze video of collectible cars (max 7)."
+      : "Analyze image. Determine if collectible or real vehicle.";
 
-    const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${API_KEY}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ model, messages: [{ role: "system", content: PROMPT }, { role: "user", content: [{ type: "text", text: uPrompt }, media] }] }),
-    });
+    const PRIMARY_MODEL = "google/gemini-3-flash-preview";
+    const FALLBACK_MODEL = "google/gemini-3-pro-preview";
 
-    if (!res.ok) {
-      if (res.status === 429) return new Response(JSON.stringify({ error: "Rate limit. Try again." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-      if (res.status === 402) return new Response(JSON.stringify({ error: "Credits exhausted." }), { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-      throw new Error(`AI error: ${res.status}`);
+    const stripFences = (s: string) => s.replace(/```json\n?|\n?```/g, "").trim();
+
+    // deno-lint-ignore no-explicit-any
+    const shouldRetry = (r: any): boolean => {
+      const detectedType = r?.detectedType || "collectible";
+
+      if (detectedType === "real_car") {
+        return !r?.identified || !r?.car;
+      }
+
+      const itemsLen = Array.isArray(r?.items) ? r.items.length : 0;
+      const count = typeof r?.count === "number" ? r.count : itemsLen;
+      return !r?.identified || count === 0 || itemsLen === 0;
+    };
+
+    const fetchAndParse = async (model: string, attempt: number, reason: string) => {
+      const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${API_KEY}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model,
+          messages: [
+            { role: "system", content: PROMPT },
+            {
+              role: "user",
+              content: [{ type: "text", text: uPrompt }, media],
+            },
+          ],
+        }),
+      });
+
+      if (!res.ok) {
+        if (res.status === 429) {
+          return {
+            ok: false as const,
+            httpResponse: new Response(
+              JSON.stringify({ error: "Rate limit. Try again." }),
+              {
+                status: 429,
+                headers: { ...corsHeaders, "Content-Type": "application/json" },
+              }
+            ),
+          };
+        }
+        if (res.status === 402) {
+          return {
+            ok: false as const,
+            httpResponse: new Response(
+              JSON.stringify({ error: "Credits exhausted." }),
+              {
+                status: 402,
+                headers: { ...corsHeaders, "Content-Type": "application/json" },
+              }
+            ),
+          };
+        }
+        return { ok: false as const, error: new Error(`AI error: ${res.status}`) };
+      }
+
+      const data = await res.json();
+      const content = data.choices?.[0]?.message?.content;
+      if (!content) return { ok: false as const, error: new Error("No AI response") };
+
+      await logUsage(
+        sb,
+        uid,
+        "analyze-collectible",
+        model,
+        estimateTokens(PROMPT + uPrompt, !isVid, isVid),
+        estimateTokens(content),
+        { type: isVid ? "video" : "image", attempt, reason }
+      );
+
+      try {
+        const parsed = JSON.parse(stripFences(content));
+        return { ok: true as const, parsed };
+      } catch (e) {
+        return {
+          ok: false as const,
+          error: e instanceof Error ? e : new Error("Failed to parse AI response"),
+        };
+      }
+    };
+
+    let result: unknown;
+
+    const primary = await fetchAndParse(PRIMARY_MODEL, 1, "primary");
+    if (!primary.ok) {
+      if ("httpResponse" in primary) return primary.httpResponse;
+      console.error("[AI] Primary attempt failed:", primary.error);
+
+      const fallback = await fetchAndParse(FALLBACK_MODEL, 2, "primary_failed");
+      if (!fallback.ok) {
+        if ("httpResponse" in fallback) return fallback.httpResponse;
+        throw fallback.error;
+      }
+
+      result = fallback.parsed;
+      return new Response(JSON.stringify(result), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
-    const data = await res.json();
-    const content = data.choices?.[0]?.message?.content;
-    if (!content) throw new Error("No AI response");
+    result = primary.parsed;
 
-    await logUsage(sb, uid, "analyze-collectible", model, estimateTokens(PROMPT + uPrompt, !isVid, isVid), estimateTokens(content), { type: isVid ? "video" : "image" });
+    // If identification failed, retry once with a stronger model
+    if (shouldRetry(result)) {
+      const fallback = await fetchAndParse(FALLBACK_MODEL, 2, "not_identified");
+      if (!fallback.ok) {
+        if ("httpResponse" in fallback) return fallback.httpResponse;
+        console.error("[AI] Fallback attempt failed:", fallback.error);
+      } else if (!shouldRetry(fallback.parsed)) {
+        result = fallback.parsed;
+      }
+    }
 
-    const result = JSON.parse(content.replace(/```json\n?|\n?```/g, "").trim());
-    return new Response(JSON.stringify(result), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    return new Response(JSON.stringify(result), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   } catch (e) {
     console.error("Error:", e);
     return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
