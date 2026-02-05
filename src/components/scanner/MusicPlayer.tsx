@@ -133,10 +133,26 @@ export const MusicPlayer = ({
         if (error) {
           console.error('[MusicPlayer] YouTube search error:', error, { mode });
           if (mode === 'user') {
-            const errorMsg = error.message?.includes('timeout') 
-              ? 'Conexão lenta. Tente novamente.'
-              : 'Erro de conexão. Verifique sua internet.';
+            // Check for quota exceeded or other specific errors
+            let errorMsg = 'Erro de conexão. Verifique sua internet.';
+            if (error.message?.includes('timeout')) {
+              errorMsg = 'Conexão lenta. Tente novamente.';
+            } else if (error.message?.includes('429') || error.message?.includes('quota')) {
+              errorMsg = 'Limite de buscas atingido. Use os links abaixo para ouvir.';
+            }
             setErrorMessage(errorMsg);
+            setPlayerState('error');
+          } else {
+            setPlayerState('idle');
+          }
+          return null;
+        }
+        
+        // Check for quota exceeded in successful response
+        if (data?.error === 'quota_exceeded' || data?.isQuotaExceeded) {
+          console.warn('[MusicPlayer] YouTube quota exceeded');
+          if (mode === 'user') {
+            setErrorMessage('Limite de buscas atingido. Use os links abaixo para ouvir.');
             setPlayerState('error');
           } else {
             setPlayerState('idle');
