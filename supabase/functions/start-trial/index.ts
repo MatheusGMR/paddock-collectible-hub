@@ -43,9 +43,22 @@ serve(async (req) => {
       .maybeSingle();
 
     if (existingSub) {
-      logStep("User already has subscription record", { id: existingSub.id });
+      // Get existing subscription details to return complete data
+      const { data: subDetails } = await supabaseClient
+        .from("user_subscriptions")
+        .select("status, trial_ends_at")
+        .eq("id", existingSub.id)
+        .single();
+
+      const trialEndsAt = subDetails?.trial_ends_at ? new Date(subDetails.trial_ends_at) : null;
+      const daysLeft = trialEndsAt ? Math.max(0, Math.ceil((trialEndsAt.getTime() - Date.now()) / (1000 * 60 * 60 * 24))) : 0;
+
+      logStep("User already has subscription record", { id: existingSub.id, status: subDetails?.status });
       return new Response(JSON.stringify({ 
         success: true, 
+        status: subDetails?.status || "trial",
+        trial_ends_at: subDetails?.trial_ends_at,
+        days_left: daysLeft,
         message: "Subscription record already exists" 
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
