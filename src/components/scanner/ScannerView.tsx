@@ -97,6 +97,20 @@ interface RealCarAnalysisResponse {
 
 const MAX_RECORDING_DURATION = 15; // seconds (reduced for AI processing)
 
+function normalizeMultiCarAnalysisResponse(raw: MultiCarAnalysisResponse): MultiCarAnalysisResponse {
+  // Defensive normalization: sometimes the model returns `items` but `count: 0` (or vice-versa)
+  // which can trigger a false "not identified" toast.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const r = raw as any;
+
+  const items: AnalysisResult[] = Array.isArray(r.items) ? r.items : [];
+  const count = typeof r.count === "number" && r.count > 0 ? r.count : items.length;
+  const identified = Boolean(r.identified) || items.length > 0;
+
+  return { ...raw, items, count, identified };
+}
+
+
 export const ScannerView = () => {
   // Set notch/status bar to black for immersive camera experience
   useThemeColor("scanner");
@@ -577,7 +591,7 @@ export const ScannerView = () => {
           return;
         }
         
-        const response = data as MultiCarAnalysisResponse;
+        const response = normalizeMultiCarAnalysisResponse(data as MultiCarAnalysisResponse);
         const responseType = response.detectedType || "collectible";
         setDetectedType(responseType);
         
@@ -781,13 +795,16 @@ export const ScannerView = () => {
       }
       
       const imageBase64 = result.base64Image;
+      const imageForDisplay = isBase64DataUri(imageBase64)
+        ? imageBase64
+        : `data:image/jpeg;base64,${imageBase64}`;
       
       // 2. IMMEDIATELY stop camera and show captured image (freeze the frame)
       await cameraPreview.stop();
       setUseCameraPreview(false);
       setCameraActive(false);
-      setCapturedImage(imageBase64);
-      
+      setCapturedImage(imageForDisplay);
+
       // 3. Now start the scanning/analysis phase
       setIsScanning(true);
       
@@ -801,7 +818,7 @@ export const ScannerView = () => {
 
       if (error) throw error;
 
-      const response = data as MultiCarAnalysisResponse;
+      const response = normalizeMultiCarAnalysisResponse(data as MultiCarAnalysisResponse);
       const responseType = response.detectedType || "collectible";
       setDetectedType(responseType);
 
@@ -936,7 +953,7 @@ export const ScannerView = () => {
     canvas.height = video.videoHeight;
     context.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-    const imageBase64 = canvas.toDataURL("image/jpeg", 0.8);
+    const imageBase64 = canvas.toDataURL("image/jpeg", 0.92);
     
     // 1. IMMEDIATELY stop camera and show captured image (freeze the frame)
     stopCamera();
@@ -956,7 +973,7 @@ export const ScannerView = () => {
 
       if (error) throw error;
 
-      const response = data as MultiCarAnalysisResponse;
+      const response = normalizeMultiCarAnalysisResponse(data as MultiCarAnalysisResponse);
       const responseType = response.detectedType || "collectible";
       setDetectedType(responseType);
 
@@ -1117,7 +1134,7 @@ export const ScannerView = () => {
 
       if (error) throw error;
 
-      const response = data as MultiCarAnalysisResponse;
+      const response = normalizeMultiCarAnalysisResponse(data as MultiCarAnalysisResponse);
       const responseType = response.detectedType || "collectible";
       setDetectedType(responseType);
 
@@ -1256,7 +1273,7 @@ export const ScannerView = () => {
 
       if (error) throw error;
 
-      const response = data as MultiCarAnalysisResponse;
+      const response = normalizeMultiCarAnalysisResponse(data as MultiCarAnalysisResponse);
       const responseType = response.detectedType || "collectible";
       setDetectedType(responseType);
 
@@ -1341,7 +1358,7 @@ export const ScannerView = () => {
 
       if (error) throw error;
 
-      const response = data as MultiCarAnalysisResponse;
+      const response = normalizeMultiCarAnalysisResponse(data as MultiCarAnalysisResponse);
       const responseType = response.detectedType || "collectible";
       setDetectedType(responseType);
 
@@ -1534,7 +1551,7 @@ export const ScannerView = () => {
 
           if (error) throw error;
 
-          const response = data as MultiCarAnalysisResponse;
+          const response = normalizeMultiCarAnalysisResponse(data as MultiCarAnalysisResponse);
           const responseType = response.detectedType || "collectible";
           setDetectedType(responseType);
 

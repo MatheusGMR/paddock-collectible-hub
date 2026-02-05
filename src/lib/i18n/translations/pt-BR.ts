@@ -75,7 +75,7 @@ export const ptBR = {
     capture: "Capturar",
     analyzing: "Analisando colecionável...",
     itemNotIdentified: "Item Não Identificado",
-    itemNotIdentifiedDesc: "Não foi possível identificar um carro colecionável na imagem. Tente novamente com uma foto mais clara.",
+    itemNotIdentifiedDesc: "Não foi possível identificar o carrinho na imagem. Tente aproximar, manter a base bem visível e evitar reflexos.",
     addToCollection: "Adicionar à Coleção",
     addedToCollection: "Adicionado à coleção!",
     alreadyInCollection: "Já está na sua coleção",
