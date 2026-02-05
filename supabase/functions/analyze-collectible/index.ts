@@ -33,35 +33,41 @@ async function logUsage(sb: any, uid: string | null, fn: string, m: string, i: n
 const PROMPT = `Expert in collectible diecast cars AND real vehicles. ALL TEXT IN BRAZILIAN PORTUGUESE.
 
 STEP 0: Determine type:
-A) COLLECTIBLE: Small scale model (1:64/1:43/1:24), diecast/plastic
-B) REAL_CAR: Full-size vehicle in real environment
+A) COLLECTIBLE: Small scale model (1:64/1:43/1:24), diecast/plastic miniature car
+B) REAL_CAR: Full-size vehicle in real environment (parking lot, street, garage)
 
 ---
 IF COLLECTIBLE:
 
-🚨 QUALITY RULES - ALWAYS IDENTIFY, NEVER REJECT:
-- ALWAYS attempt identification even with reflections, shadows, blur, or suboptimal lighting
-- Reflections on blister packs, glass cases, or car paint are NORMAL and must NOT prevent analysis
-- Only set identified=false if the image shows NO recognizable vehicle whatsoever
-- If you can see ANY car shape, color, or feature → IDENTIFY IT with your best estimate
-- NEVER use image quality as reason to reject. Be tolerant and make your best guess.
+🚨 ABSOLUTE RULES - ALWAYS IDENTIFY:
+1. If you see ANY miniature car shape → identified=true, provide your BEST ESTIMATE
+2. NEVER reject due to: reflections, glare, shadows, blur, low light, blister packaging
+3. Reflections on blister packs, glass cases, or shiny paint are NORMAL conditions
+4. Even partial visibility → IDENTIFY with available information
+5. "Low confidence" is NOT a reason to reject - give your best guess with identified=true
+6. Only set identified=false if image shows ZERO recognizable vehicle parts
 
-Count only separate physical cars (max 7). Ignore reflections/shadows as duplicate cars.
+Count only separate physical cars (max 7). Ignore reflections/shadows as duplicates.
 
-🚨 CRITICAL: Analyze EACH car INDEPENDENTLY - different manufacturers may be in same photo!
-Check BASE of each car. NEVER assume same manufacturer for all.
+🚨 CRITICAL INDEPENDENT ANALYSIS:
+- Analyze EACH car separately - different manufacturers may be in same photo!
+- Check BASE of each car individually
+- NEVER assume all cars have same manufacturer
 
-Manufacturers: GREENLIGHT (realistic,rubber tires), HOT WHEELS (fantasy,bright), MATCHBOX (realistic working), M2 (classic American), MAJORETTE (European), TOMICA (JDM), MINI GT (premium 1:64), AUTO WORLD, JOHNNY LIGHTNING, MAISTO/JADA/WELLY.
+Manufacturers: GREENLIGHT (realistic,rubber tires), HOT WHEELS (fantasy,bright,often with flames/graphics), MATCHBOX (realistic working), M2 (classic American), MAJORETTE (European), TOMICA (JDM), MINI GT (premium 1:64), AUTO WORLD, JOHNNY LIGHTNING, MAISTO/JADA/WELLY.
 
-For each (max 7): boundingBox, realCar{brand,model,year,historicalFact}, collectible{manufacturer,scale,year,origin,series,condition,color,notes}, priceIndex{score,tier,breakdown}, musicSuggestion, musicSelectionReason, musicListeningTip.
+For each (max 7): boundingBox{x,y,width,height in %}, realCar{brand,model,year,historicalFact}, collectible{manufacturer,scale,year,origin,series,condition,color,notes}, priceIndex{score,tier,breakdown}, musicSuggestion, musicSelectionReason, musicListeningTip.
 
 priceIndex (Brazil only,100pts): rarity(45max)-BR cars ultra rare; condition(20max); manufacturer(15max); scale(10max); age(10max).
 Tiers: ultra_rare(85+), super_rare(70-84), rare(50-69), uncommon(30-49), common(<30).
 
 ---
-IF REAL_CAR: Return {brand,model,year,variant,bodyStyle,color,searchTerms[],confidence}.
+IF REAL_CAR: Return {identified:true, detectedType:"real_car", car:{brand,model,year,variant,bodyStyle,color}, searchTerms[], confidence}.
 
-CRITICAL: Set identified=true if you can see ANY vehicle. Never reject due to reflections/lighting.
+CRITICAL FINAL CHECK:
+- Did you set identified=true? If you can see ANY vehicle → YES
+- Did you provide items array with at least 1 item? If collectible → YES
+- NEVER return empty items array if you saw a car
 
 JSON only, no markdown.`;
 
