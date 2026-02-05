@@ -1,214 +1,271 @@
 
+# Plano: Aumento Gradual para 7 Carros + Monitoramento de Erros no Admin
 
-# Experiência Fluida de Upload em Massa de Fotos
+## Resumo
 
-## Resumo Executivo
-
-Este plano implementa uma experiência otimizada para upload de múltiplas fotos, permitindo que o usuário selecione várias imagens de uma vez e receba os resultados de forma organizada e fluida para revisar e adicionar à coleção.
-
----
-
-## Análise da Capacidade Atual
-
-### Limites Identificados
-
-| Recurso | Limite Atual | Impacto |
-|---------|--------------|---------|
-| **Edge Function Timeout** | 30 segundos (padrão Supabase) | Análise de 1 imagem leva ~5-8s |
-| **Processamento Sequencial** | 1 foto por vez | 10 fotos = ~50-80 segundos de espera |
-| **Memória do Navegador** | Base64 de imagens | 20 fotos de 3MB = ~60MB em RAM |
-| **Rate Limit da IA** | Configurado no workspace Lovable | Muitas chamadas simultâneas podem falhar |
-| **Tamanho de Vídeo** | 20MB máximo | Já validado no código |
-
-### Dados de Performance Real
-- **Média de tokens por análise**: ~7.600 tokens
-- **Tempo estimado por foto**: 5-8 segundos
-- **Cada foto detecta até 5 carros** (cropping individual incluído)
+Este plano implementa duas funcionalidades:
+1. **Aumento gradual do limite de 5 para 7 carrinhos por foto** com reforço de prompt para manter precisão
+2. **Nova seção "Performance & Erros" no Admin** para monitorar taxa de sucesso, erros e feedback do scanner
 
 ---
 
-## Recomendações de Limites
+## Parte 1: Aumento do Limite para 7 Carrinhos
 
-### Cenário 1: Processamento Síncrono (Sem Background)
-**Limite sugerido: 10 fotos por lote**
+### Arquivos a Modificar
 
-| Fotos | Tempo Estimado | Experiência |
-|-------|----------------|-------------|
-| 5 | 25-40s | Excelente |
-| 10 | 50-80s | Aceitável com loading facts |
-| 15+ | 75-120s+ | Frustrante, risco de timeout |
+| Arquivo | Alteração |
+|---------|-----------|
+| `supabase/functions/analyze-collectible/index.ts` | Atualizar prompt: "max 7" + instruções anti-padronização |
+| `src/components/scanner/ScannerView.tsx` | Validação `count <= 7` |
+| `src/lib/i18n/translations/pt-BR.ts` | Mensagens: "máximo é 7" |
+| `src/lib/i18n/translations/en.ts` | Mensagens: "limit is 7" |
 
-### Cenário 2: Processamento em Background (Futuro)
-**Limite sugerido: 50+ fotos por lote**
+### Alterações no Prompt da IA
 
-Requeriria:
-- Tabela de jobs no banco de dados
-- Edge Function para criar job
-- Cron ou worker para processar em lotes
-- Notificação push quando concluído
+Adicionar instruções específicas para evitar padronização de fabricante:
 
----
-
-## Proposta de Implementação
-
-### Fase 1: Experiência Fluida (Síncrona) - Implementação Imediata
-
-```text
-┌─────────────────────────────────────────────────────────────┐
-│                    FLUXO DO USUÁRIO                         │
-├─────────────────────────────────────────────────────────────┤
-│                                                             │
-│  1. SELEÇÃO          2. FILA VISUAL        3. RESULTADOS    │
-│  ┌──────────┐        ┌──────────────┐      ┌─────────────┐  │
-│  │ Escolher │   →    │ Grid com     │  →   │ Carrossel   │  │
-│  │ até 10   │        │ status de    │      │ unificado   │  │
-│  │ fotos    │        │ cada foto    │      │ de TODOS    │  │
-│  └──────────┘        └──────────────┘      │ os carros   │  │
-│                                            └─────────────┘  │
-└─────────────────────────────────────────────────────────────┘
+```
+ANÁLISE INDIVIDUAL OBRIGATÓRIA (CRÍTICO):
+- Trate CADA carro como análise COMPLETAMENTE INDEPENDENTE
+- NUNCA assuma que todos os carros são do mesmo fabricante
+- Examine a BASE de CADA carro individualmente para identificar o fabricante
+- Diferentes fabricantes podem estar na mesma foto (Hot Wheels + Matchbox + Greenlight)
+- Se não conseguir ver a base de um carro específico, analise proporções e estilo individualmente
 ```
 
-#### Componentes a Modificar
-
-**1. PhotoUploadSheet - Melhorias na UX**
-- Adicionar limite visual de 10 fotos
-- Contador regressivo mostrando "X de 10 selecionadas"
-- Grid de thumbnails com status individual (pending/analyzing/success/error)
-- Progresso geral: "Analisando foto 3 de 10"
-- Botão para cancelar processamento
-
-**2. Processamento Paralelo Controlado**
-- Processar 2-3 fotos simultaneamente (não sequencial)
-- Reduz tempo total de ~80s para ~30s para 10 fotos
-- Respeita rate limits sem sobrecarregar
-
-**3. Consolidação de Resultados**
-- Após todas as fotos processadas, exibir carrossel único com TODOS os carros detectados
-- Cada card indica "Foto 1", "Foto 2" para contexto
-- Seleção em massa: "Adicionar todos" ou "Adicionar selecionados"
-- Chip de contagem: "12 carros encontrados em 8 fotos"
-
-**4. Persistência Temporária**
-- Salvar resultados no localStorage enquanto usuário revisa
-- Se app fechar, usuário pode continuar de onde parou
-- Expiração de 24h para dados temporários
-
----
-
-### Fase 2: Processamento em Background (Futuro)
-
-Para lotes maiores (10+ fotos), implementar sistema de jobs:
-
-```text
-┌─────────────────────────────────────────────────────────────┐
-│                ARQUITETURA BACKGROUND                        │
-├─────────────────────────────────────────────────────────────┤
-│                                                             │
-│  UPLOAD          STORAGE          EDGE FUNCTION    NOTIFY   │
-│  ┌──────┐       ┌───────┐        ┌──────────┐     ┌─────┐  │
-│  │Fotos │  →    │Bucket │   →    │Processar │  →  │Push │  │
-│  │para  │       │upload_│        │em lotes  │     │ao   │  │
-│  │bucket│       │queue  │        │de 5      │     │user │  │
-│  └──────┘       └───────┘        └──────────┘     └─────┘  │
-│                                                             │
-│  BANCO DE DADOS                                             │
-│  ┌────────────────────────────────────────────────────────┐ │
-│  │ upload_jobs: id, user_id, status, photos[], results[]  │ │
-│  └────────────────────────────────────────────────────────┘ │
-└─────────────────────────────────────────────────────────────┘
+Atualizar linha do STEP 3:
+```
+For each collectible (max 7), provide full analysis...
 ```
 
-**Esta fase requer:**
-- Nova tabela `upload_jobs`
-- Bucket de Storage `upload-queue`
-- Edge Function `process-upload-batch`
-- Integração com sistema de push existente
-- UI de "Jobs em andamento" no perfil
+Atualizar validação de "too_many_cars":
+```
+ONLY set "too_many_cars" if you can clearly see MORE THAN 7 SEPARATE PHYSICAL CAR OBJECTS
+```
 
 ---
 
-## Detalhes Técnicos (Fase 1)
+## Parte 2: Seção de Performance & Erros no Admin
 
-### Arquivo: `src/components/profile/PhotoUploadSheet.tsx`
+### Nova Estrutura de Dados
 
-**Mudanças principais:**
+Criar função RPC `get_admin_scanner_performance` que retorna:
 
-1. **Constante de limite**
 ```typescript
-const MAX_PHOTOS_PER_BATCH = 10;
-const PARALLEL_PROCESSING_LIMIT = 3;
+interface ScannerPerformanceStats {
+  total_scans: number;
+  successful_scans: number;
+  failed_scans: number;
+  success_rate: number;
+  
+  // Erros por tipo
+  errors_by_type: Array<{
+    error_type: string;
+    count: number;
+    percentage: number;
+  }>;
+  
+  // Erros recentes (últimos 50)
+  recent_errors: Array<{
+    id: string;
+    created_at: string;
+    user_id: string;
+    username: string;
+    error_type: string;
+    error_message: string;
+    function_name: string;
+  }>;
+  
+  // Tendência diária
+  daily_stats: Array<{
+    date: string;
+    total: number;
+    success: number;
+    failed: number;
+  }>;
+  
+  // Feedback de precisão (scan_feedback)
+  accuracy_feedback: {
+    total: number;
+    positive: number;
+    negative: number;
+    by_field: Array<{
+      field: string;
+      reports: number;
+    }>;
+  };
+}
 ```
 
-2. **Processamento paralelo com controle**
+### Tabela de Logs de Erro (Migração)
+
+```sql
+CREATE TABLE IF NOT EXISTS public.scanner_error_logs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+  user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  function_name TEXT NOT NULL,
+  error_type TEXT NOT NULL,
+  error_message TEXT,
+  metadata JSONB DEFAULT '{}'::jsonb
+);
+
+-- Índices para consultas rápidas
+CREATE INDEX idx_scanner_errors_created_at ON scanner_error_logs(created_at DESC);
+CREATE INDEX idx_scanner_errors_type ON scanner_error_logs(error_type);
+
+-- RLS
+ALTER TABLE scanner_error_logs ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Admins can read all error logs"
+  ON scanner_error_logs FOR SELECT
+  USING (public.is_admin());
+```
+
+### Modificar Edge Function para Logar Erros
+
+Adicionar try-catch com log de erros na `analyze-collectible`:
+
 ```typescript
-const processQueueParallel = async (queue: QueuedMedia[]) => {
-  const chunks = chunkArray(queue, PARALLEL_PROCESSING_LIMIT);
-  for (const chunk of chunks) {
-    await Promise.all(chunk.map(media => analyzeMedia(media)));
+// Em caso de erro na análise
+async function logScanError(
+  supabase: any,
+  userId: string | null,
+  errorType: string,
+  errorMessage: string,
+  metadata: Record<string, unknown> = {}
+) {
+  try {
+    await supabase.from("scanner_error_logs").insert({
+      user_id: userId,
+      function_name: "analyze-collectible",
+      error_type: errorType,
+      error_message: errorMessage,
+      metadata,
+    });
+  } catch (err) {
+    console.error("[Error Log] Failed:", err);
   }
-};
+}
 ```
 
-3. **Consolidação de resultados**
-```typescript
-const allResults = mediaQueue
-  .filter(m => m.status === 'success')
-  .flatMap((m, photoIndex) => 
-    m.results.map(r => ({ ...r, photoIndex }))
-  );
+Tipos de erro a capturar:
+- `ai_timeout` - Timeout da IA
+- `ai_rate_limit` - Rate limit atingido
+- `image_quality` - Problemas de qualidade de imagem
+- `identification_failed` - Não conseguiu identificar
+- `too_many_cars` - Muitos carros
+- `parse_error` - Erro ao parsear resposta da IA
+- `unknown` - Erros não categorizados
+
+### Novo Componente: AdminPerformanceSection.tsx
+
+Exibirá:
+1. **Cards de Resumo**
+   - Taxa de Sucesso (%)
+   - Total de Scans
+   - Erros no período
+   - Feedback negativo
+
+2. **Gráfico de Tendência**
+   - Linha de sucesso vs falha por dia
+
+3. **Erros por Tipo (Pie Chart)**
+   - Visualização rápida dos tipos de erro mais comuns
+
+4. **Tabela de Erros Recentes**
+   - Data, Usuário, Tipo, Mensagem
+   - Filtro por tipo de erro
+
+5. **Feedback de Precisão (do scan_feedback existente)**
+   - Campos mais reportados como incorretos
+   - Total de likes vs reports
+
+### Integração no Admin.tsx
+
+Adicionar nova aba "Performance" entre "IA" e "Push":
+
+```tsx
+<TabsList className="grid w-full grid-cols-6">
+  <TabsTrigger value="overview">Geral</TabsTrigger>
+  <TabsTrigger value="analytics">Analytics</TabsTrigger>
+  <TabsTrigger value="ai">IA</TabsTrigger>
+  <TabsTrigger value="performance">Performance</TabsTrigger>  {/* NOVO */}
+  <TabsTrigger value="push">Push</TabsTrigger>
+  <TabsTrigger value="users">Usuários</TabsTrigger>
+</TabsList>
 ```
-
-4. **Ações em massa**
-```typescript
-const handleAddAll = async () => {
-  for (const result of selectedResults) {
-    await handleAddToCollection(result);
-  }
-};
-```
-
-### Novo Componente: `BatchResultsView.tsx`
-
-Exibe todos os carros detectados em um grid/carrossel:
-- Checkbox para seleção múltipla
-- Indicador de foto de origem
-- Status de duplicata destacado
-- Botões: "Adicionar selecionados" | "Pular todos"
-
-### UI/UX Melhorada
-
-**Durante upload:**
-- Grid 3x4 de thumbnails com status animado
-- Barra de progresso global
-- Estimativa de tempo restante
-- Fatos curiosos rotativos (já existe)
-
-**Após processamento:**
-- Resumo: "12 carros encontrados em 8 fotos (3 já na coleção)"
-- Filtros: Todos | Novos | Duplicados
-- Seleção em massa com visual de checklist
 
 ---
 
-## Estimativa de Implementação
+## Arquivos Criados/Modificados
 
-| Tarefa | Complexidade | Tempo |
-|--------|--------------|-------|
-| Limite de 10 fotos + validação | Baixa | 30min |
-| Processamento paralelo | Média | 1h |
-| Consolidação de resultados | Média | 1h |
-| Grid de seleção em massa | Média | 1.5h |
-| Persistência localStorage | Baixa | 30min |
-| Testes e refinamentos | Média | 1h |
-| **Total Fase 1** | | **~5h** |
+| Arquivo | Ação |
+|---------|------|
+| `supabase/functions/analyze-collectible/index.ts` | Modificar - Limite 7 + instruções + log de erros |
+| `src/components/scanner/ScannerView.tsx` | Modificar - Validação `<= 7` |
+| `src/lib/i18n/translations/pt-BR.ts` | Modificar - Mensagens "máximo 7" |
+| `src/lib/i18n/translations/en.ts` | Modificar - Mensagens "limit 7" |
+| `src/components/admin/AdminPerformanceSection.tsx` | **Criar** - Nova seção de performance |
+| `src/hooks/useAdmin.ts` | Modificar - Adicionar hook `useAdminScannerPerformance` |
+| `src/pages/Admin.tsx` | Modificar - Adicionar aba Performance |
+| Migração SQL | **Criar** - Tabela `scanner_error_logs` + RPC `get_admin_scanner_performance` |
 
 ---
 
-## Recomendação
+## Benefícios
 
-**Implementar a Fase 1** resolve 90% dos casos de uso (usuários querendo subir várias fotos da gaveta de coleção) sem complexidade de infraestrutura adicional.
+1. **Aumento para 7 carros** permite fotografar grupos maiores sem falsos "too_many_cars"
+2. **Instruções anti-padronização** reduzem risco de identificação incorreta de fabricante
+3. **Monitoramento centralizado** permite identificar problemas rapidamente
+4. **Análise de feedback** ajuda a entender onde a IA erra mais
+5. **Tendências diárias** permitem detectar degradação de performance
 
-A Fase 2 (background) pode ser implementada posteriormente se houver demanda por lotes maiores (50+ fotos) ou se o feedback indicar necessidade.
+---
 
-**Limite recomendado: 10 fotos por vez**, com processamento paralelo de 3 simultâneas, reduzindo o tempo total para ~25-30 segundos para um lote completo.
+## Detalhes Técnicos
 
+### SQL da Função RPC
+
+```sql
+CREATE OR REPLACE FUNCTION get_admin_scanner_performance(days_back INTEGER DEFAULT 7)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  result JSONB;
+  start_date TIMESTAMP;
+BEGIN
+  -- Verificar se é admin
+  IF NOT is_admin() THEN
+    RETURN NULL;
+  END IF;
+  
+  start_date := now() - (days_back || ' days')::interval;
+  
+  -- Construir resultado agregado
+  SELECT jsonb_build_object(
+    'total_scans', (SELECT COUNT(*) FROM ai_usage_logs 
+                    WHERE function_name = 'analyze-collectible' 
+                    AND created_at >= start_date),
+    'successful_scans', (SELECT COUNT(*) FROM ai_usage_logs 
+                         WHERE function_name = 'analyze-collectible' 
+                         AND created_at >= start_date
+                         AND (metadata->>'identified')::boolean = true),
+    -- ... demais campos
+  ) INTO result;
+  
+  RETURN result;
+END;
+$$;
+```
+
+### Visualização no Admin
+
+A seção de Performance mostrará:
+- Card verde: Taxa de sucesso (ex: "92.3%")
+- Card vermelho: Erros totais (ex: "47")
+- Card amarelo: Reports de precisão (ex: "12")
+- Gráfico de linha: Tendência de sucesso/falha
+- Tabela: Últimos erros com detalhes
