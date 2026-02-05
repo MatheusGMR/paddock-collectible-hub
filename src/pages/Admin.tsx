@@ -11,7 +11,8 @@ import {
   Shield,
   ArrowLeft,
   RefreshCw,
-  Bot
+  Bot,
+  Bell
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -31,6 +32,7 @@ import { AdminSubscriptionChart } from "@/components/admin/AdminSubscriptionChar
 import { AdminUserGrowthChart } from "@/components/admin/AdminUserGrowthChart";
 import { AdminAnalyticsSection } from "@/components/admin/AdminAnalyticsSection";
 import { AdminAIUsageSection } from "@/components/admin/AdminAIUsageSection";
+import { AdminPushSection } from "@/components/admin/AdminPushSection";
 import { useAuth } from "@/contexts/AuthContext";
 
 const Admin = () => {
@@ -118,12 +120,16 @@ const Admin = () => {
       <div className="p-4 space-y-6">
         {/* Tabs for different sections */}
         <Tabs defaultValue="overview" className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="overview">Geral</TabsTrigger>
             <TabsTrigger value="analytics">Analytics</TabsTrigger>
             <TabsTrigger value="ai" className="gap-1">
               <Bot className="h-3 w-3" />
               IA
+            </TabsTrigger>
+            <TabsTrigger value="push" className="gap-1">
+              <Bell className="h-3 w-3" />
+              Push
             </TabsTrigger>
             <TabsTrigger value="users">Usuários</TabsTrigger>
           </TabsList>
@@ -238,6 +244,10 @@ const Admin = () => {
               stats={aiStats} 
               isLoading={isLoadingAI} 
             />
+          </TabsContent>
+
+          <TabsContent value="push" className="mt-4">
+            <AdminPushSection />
           </TabsContent>
 
           <TabsContent value="users" className="mt-4">
