@@ -39,7 +39,14 @@ B) REAL_CAR: Full-size vehicle in real environment
 ---
 IF COLLECTIBLE:
 
-Quality: Accept by default. Reject only if impossible. Count only separate physical cars (max 7).
+🚨 QUALITY RULES - ALWAYS IDENTIFY, NEVER REJECT:
+- ALWAYS attempt identification even with reflections, shadows, blur, or suboptimal lighting
+- Reflections on blister packs, glass cases, or car paint are NORMAL and must NOT prevent analysis
+- Only set identified=false if the image shows NO recognizable vehicle whatsoever
+- If you can see ANY car shape, color, or feature → IDENTIFY IT with your best estimate
+- NEVER use image quality as reason to reject. Be tolerant and make your best guess.
+
+Count only separate physical cars (max 7). Ignore reflections/shadows as duplicate cars.
 
 🚨 CRITICAL: Analyze EACH car INDEPENDENTLY - different manufacturers may be in same photo!
 Check BASE of each car. NEVER assume same manufacturer for all.
@@ -53,6 +60,8 @@ Tiers: ultra_rare(85+), super_rare(70-84), rare(50-69), uncommon(30-49), common(
 
 ---
 IF REAL_CAR: Return {brand,model,year,variant,bodyStyle,color,searchTerms[],confidence}.
+
+CRITICAL: Set identified=true if you can see ANY vehicle. Never reject due to reflections/lighting.
 
 JSON only, no markdown.`;
 
