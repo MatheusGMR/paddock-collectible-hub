@@ -1,93 +1,66 @@
 
-# Plano: Corrigir Card de Resultados do Scanner (iOS)
+# Implementação: Card de Resultados com CSS Puro
 
-## Diagnóstico do Problema
+## Análise dos Logs
+Os logs do terminal confirmam que:
+- ✅ Câmera funciona corretamente
+- ✅ Foto é capturada com sucesso
+- ✅ Análise da IA completa normalmente
+- ✅ Fotos do carro real são enriquecidas
 
-O card de resultados não está aparecendo no iOS após a análise do scanner. O usuário vê apenas:
-- A foto capturada (embaçada)
-- O botão X no canto superior direito
-- **Nenhum card de resultados**
+**O problema está no DrawerPrimitive do vaul** que não renderiza corretamente em WebViews iOS com `modal={false}`.
 
-### Causa Raiz
-O componente `ResultCarousel` atualmente usa `DrawerPrimitive` do vaul com a configuração:
+## Solução
+Substituir o `DrawerPrimitive` por um componente CSS nativo com:
+1. **Posicionamento fixo** (`fixed inset-x-0 bottom-0`)
+2. **Animação CSS** de slide-up na entrada
+3. **Estados de expansão** controlados por touch events simples
+4. **Scroll interno** para conteúdo expandido
+
+## Mudanças no Arquivo
+
+**`src/components/scanner/ResultCarousel.tsx`**:
+
+1. Remover import do `DrawerPrimitive` (linha 13)
+2. Adicionar state para controle de expansão:
 ```tsx
-<DrawerPrimitive.Root 
-  open={true}
-  snapPoints={["15%", "85%"]}
-  modal={false}
-  dismissible={false}
-  fixed={true}
->
-```
-
-Esta combinação de `modal={false}` + snap points tem **problemas conhecidos no iOS** (GitHub issue #349). O drawer não renderiza corretamente sem um Trigger explícito, especialmente em WebViews nativas.
-
-## Solução Proposta
-
-Abandonar o uso do Drawer do vaul para o contexto do scanner e implementar um **card fixo com animação CSS simples**, que é mais confiável em todas as plataformas.
-
-### Mudanças Técnicas
-
-**Arquivo: `src/components/scanner/ResultCarousel.tsx`**
-
-1. **Remover** a dependência do `DrawerPrimitive` do vaul
-2. **Substituir** por um `<div>` com posicionamento fixo e animações CSS
-3. **Manter** a funcionalidade de snap points através de um state simples (`expanded` / `collapsed`)
-4. **Implementar** gesture de arrastar via touch events nativos (simples)
-
-### Estrutura do Novo Card
-
-```text
-┌─────────────────────────────────────────┐
-│  ═══════  (drag handle)                 │  ← Touch area para arrastar
-│  Ferrari 250 GTO                        │  ← Título sempre visível
-│  Hot Wheels • 1:64 • 1962               │
-├─────────────────────────────────────────┤
-│  [Conteúdo rolável quando expandido]    │  ← max-height: 65vh ou 15vh
-│  - Imagem destacada                     │
-│  - Índice de preço                      │
-│  - Dados colapsáveis                    │
-│  - Botões de ação                       │
-└─────────────────────────────────────────┘
-```
-
-### Lógica de Snap Points (CSS/State)
-
-```tsx
-// State simples para controlar expansão
 const [isExpanded, setIsExpanded] = useState(true);
-
-// Classes CSS baseadas no estado
-className={cn(
-  "fixed inset-x-0 bottom-0 z-50 bg-card rounded-t-[28px] transition-all duration-300",
-  isExpanded ? "max-h-[85vh]" : "max-h-[15vh]"
-)}
+const dragStartY = useRef(0);
 ```
 
-### Gesture de Arrastar (Simplificado)
-
+3. Substituir estrutura do DrawerPrimitive (linhas 270-281) por:
 ```tsx
-// Detectar direção do swipe no drag handle
-const handleDragEnd = (e: TouchEvent) => {
-  const deltaY = e.changedTouches[0].clientY - startY;
-  if (deltaY > 50) setIsExpanded(false);  // Swipe down = minimizar
-  if (deltaY < -50) setIsExpanded(true);  // Swipe up = expandir
-};
+<div className={cn(
+  "fixed inset-x-0 bottom-0 z-50 flex flex-col rounded-t-[28px] bg-card",
+  "transition-[max-height] duration-300 ease-out pb-safe",
+  "animate-slide-up-card shadow-[0_-8px_30px_rgba(0,0,0,0.3)]",
+  isExpanded ? "max-h-[85vh]" : "max-h-[20vh]"
+)}>
+```
+
+4. Adicionar handlers de touch no drag handle:
+```tsx
+onTouchStart={(e) => { dragStartY.current = e.touches[0].clientY; }}
+onTouchEnd={(e) => {
+  const deltaY = e.changedTouches[0].clientY - dragStartY.current;
+  if (deltaY > 50) setIsExpanded(false);
+  if (deltaY < -50) setIsExpanded(true);
+}}
+```
+
+5. Adicionar keyframe de animação no CSS (se não existir):
+```css
+@keyframes slide-up-card {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+.animate-slide-up-card {
+  animation: slide-up-card 0.3s ease-out forwards;
+}
 ```
 
 ## Benefícios
-
-1. **Compatibilidade iOS garantida** - Sem dependência de bibliotecas com bugs conhecidos
-2. **Performance melhor** - CSS transitions nativas vs JavaScript animations
-3. **Código mais simples** - Menos dependências, mais fácil de manter
-4. **Comportamento previsível** - Funciona igual em web e nativo
-
-## Arquivos a Modificar
-
-| Arquivo | Ação |
-|---------|------|
-| `src/components/scanner/ResultCarousel.tsx` | Refatorar completamente para usar div fixo com CSS |
-
-## Cronograma Estimado
-
-Esta é uma refatoração focada em um único componente. A lógica interna (navegação entre carros, adicionar à coleção, etc.) permanece inalterada - apenas a "casca" do drawer muda.
+- Compatibilidade garantida com iOS WebView
+- Sem dependências externas problemáticas
+- Performance nativa com CSS transitions
+- Comportamento previsível em todas as plataformas
