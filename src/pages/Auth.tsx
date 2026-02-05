@@ -1,10 +1,12 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import { Capacitor } from "@capacitor/core";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useBiometricAuth } from "@/hooks/useBiometricAuth";
 import { lovable } from "@/integrations/lovable/index";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PaddockLogo } from "@/components/icons/PaddockLogo";
@@ -34,11 +36,13 @@ const Auth = () => {
   const [appleLoading, setAppleLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [biometricLoading, setBiometricLoading] = useState(false);
+  const [processingOAuth, setProcessingOAuth] = useState(false);
   
   const { signIn, signUp, user, loading: authLoading } = useAuth();
   const { t } = useLanguage();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const [searchParams] = useSearchParams();
   
   const {
     isAvailable: biometricAvailable,
@@ -55,6 +59,70 @@ const Auth = () => {
       navigate("/", { replace: true });
     }
   }, [user, authLoading, navigate]);
+
+  // Process OAuth callback when returning from provider
+  useEffect(() => {
+    const processOAuthCallback = async () => {
+      // Check for OAuth code in URL params
+      const code = searchParams.get("code");
+      const errorDescription = searchParams.get("error_description");
+      
+      if (errorDescription) {
+        console.error("[Auth] OAuth error:", errorDescription);
+        toast({
+          title: t.common.error,
+          description: errorDescription,
+          variant: "destructive"
+        });
+        // Clean up URL
+        window.history.replaceState({}, "", "/auth");
+        return;
+      }
+      
+      if (code && !processingOAuth) {
+        console.log("[Auth] Processing OAuth callback with code");
+        setProcessingOAuth(true);
+        setGoogleLoading(true);
+        setAppleLoading(true);
+        
+        try {
+          // Exchange the code for a session
+          // The Supabase client should handle this automatically via PKCE
+          const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+          
+          if (error) {
+            console.error("[Auth] Error exchanging code:", error);
+            toast({
+              title: t.common.error,
+              description: error.message,
+              variant: "destructive"
+            });
+          } else if (data.session) {
+            console.log("[Auth] OAuth session established");
+            // Clean up URL and navigate
+            window.history.replaceState({}, "", "/auth");
+            navigate("/", { replace: true });
+            return;
+          }
+        } catch (error) {
+          console.error("[Auth] OAuth processing error:", error);
+          toast({
+            title: t.common.error,
+            description: error instanceof Error ? error.message : "Erro ao processar login",
+            variant: "destructive"
+          });
+        } finally {
+          setProcessingOAuth(false);
+          setGoogleLoading(false);
+          setAppleLoading(false);
+          // Clean up URL
+          window.history.replaceState({}, "", "/auth");
+        }
+      }
+    };
+    
+    processOAuthCallback();
+  }, [searchParams, navigate, toast, t, processingOAuth]);
 
   // Auto-trigger biometric auth if enabled
   useEffect(() => {
@@ -167,6 +235,15 @@ const Auth = () => {
 
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6">
+      {/* Processing OAuth callback overlay */}
+      {processingOAuth && (
+        <div className="fixed inset-0 bg-background z-50 flex flex-col items-center justify-center">
+          <PaddockLogo variant="wordmark" size={96} className="mb-8" />
+          <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
+          <p className="text-sm text-muted-foreground">Autenticando...</p>
+        </div>
+      )}
+      
       {/* Logo */}
       <div className="mb-10 animate-scale-in">
         <PaddockLogo variant="wordmark" size={96} />
