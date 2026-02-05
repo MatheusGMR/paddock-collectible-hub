@@ -764,13 +764,11 @@ export const ScannerView = () => {
     setShowFlash(true);
     setTimeout(() => setShowFlash(false), 150);
     
-    setIsScanning(true);
-    
     try {
+      // 1. Capture the photo first
       const result = await cameraPreview.capture();
       
       if (!result) {
-        setIsScanning(false);
         toast({
           title: t.common.error,
           description: "Não foi possível capturar a foto.",
@@ -780,12 +778,15 @@ export const ScannerView = () => {
       }
       
       const imageBase64 = result.base64Image;
-      setCapturedImage(imageBase64);
       
-      // Stop camera preview after capture
+      // 2. IMMEDIATELY stop camera and show captured image (freeze the frame)
       await cameraPreview.stop();
       setUseCameraPreview(false);
       setCameraActive(false);
+      setCapturedImage(imageBase64);
+      
+      // 3. Now start the scanning/analysis phase
+      setIsScanning(true);
       
       // Track scan event
       trackEvent("scan_initiated", { source: "camera_preview" });
@@ -933,8 +934,12 @@ export const ScannerView = () => {
     context.drawImage(video, 0, 0, canvas.width, canvas.height);
 
     const imageBase64 = canvas.toDataURL("image/jpeg", 0.8);
-    setCapturedImage(imageBase64);
+    
+    // 1. IMMEDIATELY stop camera and show captured image (freeze the frame)
     stopCamera();
+    setCapturedImage(imageBase64);
+    
+    // 2. Now start the scanning/analysis phase
     setIsScanning(true);
     
     // Track scan event
@@ -1078,13 +1083,11 @@ export const ScannerView = () => {
   // Native camera capture function (fallback for iOS native app)
   const captureNativePhoto = useCallback(async () => {
     console.log("[Scanner] Capturing via native camera...");
-    setIsScanning(true);
     
     try {
       const result = await nativeCamera.takePhoto();
       
       if (!result) {
-        setIsScanning(false);
         toast({
           title: t.common.error,
           description: "Não foi possível capturar a foto.",
@@ -1094,7 +1097,12 @@ export const ScannerView = () => {
       }
       
       const imageBase64 = result.base64Image;
+      
+      // 1. IMMEDIATELY show captured image (freeze the frame)
       setCapturedImage(imageBase64);
+      
+      // 2. Now start the scanning/analysis phase
+      setIsScanning(true);
       
       // Track scan event
       trackEvent("scan_initiated", { source: "native_camera" });
