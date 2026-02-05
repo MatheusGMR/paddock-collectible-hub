@@ -196,7 +196,7 @@ export const SettingsSheet = ({ open, onOpenChange, onSignOut }: SettingsSheetPr
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="w-full sm:max-w-md bg-background border-l border-border p-0 overflow-y-auto">
+      <SheetContent side="right" className="w-full sm:max-w-md bg-background border-l border-border p-0 overflow-y-auto pt-safe">
         <SheetHeader className="p-6 pb-4 border-b border-border">
           <SheetTitle className="flex items-center gap-2 text-foreground">
             <Settings className="h-5 w-5" />

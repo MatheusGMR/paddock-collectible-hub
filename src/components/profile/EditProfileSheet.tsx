@@ -327,7 +327,7 @@ export const EditProfileSheet = ({
   return (
     <>
       <Sheet open={open} onOpenChange={onOpenChange}>
-        <SheetContent side="bottom" className="h-[90vh] rounded-t-3xl">
+        <SheetContent side="bottom" className="h-[90vh] rounded-t-3xl pt-safe">
           <SheetHeader className="mb-4">
             <div className="flex items-center justify-between">
               <SheetTitle>{t.profile.editProfile}</SheetTitle>
