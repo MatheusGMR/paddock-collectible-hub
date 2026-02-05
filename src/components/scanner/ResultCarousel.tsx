@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
 import { MusicPlayer } from "./MusicPlayer";
 import { RealCarGallery } from "./RealCarGallery";
 import { ScanFeedback } from "./ScanFeedback";
-import { Drawer, DrawerContent } from "@/components/ui/drawer";
+import { Drawer as DrawerPrimitive } from "vaul";
 
 import { BoundingBox } from "@/lib/imageCrop";
 
@@ -267,15 +267,18 @@ export const ResultCarousel = ({
   const { result, originalIndex } = currentItem;
 
   return (
-    <Drawer 
+    <DrawerPrimitive.Root 
       open={true}
       snapPoints={["15%", "85%"]}
       activeSnapPoint={snapPoint}
       setActiveSnapPoint={setSnapPoint}
       modal={false}
       dismissible={false}
+      fixed={true}
     >
-      <DrawerContent className="h-[92vh] rounded-t-[28px] bg-card border-0 overflow-hidden pb-safe">
+      {/* Custom DrawerContent without overlay for scanner context */}
+      <DrawerPrimitive.Portal>
+        <DrawerPrimitive.Content className="fixed inset-x-0 bottom-0 z-50 flex h-auto flex-col rounded-t-[28px] bg-card border-0 overflow-hidden pb-safe">
         {/* Drag handle with car title */}
         <div 
           className="sticky top-0 z-20 bg-card pt-3 pb-2 cursor-grab active:cursor-grabbing"
@@ -527,7 +530,8 @@ export const ResultCarousel = ({
         {/* Bottom safe area fill */}
         <div className="bg-card pb-safe" />
       </div>
-      </DrawerContent>
+        </DrawerPrimitive.Content>
+      </DrawerPrimitive.Portal>
 
       {/* Breakdown sheet */}
       {breakdownResult?.priceIndex && (
@@ -539,6 +543,6 @@ export const ResultCarousel = ({
           breakdown={breakdownResult.priceIndex.breakdown}
         />
       )}
-    </Drawer>
+    </DrawerPrimitive.Root>
   );
 };
