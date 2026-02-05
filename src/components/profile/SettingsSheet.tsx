@@ -41,6 +41,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Capacitor } from "@capacitor/core";
 import { App } from "@capacitor/app";
+import { resetBiometricPrompt } from "@/components/auth/BiometricPrompt";
 
 interface SettingsSheetProps {
   open: boolean;
@@ -192,6 +193,11 @@ export const SettingsSheet = ({ open, onOpenChange, onSignOut }: SettingsSheetPr
     } finally {
       setBiometricLoading(false);
     }
+  };
+  const handleSignOut = () => {
+    // Reset biometric prompt so it shows again on next login
+    resetBiometricPrompt();
+    onSignOut();
   };
 
   return (
@@ -427,7 +433,7 @@ export const SettingsSheet = ({ open, onOpenChange, onSignOut }: SettingsSheetPr
               
               {/* Sign Out */}
               <button 
-                onClick={onSignOut}
+                onClick={handleSignOut}
                 className="w-full flex items-center justify-between p-4 hover:bg-destructive/10 transition-colors group"
               >
                 <div className="flex items-center gap-3">

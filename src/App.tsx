@@ -16,6 +16,7 @@ import { OnboardingCarousel } from "@/components/onboarding/OnboardingCarousel";
 import { EmbeddedCheckout } from "@/components/onboarding/EmbeddedCheckout";
 import { SubscriptionGate } from "@/components/onboarding/SubscriptionGate";
 import { ChallengeCelebrationModal } from "@/components/challenge/ChallengeCelebrationModal";
+import { BiometricPrompt } from "@/components/auth/BiometricPrompt";
 import { usePageTracking } from "@/hooks/usePageTracking";
 import Index from "./pages/Index";
 import Mercado from "./pages/Mercado";
@@ -48,6 +49,7 @@ const SubscriptionFlow = ({ children }: { children: React.ReactNode }) => {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showEmbeddedCheckout, setShowEmbeddedCheckout] = useState(false);
   const [isOnboardingInProgress, setIsOnboardingInProgress] = useState(false);
+  const [showBiometricPrompt, setShowBiometricPrompt] = useState(false);
   const hasCheckedRef = useRef(false);
 
   // Check if user has completed onboarding before (persisted in localStorage)
@@ -144,14 +146,20 @@ const SubscriptionFlow = ({ children }: { children: React.ReactNode }) => {
   }, [isOnboardingInProgress]);
 
   const handleCheckoutComplete = useCallback(async () => {
-    // Checkout completed - refresh subscription status and navigate
+    // Checkout completed - show biometric prompt then navigate
     setShowEmbeddedCheckout(false);
     setIsOnboardingInProgress(false);
     markOnboardingComplete();
     
+    // Show biometric prompt before navigating
+    setShowBiometricPrompt(true);
+  }, [markOnboardingComplete]);
+
+  const handleBiometricComplete = useCallback(() => {
+    setShowBiometricPrompt(false);
     // Refresh subscription status before navigating
     window.location.href = "/subscription-success";
-  }, [markOnboardingComplete]);
+  }, []);
 
   const handleSkipOnboarding = useCallback(async () => {
     if (!user) return;
@@ -168,6 +176,9 @@ const SubscriptionFlow = ({ children }: { children: React.ReactNode }) => {
       markOnboardingComplete();
       setIsOnboardingInProgress(false);
       setShowOnboarding(false);
+      
+      // Show biometric prompt after trial starts
+      setShowBiometricPrompt(true);
     }
   }, [startTrial, markOnboardingComplete, markUserOnboardingComplete, user]);
 
@@ -185,6 +196,16 @@ const SubscriptionFlow = ({ children }: { children: React.ReactNode }) => {
   // But render children to avoid layout shifts
   if (authLoading || subLoading) {
     return <>{children}</>;
+  }
+
+  // Show biometric prompt
+  if (showBiometricPrompt && user?.email) {
+    return (
+      <BiometricPrompt
+        userEmail={user.email}
+        onComplete={handleBiometricComplete}
+      />
+    );
   }
 
   // Show embedded checkout
