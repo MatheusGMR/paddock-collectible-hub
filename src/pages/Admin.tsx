@@ -12,7 +12,8 @@ import {
   ArrowLeft,
   RefreshCw,
   Bot,
-  Bell
+  Bell,
+  Activity
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,7 +25,8 @@ import {
   useAdminUserGrowth,
   useAdminUsers,
   useAdminPageAnalytics,
-  useAdminAIUsage
+  useAdminAIUsage,
+  useAdminScannerPerformance
 } from "@/hooks/useAdmin";
 import { AdminStatCard } from "@/components/admin/AdminStatCard";
 import { AdminUsersTable } from "@/components/admin/AdminUsersTable";
@@ -33,6 +35,7 @@ import { AdminUserGrowthChart } from "@/components/admin/AdminUserGrowthChart";
 import { AdminAnalyticsSection } from "@/components/admin/AdminAnalyticsSection";
 import { AdminAIUsageSection } from "@/components/admin/AdminAIUsageSection";
 import { AdminPushSection } from "@/components/admin/AdminPushSection";
+import { AdminPerformanceSection } from "@/components/admin/AdminPerformanceSection";
 import { useAuth } from "@/contexts/AuthContext";
 
 const Admin = () => {
@@ -47,6 +50,8 @@ const Admin = () => {
   const { analytics, isLoading: isLoadingAnalytics, refetch: refetchAnalytics } = useAdminPageAnalytics(analyticsDays);
   const [aiDays, setAIDays] = useState(30);
   const { stats: aiStats, isLoading: isLoadingAI, refetch: refetchAI } = useAdminAIUsage(aiDays);
+  const [perfDays, setPerfDays] = useState(7);
+  const { stats: perfStats, isLoading: isLoadingPerf, refetch: refetchPerf } = useAdminScannerPerformance(perfDays);
 
   // Redirect if not admin
   useEffect(() => {
@@ -67,6 +72,7 @@ const Admin = () => {
     refetchUsers();
     refetchAnalytics();
     refetchAI();
+    refetchPerf();
   };
 
   if (isCheckingAdmin) {
@@ -120,18 +126,22 @@ const Admin = () => {
       <div className="p-4 space-y-6">
         {/* Tabs for different sections */}
         <Tabs defaultValue="overview" className="w-full">
-          <TabsList className="grid w-full grid-cols-5">
-            <TabsTrigger value="overview">Geral</TabsTrigger>
-            <TabsTrigger value="analytics">Analytics</TabsTrigger>
-            <TabsTrigger value="ai" className="gap-1">
+          <TabsList className="grid w-full grid-cols-6">
+            <TabsTrigger value="overview" className="text-xs px-1">Geral</TabsTrigger>
+            <TabsTrigger value="analytics" className="text-xs px-1">Analytics</TabsTrigger>
+            <TabsTrigger value="ai" className="text-xs px-1 gap-1">
               <Bot className="h-3 w-3" />
               IA
             </TabsTrigger>
-            <TabsTrigger value="push" className="gap-1">
+            <TabsTrigger value="performance" className="text-xs px-1 gap-1">
+              <Activity className="h-3 w-3" />
+              Perf
+            </TabsTrigger>
+            <TabsTrigger value="push" className="text-xs px-1 gap-1">
               <Bell className="h-3 w-3" />
               Push
             </TabsTrigger>
-            <TabsTrigger value="users">Usuários</TabsTrigger>
+            <TabsTrigger value="users" className="text-xs px-1">Usuários</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="space-y-6 mt-4">
@@ -243,6 +253,29 @@ const Admin = () => {
             <AdminAIUsageSection 
               stats={aiStats} 
               isLoading={isLoadingAI} 
+            />
+          </TabsContent>
+
+          <TabsContent value="performance" className="mt-4">
+            {/* Period selector */}
+            <div className="flex items-center gap-2 mb-4">
+              <span className="text-sm text-muted-foreground">Período:</span>
+              <div className="flex gap-1">
+                {[7, 14, 30].map(days => (
+                  <Button
+                    key={days}
+                    variant={perfDays === days ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setPerfDays(days)}
+                  >
+                    {days}d
+                  </Button>
+                ))}
+              </div>
+            </div>
+            <AdminPerformanceSection 
+              stats={perfStats} 
+              isLoading={isLoadingPerf} 
             />
           </TabsContent>
 

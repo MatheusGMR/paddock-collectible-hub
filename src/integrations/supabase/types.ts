@@ -732,6 +732,36 @@ export type Database = {
           },
         ]
       }
+      scanner_error_logs: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          error_type: string
+          function_name: string
+          id: string
+          metadata: Json | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          error_type: string
+          function_name: string
+          id?: string
+          metadata?: Json | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          error_type?: string
+          function_name?: string
+          id?: string
+          metadata?: Json | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       user_collection: {
         Row: {
           acquired_at: string | null
@@ -895,6 +925,10 @@ export type Database = {
       }
       get_admin_ai_usage_stats: { Args: { days_back?: number }; Returns: Json }
       get_admin_page_analytics: { Args: { days_back?: number }; Returns: Json }
+      get_admin_scanner_performance: {
+        Args: { days_back?: number }
+        Returns: Json
+      }
       get_admin_stats: { Args: never; Returns: Json }
       get_admin_subscription_stats: { Args: never; Returns: Json }
       get_admin_user_growth: { Args: never; Returns: Json }

@@ -127,7 +127,7 @@ export const en: Translations = {
     addingProgress: "of",
     allItemsProcessed: "All done!",
     itemsAdded: "items added",
-    maxCarsWarning: "Too many cars in photo. Showing 5 most visible.",
+    maxCarsWarning: "Too many cars in photo. Showing 7 most visible.",
     viewCollection: "View Collection",
     // Image quality errors
     imageQualityError: "Oops! There's a problem",
@@ -142,7 +142,7 @@ export const en: Translations = {
     tipClearView: "No obstructions in front",
     issueTypes: {
       too_many_cars: "Too many cars in the photo!",
-      too_many_cars_desc: "We detected {{count}} cars, but the limit is 5.",
+      too_many_cars_desc: "We detected {{count}} cars, but the limit is 7.",
       too_many_cars_tip: "Photograph smaller groups for better accuracy.",
       poor_lighting: "Poor lighting",
       poor_lighting_desc: "The photo is too dark or too bright.",
