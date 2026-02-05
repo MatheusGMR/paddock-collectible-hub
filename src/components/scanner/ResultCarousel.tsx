@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef } from "react";
-import { Check, Plus, RotateCcw, ChevronLeft, ChevronRight, Loader2, CheckCircle2, SkipForward, AlertTriangle, Car, Package, History, ChevronDown, ChevronUp, Minus } from "lucide-react";
+import { Check, Plus, RotateCcw, ChevronLeft, ChevronRight, Loader2, CheckCircle2, SkipForward, AlertTriangle, Car, Package, History, ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -10,7 +10,6 @@ import { cn } from "@/lib/utils";
 import { MusicPlayer } from "./MusicPlayer";
 import { RealCarGallery } from "./RealCarGallery";
 import { ScanFeedback } from "./ScanFeedback";
-import { Drawer as DrawerPrimitive } from "vaul";
 
 import { BoundingBox } from "@/lib/imageCrop";
 
@@ -171,7 +170,8 @@ export const ResultCarousel = ({
   const [justAddedIndex, setJustAddedIndex] = useState<number | null>(null);
   const [breakdownOpen, setBreakdownOpen] = useState(false);
   const [breakdownResult, setBreakdownResult] = useState<AnalysisResult | null>(null);
-  const [snapPoint, setSnapPoint] = useState<string | number>("85%");
+  const [isExpanded, setIsExpanded] = useState(true);
+  const dragStartY = useRef(0);
 
   // Get remaining items (not added)
   const remainingResults = results.filter((_, idx) => !addedIndices.has(idx));
@@ -266,22 +266,33 @@ export const ResultCarousel = ({
 
   const { result, originalIndex } = currentItem;
 
+  // Touch handlers for drag gesture
+  const handleTouchStart = (e: React.TouchEvent) => {
+    dragStartY.current = e.touches[0].clientY;
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    const deltaY = e.changedTouches[0].clientY - dragStartY.current;
+    if (deltaY > 50) setIsExpanded(false);  // Swipe down = collapse
+    if (deltaY < -50) setIsExpanded(true);  // Swipe up = expand
+  };
+
   return (
-    <DrawerPrimitive.Root 
-      open={true}
-      snapPoints={["15%", "85%"]}
-      activeSnapPoint={snapPoint}
-      setActiveSnapPoint={setSnapPoint}
-      modal={false}
-      dismissible={false}
-      fixed={true}
-    >
-      {/* Custom DrawerContent without overlay for scanner context */}
-      <DrawerPrimitive.Portal>
-        <DrawerPrimitive.Content className="fixed inset-x-0 bottom-0 z-50 flex h-auto flex-col rounded-t-[28px] bg-card border-0 overflow-hidden pb-safe">
+    <>
+      {/* Fixed card with CSS animation - no vaul dependency */}
+      <div 
+        className={cn(
+          "fixed inset-x-0 bottom-0 z-50 flex flex-col rounded-t-[28px] bg-card",
+          "transition-[max-height] duration-300 ease-out overflow-hidden",
+          "animate-slide-up-card shadow-[0_-8px_30px_rgba(0,0,0,0.3)]",
+          isExpanded ? "max-h-[85vh]" : "max-h-[20vh]"
+        )}
+      >
         {/* Drag handle with car title */}
         <div 
           className="sticky top-0 z-20 bg-card pt-3 pb-2 cursor-grab active:cursor-grabbing"
+          onTouchStart={handleTouchStart}
+          onTouchEnd={handleTouchEnd}
         >
           {/* Visual drag indicator */}
           <div className="mx-auto w-12 h-1.5 rounded-full bg-muted-foreground/30 mb-3" />
@@ -530,8 +541,7 @@ export const ResultCarousel = ({
         {/* Bottom safe area fill */}
         <div className="bg-card pb-safe" />
       </div>
-        </DrawerPrimitive.Content>
-      </DrawerPrimitive.Portal>
+      </div>
 
       {/* Breakdown sheet */}
       {breakdownResult?.priceIndex && (
@@ -543,6 +553,6 @@ export const ResultCarousel = ({
           breakdown={breakdownResult.priceIndex.breakdown}
         />
       )}
-    </DrawerPrimitive.Root>
+    </>
   );
 };
