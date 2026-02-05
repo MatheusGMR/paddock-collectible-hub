@@ -42,6 +42,7 @@ interface PostCardProps {
       likesCount: number;
     } | null;
     isFromFollowing?: boolean;
+    isCuriosity?: boolean;
   };
 }
 
@@ -53,16 +54,19 @@ export const PostCard = ({ post }: PostCardProps) => {
   const navigate = useNavigate();
   const { user } = useAuth();
 
+  // Check if this is a curiosity post (not a real database post)
+  const isCuriosity = post.isCuriosity || post.id.startsWith('curiosity-');
+  const canInteract = !isCuriosity && isValidUUID(post.id);
+
   // Check if user has liked this post on mount (only for real posts with valid UUIDs)
   useEffect(() => {
-    if (user && post.id && isValidUUID(post.id)) {
+    if (user && canInteract) {
       hasLikedPost(post.id).then(setLiked);
     }
-  }, [user, post.id]);
+  }, [user, post.id, canInteract]);
 
   const handleLike = async () => {
-    // Don't allow liking mock posts (non-UUID IDs)
-    if (isLiking || !user || !isValidUUID(post.id)) return;
+    if (isLiking || !user || !canInteract) return;
     
     setIsLiking(true);
     const newLiked = !liked;
@@ -73,7 +77,6 @@ export const PostCard = ({ post }: PostCardProps) => {
     
     try {
       if (newLiked) {
-        // Like and create notification for post owner
         await likePost(post.id, post.user.id || "");
       } else {
         await unlikePost(post.id);
@@ -162,49 +165,54 @@ export const PostCard = ({ post }: PostCardProps) => {
         />
       </div>
 
-      {/* Actions */}
-      <div className="flex items-center justify-between px-4 py-3">
-        <div className="flex items-center gap-4">
+      {/* Actions - hide for curiosity posts */}
+      {!isCuriosity && (
+        <div className="flex items-center justify-between px-4 py-3">
+          <div className="flex items-center gap-4">
+            <button 
+              onClick={handleLike}
+              className="transition-transform active:scale-90"
+              disabled={!canInteract}
+            >
+              <Heart 
+                className={cn(
+                  "h-6 w-6",
+                  liked ? "fill-destructive text-destructive" : "text-foreground"
+                )} 
+              />
+            </button>
+            <button 
+              onClick={handleComment}
+              className="transition-transform active:scale-90"
+            >
+              <MessageCircle className="h-6 w-6" />
+            </button>
+            <button 
+              onClick={handleShare}
+              className="transition-transform active:scale-90"
+            >
+              <Send className="h-6 w-6" />
+            </button>
+          </div>
           <button 
-            onClick={handleLike}
+            onClick={handleSave}
             className="transition-transform active:scale-90"
           >
-            <Heart 
-              className={cn(
-                "h-6 w-6",
-                liked ? "fill-red-500 text-red-500" : "text-foreground"
-              )} 
+            <Bookmark 
+              className={cn("h-6 w-6", saved && "fill-foreground")} 
             />
           </button>
-          <button 
-            onClick={handleComment}
-            className="transition-transform active:scale-90"
-          >
-            <MessageCircle className="h-6 w-6" />
-          </button>
-          <button 
-            onClick={handleShare}
-            className="transition-transform active:scale-90"
-          >
-            <Send className="h-6 w-6" />
-          </button>
         </div>
-        <button 
-          onClick={handleSave}
-          className="transition-transform active:scale-90"
-        >
-          <Bookmark 
-            className={cn("h-6 w-6", saved && "fill-foreground")} 
-          />
-        </button>
-      </div>
+      )}
 
-      {/* Likes */}
-      <div className="px-4">
-        <p className="text-sm font-semibold">
-          {likeCount.toLocaleString()} likes
-        </p>
-      </div>
+      {/* Likes - hide for curiosity posts */}
+      {!isCuriosity && likeCount > 0 && (
+        <div className="px-4">
+          <p className="text-sm font-semibold">
+            {likeCount.toLocaleString()} likes
+          </p>
+        </div>
+      )}
 
       {/* Caption or Historical Fact */}
       <div className="px-4 py-2">

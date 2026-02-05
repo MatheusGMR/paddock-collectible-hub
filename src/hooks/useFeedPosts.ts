@@ -29,6 +29,7 @@ export interface FeedPost {
     likesCount: number;
   } | null;
   isFromFollowing?: boolean;
+  isCuriosity?: boolean;
 }
 
 const PAGE_SIZE = 10;
