@@ -41,6 +41,7 @@ interface AnalysisResult {
   priceIndex?: PriceIndex;
   musicSuggestion?: string;
   musicSelectionReason?: string;
+  musicListeningTip?: string;
   realCarPhotos?: string[];
   croppedImage?: string;
   isDuplicate?: boolean;

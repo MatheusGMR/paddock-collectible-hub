@@ -45,6 +45,7 @@ interface AnalysisResult {
   priceIndex?: PriceIndex;
   musicSuggestion?: string;
   musicSelectionReason?: string;
+  musicListeningTip?: string;
   realCarPhotos?: string[];
   croppedImage?: string; // Will be populated after cropping
   isDuplicate?: boolean; // Duplicate detection flag
