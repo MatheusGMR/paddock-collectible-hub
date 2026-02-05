@@ -847,11 +847,13 @@ export const ScannerView = () => {
           });
         }
       } else {
+        // Skip image quality errors ONLY if there are truly no valid items
         if (response.imageQuality && !response.imageQuality.isValid) {
-          const hasValidItems = response.items && response.items.length > 0 && response.identified;
+          const hasValidItems = response.items && response.items.length > 0;
           const tooManyIssue = response.imageQuality.issues?.find((i: { type: string }) => i.type === "too_many_cars");
-          const isFalseTooMany = tooManyIssue && response.count && response.count <= 5;
+          const isFalseTooMany = tooManyIssue && response.count && response.count <= 7;
           
+          // Only show error if truly no items AND not a false positive
           if (!hasValidItems && !isFalseTooMany) {
             setImageQualityError(response.imageQuality);
             setAnalysisResults([]);
@@ -862,7 +864,10 @@ export const ScannerView = () => {
 
         setImageQualityError(null);
 
-        if (!response.identified || response.count === 0) {
+        // Check for valid items - use items array length, not just identified/count flags
+        const hasItems = response.items && response.items.length > 0;
+        
+        if (!hasItems) {
           toast({
             title: t.scanner.itemNotIdentified,
             description: t.scanner.itemNotIdentifiedDesc,

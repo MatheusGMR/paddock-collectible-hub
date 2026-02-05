@@ -11,7 +11,7 @@ import { uploadCollectionImage, isBase64DataUri } from "@/lib/uploadImage";
 import { LoadingFacts } from "@/components/scanner/LoadingFacts";
 import { useNavigate } from "react-router-dom";
 import {
-  BatchResultsView,
+  BatchCarouselView,
   MediaQueueGrid,
   useParallelProcessing,
   useBatchPersistence,
@@ -40,6 +40,8 @@ export const PhotoUploadSheet = ({
   const [consolidatedResults, setConsolidatedResults] = useState<ConsolidatedResult[]>([]);
   const [progress, setProgress] = useState({ current: 0, total: 0 });
   const [isAddingToCollection, setIsAddingToCollection] = useState(false);
+  const [addedIndices, setAddedIndices] = useState<Set<number>>(new Set());
+  const [skippedIndices, setSkippedIndices] = useState<Set<number>>(new Set());
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
@@ -158,72 +160,86 @@ export const PhotoUploadSheet = ({
     setPhase("reviewing");
   };
 
-  const handleSelectionChange = (updated: ConsolidatedResult[]) => {
-    setConsolidatedResults(updated);
-    saveResults(updated);
-  };
-
-  const handleAddSelected = async () => {
+  // Individual item add handler for carousel view
+  const handleAddToCollectionSingle = async (index: number) => {
     if (!user) return;
-
-    const selectedResults = consolidatedResults.filter((r) => r.isSelected);
-    if (selectedResults.length === 0) return;
-
+    
+    const result = consolidatedResults[index];
+    if (!result) return;
+    
     setIsAddingToCollection(true);
-
-    let addedCount = 0;
-    for (const result of selectedResults) {
-      try {
-        // Upload image to storage if it's a base64 data URI
-        let imageUrl: string | undefined;
-        const imageToSave = result.croppedImage;
-
-        if (imageToSave && isBase64DataUri(imageToSave)) {
-          const uploadedUrl = await uploadCollectionImage(user.id, imageToSave);
-          if (uploadedUrl) {
-            imageUrl = uploadedUrl;
-          }
-        } else if (imageToSave) {
-          imageUrl = imageToSave;
-        }
-
-        await addToCollection(
-          user.id,
-          {
-            real_car_brand: result.realCar.brand,
-            real_car_model: result.realCar.model,
-            real_car_year: result.realCar.year,
-            historical_fact: result.realCar.historicalFact,
-            collectible_manufacturer: result.collectible.manufacturer,
-            collectible_scale: result.collectible.scale,
-            collectible_year: result.collectible.estimatedYear,
-            collectible_origin: result.collectible.origin,
-            collectible_series: result.collectible.series,
-            collectible_condition: result.collectible.condition,
-            collectible_notes: result.collectible.notes,
-            collectible_color: result.collectible.color,
-            price_index: result.priceIndex?.score || null,
-            rarity_tier: result.priceIndex?.tier || null,
-            index_breakdown: result.priceIndex?.breakdown || null,
-            music_suggestion: result.musicSuggestion || null,
-            music_selection_reason: result.musicSelectionReason || null,
-            real_car_photos: result.realCarPhotos || null,
-          },
-          imageUrl
-        );
-        addedCount++;
-      } catch (error) {
-        console.error("Failed to add item:", error);
+    
+    try {
+      // Get the original media to access its full base64 if cropped image is missing
+      const mediaItem = mediaQueue.find(m => m.id === result.mediaId);
+      
+      // Upload image to storage - prefer cropped, fallback to original media
+      let imageUrl: string | undefined;
+      let imageToSave = result.croppedImage;
+      
+      // If no cropped image, try to use the original from mediaQueue
+      if (!imageToSave && mediaItem?.base64) {
+        imageToSave = mediaItem.base64;
       }
+
+      if (imageToSave && isBase64DataUri(imageToSave)) {
+        const uploadedUrl = await uploadCollectionImage(user.id, imageToSave);
+        if (uploadedUrl) {
+          imageUrl = uploadedUrl;
+        }
+      } else if (imageToSave) {
+        imageUrl = imageToSave;
+      }
+
+      await addToCollection(
+        user.id,
+        {
+          real_car_brand: result.realCar.brand,
+          real_car_model: result.realCar.model,
+          real_car_year: result.realCar.year,
+          historical_fact: result.realCar.historicalFact,
+          collectible_manufacturer: result.collectible.manufacturer,
+          collectible_scale: result.collectible.scale,
+          collectible_year: result.collectible.estimatedYear,
+          collectible_origin: result.collectible.origin,
+          collectible_series: result.collectible.series,
+          collectible_condition: result.collectible.condition,
+          collectible_notes: result.collectible.notes,
+          collectible_color: result.collectible.color,
+          price_index: result.priceIndex?.score || null,
+          rarity_tier: result.priceIndex?.tier || null,
+          index_breakdown: result.priceIndex?.breakdown || null,
+          music_suggestion: result.musicSuggestion || null,
+          music_selection_reason: result.musicSelectionReason || null,
+          real_car_photos: result.realCarPhotos || null,
+        },
+        imageUrl
+      );
+      
+      // Mark as added
+      setAddedIndices(prev => new Set([...prev, index]));
+      
+      toast({
+        title: t.scanner.addedToCollection,
+        description: `${result.realCar.brand} ${result.realCar.model}`,
+      });
+    } catch (error) {
+      console.error("Failed to add item:", error);
+      toast({
+        title: t.common.error,
+        description: "Falha ao adicionar item",
+        variant: "destructive",
+      });
+    } finally {
+      setIsAddingToCollection(false);
     }
-
-    setIsAddingToCollection(false);
-
-    toast({
-      title: t.scanner.addedToCollection,
-      description: `${addedCount} ${addedCount === 1 ? "item adicionado" : "itens adicionados"}`,
-    });
-
+  };
+  
+  const handleSkipSingle = (index: number) => {
+    setSkippedIndices(prev => new Set([...prev, index]));
+  };
+  
+  const handleComplete = () => {
     clearResults();
     resetState();
     onOpenChange(false);
@@ -247,6 +263,8 @@ export const PhotoUploadSheet = ({
     setConsolidatedResults([]);
     setProgress({ current: 0, total: 0 });
     setIsAddingToCollection(false);
+    setAddedIndices(new Set());
+    setSkippedIndices(new Set());
   };
 
   const currentMedia = mediaQueue[currentMediaIndex];
@@ -371,13 +389,16 @@ export const PhotoUploadSheet = ({
             </>
           )}
 
-          {/* Results Review State */}
+          {/* Results Review State - Carousel format like scanner */}
           {phase === "reviewing" && (
-            <BatchResultsView
+            <BatchCarouselView
               results={consolidatedResults}
-              onSelectionChange={handleSelectionChange}
-              onAddSelected={handleAddSelected}
+              onAddToCollection={handleAddToCollectionSingle}
+              onSkip={handleSkipSingle}
+              onComplete={handleComplete}
               onSkipAll={handleSkipAll}
+              addedIndices={addedIndices}
+              skippedIndices={skippedIndices}
               isAdding={isAddingToCollection}
             />
           )}
