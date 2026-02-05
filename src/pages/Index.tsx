@@ -57,7 +57,7 @@ const Index = () => {
     };
   }, [setupObserver]);
 
-  // Transform curiosity into a post format
+  // Transform curiosity into a post format (read-only, no interactions)
   const curiosityAsPost: FeedPost | null = useMemo(() => {
     if (!curiosity) return null;
     
@@ -71,7 +71,7 @@ const Index = () => {
       image: curiosity.imageUrl,
       caption: curiosity.historicalFact || `${curiosity.carBrand} ${curiosity.carModel}${curiosity.carYear ? ` (${curiosity.carYear})` : ""}`,
       historicalFact: curiosity.historicalFact,
-      likes: Math.floor(Math.random() * 50) + 10,
+      likes: 0,
       comments: 0,
       item: {
         brand: curiosity.carBrand,
@@ -83,6 +83,7 @@ const Index = () => {
       createdAt: "Destaque",
       topComment: null,
       isFromFollowing: false,
+      isCuriosity: true, // Flag to disable interactions
     };
   }, [curiosity]);
 
