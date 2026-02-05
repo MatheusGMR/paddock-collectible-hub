@@ -41,6 +41,24 @@ serve(async (req) => {
     if (!user?.email) throw new Error("User not authenticated or email not available");
     logStep("User authenticated", { userId: user.id, email: user.email });
 
+    // VIP users exempt from subscription (lifetime access)
+    const VIP_EMAILS = [
+      "matheusmotaroldan@hotmail.com",
+    ];
+    
+    if (VIP_EMAILS.includes(user.email.toLowerCase())) {
+      logStep("VIP user detected - granting lifetime access", { email: user.email });
+      return new Response(JSON.stringify({
+        status: "active",
+        subscribed: true,
+        is_new_user: false,
+        subscription_end: null, // Lifetime
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      });
+    }
+
     // Check local subscription record first
     const { data: localSub, error: localError } = await supabaseClient
       .from("user_subscriptions")
