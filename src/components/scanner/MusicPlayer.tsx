@@ -31,11 +31,6 @@ const getSpotifySearchUrl = (title: string, artist: string) => {
   return `https://open.spotify.com/search/${query}`;
 };
 
-// Get YouTube Music search URL (fallback)
-const getYouTubeMusicUrl = (title: string, artist: string) => {
-  const query = encodeURIComponent(`${title} ${artist}`.trim());
-  return `https://music.youtube.com/search?q=${query}`;
-};
 
 // Spotify oEmbed API to get embed URL
 const getSpotifyEmbedUrl = async (title: string, artist: string): Promise<string | null> => {
@@ -75,9 +70,6 @@ export const MusicPlayer = ({
     window.open(getSpotifySearchUrl(title, artist), "_blank", "noopener,noreferrer");
   };
 
-  const handleYouTubeMusicClick = () => {
-    window.open(getYouTubeMusicUrl(title, artist), "_blank", "noopener,noreferrer");
-  };
 
   if (!suggestion) return null;
 
@@ -201,24 +193,6 @@ export const MusicPlayer = ({
           </div>
         )}
 
-        {/* Alternative: YouTube Music (only show when embed is not active) */}
-        {!showEmbed && (
-          <div className="mt-3 pt-3 border-t border-primary/10">
-            <p className="text-xs text-muted-foreground text-center mb-2">
-              Também disponível em:
-            </p>
-            <Button
-              variant="outline"
-              onClick={handleYouTubeMusicClick}
-              className="w-full h-10 gap-2 bg-destructive/10 border-destructive/30 hover:bg-destructive/20 text-foreground text-xs"
-            >
-              <svg viewBox="0 0 24 24" className="h-4 w-4 fill-destructive">
-                <path d="M12 0C5.376 0 0 5.376 0 12s5.376 12 12 12 12-5.376 12-12S18.624 0 12 0zm4.872 16.32l-5.76-3.36V16.8L5.952 12l5.16-4.8v3.84l5.76-3.36v8.64z"/>
-              </svg>
-              YouTube Music
-            </Button>
-          </div>
-        )}
       </div>
     </div>
   );
