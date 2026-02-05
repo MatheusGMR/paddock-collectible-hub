@@ -317,16 +317,6 @@ The music suggestion should create an emotional connection with the car. Follow 
 
 ALWAYS provide a musicSelectionReason explaining WHY you chose that specific song for this car.
 
-ALWAYS provide a musicListeningTip - uma sugestão criativa e emocional de COMO curtir essa música enquanto admira o carro. Seja:
-- NOSTÁLGICO: "Feche os olhos e imagine-se na arquibancada de Interlagos em 1991..."
-- ENGRAÇADO: "Melhor ouvida fingindo que seu Uno Mille é uma Ferrari enquanto estacionado no sinal..."
-- ROMÂNTICO: "Perfeita para um passeio no fim de tarde com a pessoa amada..."
-- DOCE: "Combine com um café coado e biscoito de nata da vó..."
-- SENSORIAL: "O cheiro de gasolina, couro e aventura. Abra a janela, sinta o vento..."
-- CULTURAL: "Trilha perfeita para rever aquele VHS do Grande Prêmio de Mônaco..."
-
-Use referências culturais populares, cheiros (gasolina, couro, café), sabores (brigadeiro, pipoca), momentos marcantes (domingo de corrida, feira de carros antigos, infância na garagem do avô). Seja criativo, emotivo e específico para cada carro.
-
 ---
 
 IF TYPE IS "real_car" (FULL-SIZE VEHICLE):
@@ -382,7 +372,6 @@ For COLLECTIBLE (toy car):
 365:       },
       "musicSuggestion": "Song Title - Artist (Year)",
       "musicSelectionReason": "Brief explanation of why this song was chosen",
-      "musicListeningTip": "Dica nostálgica/engraçada/romântica de como curtir a música",
       "realCarPhotos": ["url1", "url2", "url3", "url4", "url5"]
     }
   ],

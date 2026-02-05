@@ -19,27 +19,6 @@ export const QRScannerSheet = ({ open, onOpenChange }: QRScannerSheetProps) => {
   const { t } = useLanguage();
   const { toast } = useToast();
 
-  const processQRCode = (decodedText: string, scanner?: Html5Qrcode) => {
-    // Check if it's a valid profile URL
-    const urlPattern = /\/user\/([a-f0-9-]+)/i;
-    const match = decodedText.match(urlPattern);
-
-    if (match) {
-      const userId = match[1];
-      if (scanner) {
-        scanner.stop().catch(console.error);
-      }
-      onOpenChange(false);
-      navigate(`/user/${userId}`);
-    } else {
-      toast({
-        title: t.social.invalidQR,
-        description: t.social.invalidQRDesc,
-        variant: "destructive",
-      });
-    }
-  };
-
   useEffect(() => {
     if (!open) {
       // Stop scanner when sheet closes
@@ -67,7 +46,22 @@ export const QRScannerSheet = ({ open, onOpenChange }: QRScannerSheetProps) => {
             qrbox: { width: 250, height: 250 },
           },
           (decodedText) => {
-            processQRCode(decodedText, scanner);
+            // Check if it's a valid profile URL
+            const urlPattern = /\/user\/([a-f0-9-]+)/i;
+            const match = decodedText.match(urlPattern);
+
+            if (match) {
+              const userId = match[1];
+              scanner.stop().catch(console.error);
+              onOpenChange(false);
+              navigate(`/user/${userId}`);
+            } else {
+              toast({
+                title: t.social.invalidQR,
+                description: t.social.invalidQRDesc,
+                variant: "destructive",
+              });
+            }
           },
           () => {
             // QR scan error - ignore (happens continuously while scanning)

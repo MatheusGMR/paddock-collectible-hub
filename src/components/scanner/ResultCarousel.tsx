@@ -35,7 +35,6 @@ interface AnalysisResult {
   priceIndex?: PriceIndex;
   musicSuggestion?: string;
   musicSelectionReason?: string;
-  musicListeningTip?: string;
   realCarPhotos?: string[];
   croppedImage?: string;
   isDuplicate?: boolean;
@@ -419,7 +418,6 @@ export const ResultCarousel = ({
                 <MusicPlayer 
                   suggestion={result.musicSuggestion} 
                   selectionReason={result.musicSelectionReason}
-                  listeningTip={result.musicListeningTip}
                   carBrand={result.realCar.brand}
                 />
               )}

@@ -8,7 +8,6 @@ import { Capacitor } from "@capacitor/core";
 interface MusicPlayerProps {
   suggestion: string;
   selectionReason?: string;
-  listeningTip?: string;
   carBrand?: string;
   autoPreload?: boolean;
 }
@@ -44,7 +43,6 @@ type PlayerState = 'idle' | 'loading' | 'ready' | 'playing' | 'error';
 export const MusicPlayer = ({ 
   suggestion, 
   selectionReason,
-  listeningTip,
   autoPreload = true 
 }: MusicPlayerProps) => {
   const [playerState, setPlayerState] = useState<PlayerState>('idle');
@@ -442,16 +440,6 @@ export const MusicPlayer = ({
                 <p className="text-xs text-muted-foreground leading-relaxed">
                   <span className="text-primary font-medium">Por que essa música? </span>
                   {selectionReason}
-                </p>
-              </div>
-            )}
-            
-            {/* Listening tip - how to enjoy the music */}
-            {listeningTip && (
-              <div className="p-3 rounded-lg bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/20">
-                <p className="text-xs text-muted-foreground leading-relaxed">
-                  <span className="text-amber-600 dark:text-amber-400 font-medium">💫 Como curtir? </span>
-                  {listeningTip}
                 </p>
               </div>
             )}
