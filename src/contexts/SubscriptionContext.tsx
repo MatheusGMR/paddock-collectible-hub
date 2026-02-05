@@ -32,7 +32,7 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
     isLoading: true,
   });
 
-  const checkSubscription = useCallback(async () => {
+  const checkSubscription = useCallback(async (retries = 3): Promise<void> => {
     if (!user) {
       setState(prev => ({ ...prev, isLoading: false }));
       return;
@@ -55,8 +55,21 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
       });
 
       if (error) {
+        // If network error and retries remaining, retry with exponential backoff
+        const isNetworkError = error.message?.includes("Failed to fetch") || 
+                               error.message?.includes("Load failed") ||
+                               error.message?.includes("NetworkError");
+        
+        if (isNetworkError && retries > 0) {
+          console.log(`[Subscription] Network error, retrying... (${retries} attempts left)`);
+          const delay = 1000 * Math.pow(2, 3 - retries); // 1s, 2s, 4s
+          await new Promise(r => setTimeout(r, delay));
+          return checkSubscription(retries - 1);
+        }
+        
         console.error("Error checking subscription:", error);
-        setState(prev => ({ ...prev, isLoading: false }));
+        // Fallback: don't block user, just stop loading
+        setState(prev => ({ ...prev, isLoading: false, status: prev.status || "none" }));
         return;
       }
 
@@ -70,7 +83,20 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
       });
     } catch (err) {
       console.error("Failed to check subscription:", err);
-      setState(prev => ({ ...prev, isLoading: false }));
+      // On unexpected error, also try retry logic
+      const isNetworkError = err instanceof Error && 
+        (err.message?.includes("Failed to fetch") || 
+         err.message?.includes("Load failed") ||
+         err.message?.includes("NetworkError"));
+      
+      if (isNetworkError && retries > 0) {
+        console.log(`[Subscription] Exception caught, retrying... (${retries} attempts left)`);
+        const delay = 1000 * Math.pow(2, 3 - retries);
+        await new Promise(r => setTimeout(r, delay));
+        return checkSubscription(retries - 1);
+      }
+      
+      setState(prev => ({ ...prev, isLoading: false, status: prev.status || "none" }));
     }
   }, [user]);
 
