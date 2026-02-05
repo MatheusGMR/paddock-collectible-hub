@@ -168,17 +168,26 @@ const SubscriptionFlow = ({ children }: { children: React.ReactNode }) => {
     markUserOnboardingComplete(user.id);
     
     setCheckoutLoading(true);
-    const success = await startTrial();
-    setCheckoutLoading(false);
-    
-    if (success) {
-      // Now mark guided tips as ready (user has trial)
+    try {
+      const success = await startTrial();
+      
+      // Always close onboarding after attempting trial
+      // Even if trial fails, user marked as onboarding complete
       markOnboardingComplete();
       setIsOnboardingInProgress(false);
       setShowOnboarding(false);
       
-      // Show biometric prompt after trial starts
-      setShowBiometricPrompt(true);
+      if (success) {
+        // Show biometric prompt after trial starts
+        setShowBiometricPrompt(true);
+      }
+    } catch (err) {
+      console.error("Error starting trial:", err);
+      // Still close onboarding on error
+      setIsOnboardingInProgress(false);
+      setShowOnboarding(false);
+    } finally {
+      setCheckoutLoading(false);
     }
   }, [startTrial, markOnboardingComplete, markUserOnboardingComplete, user]);
 
