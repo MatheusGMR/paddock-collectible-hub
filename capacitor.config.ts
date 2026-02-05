@@ -9,6 +9,12 @@ const config: CapacitorConfig = {
     // Isso força o Capacitor a configurar webView.isOpaque = false automaticamente
     backgroundColor: '#00000000',
   },
+  plugins: {
+    // Usa HTTP nativo no iOS/Android (patch de fetch/XHR) para evitar falhas intermitentes do WKWebView
+    CapacitorHttp: {
+      enabled: true,
+    },
+  },
   // For development: uncomment the server block to enable hot reload
   // For production builds: keep this commented out
   // server: {
