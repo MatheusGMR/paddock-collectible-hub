@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { X, RotateCcw, Camera as CameraIcon, SwitchCamera, Loader2, ImageIcon } from "lucide-react";
+import { PhotoUploadSheet } from "@/components/profile/PhotoUploadSheet";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -153,6 +154,8 @@ export const ScannerView = () => {
   const [useNativeFallback, setUseNativeFallback] = useState(false);
   // Track if using embedded camera preview (iOS/Android)
   const [useCameraPreview, setUseCameraPreview] = useState(false);
+  // Batch upload sheet for multiple photo selection
+  const [showBatchUpload, setShowBatchUpload] = useState(false);
   
   // Only trigger guided tips when camera is active and not in error state
   const { startScreenTips } = useGuidedTips();
@@ -2086,9 +2089,9 @@ export const ScannerView = () => {
             ) : useCameraPreview ? (
               /* Camera-preview mode - immersive embedded camera */
               <div className="relative w-full flex items-center justify-center">
-                {/* Gallery button - bottom left */}
+                {/* Gallery button - bottom left - opens batch upload */}
                 <button
-                  onClick={openNativeGallery}
+                  onClick={() => setShowBatchUpload(true)}
                   disabled={isScanning}
                   className="absolute left-6 bottom-0 p-3 bg-background/50 backdrop-blur-sm rounded-full z-10 disabled:opacity-50"
                   aria-label={t.scanner.selectFromGallery}
@@ -2109,9 +2112,9 @@ export const ScannerView = () => {
             ) : useNativeFallback ? (
               /* Native camera fallback mode - no live preview (only if camera-preview failed) */
               <div className="relative w-full flex items-center justify-center">
-                {/* Gallery button - bottom left */}
+                {/* Gallery button - bottom left - opens batch upload */}
                 <button
-                  onClick={openNativeGallery}
+                  onClick={() => setShowBatchUpload(true)}
                   disabled={isScanning}
                   className="absolute left-6 bottom-0 p-3 bg-background/50 backdrop-blur-sm rounded-full z-10 disabled:opacity-50"
                   aria-label={t.scanner.selectFromGallery}
@@ -2131,9 +2134,9 @@ export const ScannerView = () => {
               </div>
             ) : cameraActive && (
               <div className="relative w-full flex items-center justify-center">
-                {/* Gallery button - bottom left */}
+                {/* Gallery button - bottom left - opens batch upload */}
                 <button
-                  onClick={openGallery}
+                  onClick={() => setShowBatchUpload(true)}
                   className="absolute left-6 bottom-0 p-3 bg-background/50 backdrop-blur-sm rounded-full z-10"
                   aria-label={t.scanner.selectFromGallery}
                 >
@@ -2164,6 +2167,11 @@ export const ScannerView = () => {
         className="hidden"
       />
 
+      {/* Batch upload sheet for multiple photos */}
+      <PhotoUploadSheet
+        open={showBatchUpload}
+        onOpenChange={setShowBatchUpload}
+      />
     </div>
   );
 };
