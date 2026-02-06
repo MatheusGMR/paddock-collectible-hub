@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Pin } from "lucide-react";
+import { Pin, ImageOff } from "lucide-react";
 import { CollectibleDetailCard, CollectibleDetailItem } from "@/components/collection/CollectibleDetailCard";
 import { getRarityTier, getTierColor, getTierBorderColor } from "@/lib/priceIndex";
 import { togglePinItem } from "@/lib/database";
@@ -18,10 +18,22 @@ interface PostGridProps {
   onDelete?: (id: string) => Promise<void>;
 }
 
+// Check if image URL is valid and displayable
+const isValidImageUrl = (url: string | null | undefined): boolean => {
+  if (!url) return false;
+  if (url === 'data:,') return false;
+  if (url.length < 20) return false;
+  // Valid: https URLs or base64 with actual content
+  if (url.startsWith('https://')) return true;
+  if (url.startsWith('data:image/') && url.length > 100) return true;
+  return false;
+};
+
 export const PostGrid = ({ posts, collectionItems = [], onPinToggle, onDelete }: PostGridProps) => {
   const [selectedItem, setSelectedItem] = useState<CollectibleDetailItem | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [pinningId, setPinningId] = useState<string | null>(null);
+  const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
 
   const handlePostClick = (postId: string) => {
     // Find the corresponding collection item
@@ -55,11 +67,20 @@ export const PostGrid = ({ posts, collectionItems = [], onPinToggle, onDelete }:
     return getTierBorderColor(tier);
   };
 
+  const handleImageError = (postId: string) => {
+    setFailedImages(prev => new Set(prev).add(postId));
+  };
+
+  const shouldShowPlaceholder = (post: { id: string; image: string }) => {
+    return !isValidImageUrl(post.image) || failedImages.has(post.id);
+  };
+
   return (
     <>
       <div className="profile-grid">
         {posts.map((post) => {
           const tier = post.rarityTier || (post.priceIndex ? getRarityTier(post.priceIndex) : null);
+          const showPlaceholder = shouldShowPlaceholder(post);
           
           return (
             <button 
@@ -67,16 +88,20 @@ export const PostGrid = ({ posts, collectionItems = [], onPinToggle, onDelete }:
               onClick={() => handlePostClick(post.id)}
               className="aspect-square bg-muted overflow-hidden hover:opacity-90 transition-opacity active:scale-[0.98] relative group"
             >
-              <img 
-                src={post.image} 
-                alt=""
-                className="w-full h-full object-cover"
-                loading="lazy"
-                onError={(e) => {
-                  // Fallback for broken images
-                  e.currentTarget.src = "/placeholder.svg";
-                }}
-              />
+              {showPlaceholder ? (
+                <div className="w-full h-full flex flex-col items-center justify-center bg-muted/80">
+                  <ImageOff className="h-8 w-8 text-muted-foreground/50 mb-1" />
+                  <span className="text-[10px] text-muted-foreground/50">Sem imagem</span>
+                </div>
+              ) : (
+                <img 
+                  src={post.image} 
+                  alt=""
+                  className="w-full h-full object-cover"
+                  loading="lazy"
+                  onError={() => handleImageError(post.id)}
+                />
+              )}
               
               {/* Index Badge - top left */}
               {post.priceIndex != null && (
