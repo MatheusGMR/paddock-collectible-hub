@@ -350,32 +350,54 @@ export const CollectionList = ({ items, onItemDeleted }: CollectionListProps) =>
   );
 };
 
+// Check if image URL is valid and displayable
+const isValidImageUrl = (url: string | null | undefined): boolean => {
+  if (!url) return false;
+  if (url === 'data:,') return false;
+  if (url.length < 20) return false;
+  if (url.startsWith('https://')) return true;
+  if (url.startsWith('data:image/') && url.length > 100) return true;
+  return false;
+};
+
 // Extracted item row component
-const ItemRow = ({ item, onClick }: { item: CollectibleDetailItem; onClick: () => void }) => (
-  <button 
-    onClick={onClick}
-    className="collection-item w-full hover:bg-muted/50 transition-colors flex items-center gap-3 p-3"
-  >
-    {/* Thumbnail */}
-    <div className="h-14 w-14 rounded-lg bg-muted overflow-hidden flex-shrink-0">
-      <img 
-        src={item.image_url || "/placeholder.svg"} 
-        alt={item.item?.real_car_model || "Item"}
-        className="w-full h-full object-cover"
-      />
-    </div>
-    
-    {/* Info */}
-    <div className="flex-1 text-left min-w-0">
-      <p className="text-sm font-medium text-foreground truncate">
-        {item.item?.real_car_brand} {item.item?.real_car_model}
-      </p>
-      <p className="text-xs text-foreground-secondary truncate">
-        {item.item?.real_car_year} • {item.item?.collectible_scale}
-      </p>
-    </div>
-    
-    {/* Arrow */}
-    <ChevronRight className="h-5 w-5 text-foreground-secondary flex-shrink-0" />
-  </button>
-);
+const ItemRow = ({ item, onClick }: { item: CollectibleDetailItem; onClick: () => void }) => {
+  const hasValidImage = isValidImageUrl(item.image_url);
+  
+  return (
+    <button 
+      onClick={onClick}
+      className="collection-item w-full hover:bg-muted/50 transition-colors flex items-center gap-3 p-3"
+    >
+      {/* Thumbnail */}
+      <div className="h-14 w-14 rounded-lg bg-muted overflow-hidden flex-shrink-0 flex items-center justify-center">
+        {hasValidImage ? (
+          <img 
+            src={item.image_url!} 
+            alt={item.item?.real_car_model || "Item"}
+            className="w-full h-full object-cover"
+            onError={(e) => {
+              e.currentTarget.style.display = 'none';
+              e.currentTarget.parentElement?.classList.add('bg-muted');
+            }}
+          />
+        ) : (
+          <span className="text-[10px] text-muted-foreground/50">Sem img</span>
+        )}
+      </div>
+      
+      {/* Info */}
+      <div className="flex-1 text-left min-w-0">
+        <p className="text-sm font-medium text-foreground truncate">
+          {item.item?.real_car_brand} {item.item?.real_car_model}
+        </p>
+        <p className="text-xs text-foreground-secondary truncate">
+          {item.item?.real_car_year} • {item.item?.collectible_scale}
+        </p>
+      </div>
+      
+      {/* Arrow */}
+      <ChevronRight className="h-5 w-5 text-foreground-secondary flex-shrink-0" />
+    </button>
+  );
+};
