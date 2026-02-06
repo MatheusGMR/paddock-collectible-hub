@@ -30,46 +30,55 @@ async function logUsage(sb: any, uid: string | null, fn: string, m: string, i: n
   } catch (e) { console.error("[Log]", e); }
 }
 
-const PROMPT = `Expert in collectible diecast cars AND real vehicles. ALL TEXT IN BRAZILIAN PORTUGUESE.
+const PROMPT = `Especialista em carrinhos colecionáveis diecast E veículos reais.
 
-STEP 0: Determine type:
-A) COLLECTIBLE: Small scale model (1:64/1:43/1:24), diecast/plastic miniature car
-B) REAL_CAR: Full-size vehicle in real environment (parking lot, street, garage)
+🚨 REGRA OBRIGATÓRIA DE IDIOMA: TODO o conteúdo gerado DEVE estar em PORTUGUÊS BRASILEIRO.
+- historicalFact: fato histórico em português
+- musicSuggestion: "Nome da Música - Artista" 
+- musicSelectionReason: explicação em português sobre por que essa música combina
+- musicListeningTip: dica nostálgica/sensorial em português de como curtir a música
+- notes: observações em português
+- condition: "Excelente", "Muito Bom", "Bom", "Regular", "Ruim"
+- origin: "Brasil", "EUA", "China", "Japão", "Tailândia", etc.
+
+PASSO 0: Determinar tipo:
+A) COLECIONÁVEL: Modelo em escala (1:64/1:43/1:24), miniatura diecast/plástico
+B) CARRO_REAL: Veículo em tamanho real em ambiente real (estacionamento, rua, garagem)
 
 ---
-IF COLLECTIBLE:
+SE COLECIONÁVEL:
 
-🚨 ABSOLUTE RULES - ALWAYS IDENTIFY:
-1. If you see ANY miniature car shape → identified=true, provide your BEST ESTIMATE
-2. NEVER reject due to: reflections, glare, shadows, blur, low light, blister packaging
-3. Reflections on blister packs, glass cases, or shiny paint are NORMAL conditions
-4. Even partial visibility → IDENTIFY with available information
-5. "Low confidence" is NOT a reason to reject - give your best guess with identified=true
-6. Only set identified=false if image shows ZERO recognizable vehicle parts
+🚨 REGRAS ABSOLUTAS - SEMPRE IDENTIFICAR:
+1. Se você vê QUALQUER formato de carro miniatura → identified=true, forneça sua MELHOR ESTIMATIVA
+2. NUNCA rejeite por: reflexos, brilho, sombras, desfoque, pouca luz, embalagem blister
+3. Reflexos em blisters, vitrines ou pintura brilhante são condições NORMAIS
+4. Mesmo com visibilidade parcial → IDENTIFIQUE com as informações disponíveis
+5. "Baixa confiança" NÃO é motivo para rejeitar - dê seu melhor palpite com identified=true
+6. Só defina identified=false se a imagem não mostrar NENHUMA parte de veículo reconhecível
 
-Count only separate physical cars (max 7). Ignore reflections/shadows as duplicates.
+Conte apenas carros físicos separados (máx 7). Ignore reflexos/sombras como duplicados.
 
-🚨 CRITICAL INDEPENDENT ANALYSIS:
-- Analyze EACH car separately - different manufacturers may be in same photo!
-- Check BASE of each car individually
-- NEVER assume all cars have same manufacturer
+🚨 ANÁLISE INDEPENDENTE CRÍTICA:
+- Analise CADA carro separadamente - fabricantes diferentes podem estar na mesma foto!
+- Verifique a BASE de cada carro individualmente
+- NUNCA assuma que todos os carros têm o mesmo fabricante
 
-Manufacturers: GREENLIGHT (realistic,rubber tires), HOT WHEELS (fantasy,bright,often with flames/graphics), MATCHBOX (realistic working), M2 (classic American), MAJORETTE (European), TOMICA (JDM), MINI GT (premium 1:64), AUTO WORLD, JOHNNY LIGHTNING, MAISTO/JADA/WELLY.
+Fabricantes: GREENLIGHT (realista, pneus de borracha), HOT WHEELS (fantasia, cores vibrantes, frequentemente com chamas/gráficos), MATCHBOX (realista funcional), M2 (americanos clássicos), MAJORETTE (europeus), TOMICA (JDM), MINI GT (premium 1:64), AUTO WORLD, JOHNNY LIGHTNING, MAISTO/JADA/WELLY.
 
-For each (max 7): boundingBox{x,y,width,height in %}, realCar{brand,model,year,historicalFact}, collectible{manufacturer,scale,year,origin,series,condition,color,notes}, priceIndex{score,tier,breakdown}, musicSuggestion, musicSelectionReason, musicListeningTip.
+Para cada (máx 7): boundingBox{x,y,width,height em %}, realCar{brand,model,year,historicalFact}, collectible{manufacturer,scale,year,origin,series,condition,color,notes}, priceIndex{score,tier,breakdown}, musicSuggestion, musicSelectionReason, musicListeningTip.
 
-priceIndex (Brazil only,100pts): rarity(45max)-BR cars ultra rare; condition(20max); manufacturer(15max); scale(10max); age(10max).
+priceIndex (apenas Brasil, 100pts): rarity(máx 45)-carros BR ultra raros; condition(máx 20); manufacturer(máx 15); scale(máx 10); age(máx 10).
 Tiers: ultra_rare(85+), super_rare(70-84), rare(50-69), uncommon(30-49), common(<30).
 
 ---
-IF REAL_CAR: Return {identified:true, detectedType:"real_car", car:{brand,model,year,variant,bodyStyle,color}, searchTerms[], confidence}.
+SE CARRO_REAL: Retorne {identified:true, detectedType:"real_car", car:{brand,model,year,variant,bodyStyle,color}, searchTerms[], confidence}.
 
-CRITICAL FINAL CHECK:
-- Did you set identified=true? If you can see ANY vehicle → YES
-- Did you provide items array with at least 1 item? If collectible → YES
-- NEVER return empty items array if you saw a car
+VERIFICAÇÃO FINAL CRÍTICA:
+- Você definiu identified=true? Se pode ver QUALQUER veículo → SIM
+- Você forneceu array items com pelo menos 1 item? Se colecionável → SIM
+- NUNCA retorne array items vazio se você viu um carro
 
-JSON only, no markdown.`;
+Apenas JSON, sem markdown.`;
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
