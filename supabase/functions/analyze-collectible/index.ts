@@ -149,18 +149,28 @@ async function getMLEnhancements(sb: any): Promise<{
   patterns: LearnedPattern[];
   corrections: RAGCorrection[];
 }> {
+  // Helper to safely execute RPC calls
+  const safeRpc = async <T>(promise: Promise<{ data: T | null }>): Promise<T | null> => {
+    try {
+      const result = await promise;
+      return result.data;
+    } catch {
+      return null;
+    }
+  };
+
   try {
-    // OPTIMIZATION: Run all 3 ML queries in parallel instead of sequentially
-    const [variantResult, patternsResult, correctionsResult] = await Promise.all([
-      sb.rpc('select_prompt_variant').catch(() => ({ data: null })),
-      sb.rpc('get_active_patterns', { p_limit: 3 }).catch(() => ({ data: null })), // Reduced from 5 to 3
-      sb.rpc('get_relevant_corrections', { p_limit: 3 }).catch(() => ({ data: null })) // Reduced from 5 to 3
+    // OPTIMIZATION: Run all 3 ML queries in parallel
+    const [variantData, patternsData, correctionsData] = await Promise.all([
+      safeRpc(sb.rpc('select_prompt_variant')),
+      safeRpc(sb.rpc('get_active_patterns', { p_limit: 3 })),
+      safeRpc(sb.rpc('get_relevant_corrections', { p_limit: 3 }))
     ]);
 
     return {
-      variant: variantResult.data?.[0] || null,
-      patterns: patternsResult.data || [],
-      corrections: correctionsResult.data || []
+      variant: (variantData as PromptVariant[] | null)?.[0] || null,
+      patterns: (patternsData as LearnedPattern[] | null) || [],
+      corrections: (correctionsData as RAGCorrection[] | null) || []
     };
   } catch (e) {
     console.error("[ML] Error fetching enhancements:", e);
