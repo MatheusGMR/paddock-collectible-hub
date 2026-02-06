@@ -54,7 +54,7 @@ interface ResultCarouselProps {
   mlVariantId?: string; // ML A/B testing variant ID
 }
 
-// Component to show original image with highlighted bounding box
+// Component to show cropped car image - ALWAYS use cropped for consistency
 interface HighlightedImageProps {
   originalImage: string;
   croppedImage?: string;
@@ -63,52 +63,22 @@ interface HighlightedImageProps {
   carYear: string;
 }
 
-const HighlightedImage = ({ originalImage, croppedImage, boundingBox, carName, carYear }: HighlightedImageProps) => {
-  // If no bounding box available, show cropped image or original without highlight
-  if (!boundingBox) {
-    return (
-      <div className="relative w-full aspect-square rounded-2xl overflow-hidden bg-gradient-to-b from-muted to-muted/50">
-        <img
-          src={croppedImage || originalImage}
-          alt={carName}
-          className="w-full h-full object-cover"
-        />
-        {/* Car badge */}
-        <div className="absolute top-3 left-3 flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/60 backdrop-blur-sm">
-          <Car className="h-3.5 w-3.5 text-primary" />
-          <span className="text-xs font-medium text-white">{carYear}</span>
-        </div>
-      </div>
-    );
-  }
-
-  // With bounding box: show original image with simple highlight border around the car
+const HighlightedImage = ({ originalImage, croppedImage, carName, carYear }: HighlightedImageProps) => {
+  // ALWAYS prioritize cropped image for consistent square layout centered on the car
+  // This ensures multi-car results look identical to single-car results
+  const displayImage = croppedImage || originalImage;
+  
   return (
-    <div className="relative w-full aspect-square rounded-2xl overflow-hidden bg-black">
-      {/* Full original image */}
+    <div className="relative w-full aspect-square rounded-2xl overflow-hidden bg-gradient-to-b from-muted to-muted/50">
       <img
-        src={originalImage}
-        alt="Captura original"
-        className="w-full h-full object-cover"
+        src={displayImage}
+        alt={carName}
+        className="w-full h-full object-contain bg-black"
       />
-      
-      {/* Simple highlight border around the detected car - no overlay, just a glowing border */}
-      <div 
-        className="absolute border-2 border-primary rounded-lg pointer-events-none"
-        style={{
-          left: `${boundingBox.x}%`,
-          top: `${boundingBox.y}%`,
-          width: `${boundingBox.width}%`,
-          height: `${boundingBox.height}%`,
-          boxShadow: '0 0 0 3px hsl(var(--primary) / 0.3), 0 0 20px 4px hsl(var(--primary) / 0.4), inset 0 0 15px hsl(var(--primary) / 0.1)',
-        }}
-      />
-      
-      {/* Badge with car name at bottom */}
-      <div className="absolute bottom-3 left-1/2 -translate-x-1/2">
-        <div className="px-4 py-1.5 rounded-full bg-primary text-primary-foreground text-xs font-semibold whitespace-nowrap shadow-lg">
-          {carName} • {carYear}
-        </div>
+      {/* Car badge */}
+      <div className="absolute top-3 left-3 flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/60 backdrop-blur-sm">
+        <Car className="h-3.5 w-3.5 text-primary" />
+        <span className="text-xs font-medium text-white">{carYear}</span>
       </div>
     </div>
   );
