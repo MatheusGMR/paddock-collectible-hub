@@ -1,6 +1,8 @@
 // Analytics tracking utilities
 // Note: Uses fetch directly since the table types may not be synced yet
 
+import { supabase } from "@/integrations/supabase/client";
+
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
@@ -25,7 +27,6 @@ const getDeviceType = (): "mobile" | "tablet" | "desktop" => {
 // Get current user ID if logged in
 const getUserId = async (): Promise<string | null> => {
   try {
-    const { supabase } = await import("@/integrations/supabase/client");
     const { data: { user } } = await supabase.auth.getUser();
     return user?.id || null;
   } catch {

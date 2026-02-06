@@ -5,6 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useBiometricAuth } from "@/hooks/useBiometricAuth";
 import { lovable } from "@/integrations/lovable/index";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PaddockLogo } from "@/components/icons/PaddockLogo";
@@ -83,7 +84,7 @@ const Auth = () => {
         // User authenticated with biometrics - get their session from stored token
         // Since we can't store passwords securely, biometric just confirms identity
         // The session should still be active from Supabase's persistence
-        const { data: { session } } = await (await import("@/integrations/supabase/client")).supabase.auth.getSession();
+        const { data: { session } } = await supabase.auth.getSession();
         
         if (session) {
           navigate("/", { replace: true });
