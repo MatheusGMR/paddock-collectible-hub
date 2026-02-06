@@ -1,7 +1,13 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Loader2, Lightbulb, Video } from "lucide-react";
 import { getRandomFacts, CollectibleFact } from "@/data/collectibleFacts";
 import { useLanguage } from "@/contexts/LanguageContext";
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  type CarouselApi,
+} from "@/components/ui/carousel";
 
 interface LoadingFactsProps {
   isVideo?: boolean;
@@ -10,7 +16,7 @@ interface LoadingFactsProps {
 export function LoadingFacts({ isVideo = false }: LoadingFactsProps) {
   const [facts, setFacts] = useState<CollectibleFact[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [isTransitioning, setIsTransitioning] = useState(false);
+  const [api, setApi] = useState<CarouselApi>();
   const { language } = useLanguage();
 
   useEffect(() => {
@@ -18,32 +24,33 @@ export function LoadingFacts({ isVideo = false }: LoadingFactsProps) {
     setFacts(getRandomFacts(5));
   }, []);
 
+  // Sync carousel index with state
   useEffect(() => {
-    if (facts.length === 0) return;
+    if (!api) return;
 
-    // Rotate facts every 9 seconds (increased by 5 seconds from 4s)
+    api.on("select", () => {
+      setCurrentIndex(api.selectedScrollSnap());
+    });
+  }, [api]);
+
+  // Auto-rotate every 9 seconds
+  useEffect(() => {
+    if (!api || facts.length === 0) return;
+
     const interval = setInterval(() => {
-      setIsTransitioning(true);
-      setTimeout(() => {
-        setCurrentIndex((prev) => (prev + 1) % facts.length);
-        setIsTransitioning(false);
-      }, 300);
+      const nextIndex = (currentIndex + 1) % facts.length;
+      api.scrollTo(nextIndex);
     }, 9000);
 
     return () => clearInterval(interval);
-  }, [facts.length]);
+  }, [api, currentIndex, facts.length]);
 
-  const currentFact = facts[currentIndex];
-  const factText = currentFact
-    ? language === "pt-BR"
-      ? currentFact.text
-      : currentFact.textEn
-    : "";
+  const getFactText = useCallback((fact: CollectibleFact) => {
+    return language === "pt-BR" ? fact.text : fact.textEn;
+  }, [language]);
 
   return (
     <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/70 backdrop-blur-sm z-20">
-      {/* Progress bar removed as requested */}
-
       {/* Spinner */}
       <div className="relative mb-8">
         <div className="absolute inset-0 bg-primary/20 rounded-full blur-xl animate-pulse" />
@@ -68,37 +75,50 @@ export function LoadingFacts({ isVideo = false }: LoadingFactsProps) {
         </p>
       )}
 
-      {/* Fact Card */}
-      {currentFact && (
-        <div className="mx-6 max-w-sm">
-          <div 
-            className={`bg-white/10 backdrop-blur-md rounded-2xl p-5 border border-white/20 transition-all duration-300 ${
-              isTransitioning ? "opacity-0 translate-y-2" : "opacity-100 translate-y-0"
-            }`}
+      {/* Swipeable Fact Carousel */}
+      {facts.length > 0 && (
+        <div className="w-full max-w-sm px-6">
+          <Carousel
+            setApi={setApi}
+            opts={{
+              align: "center",
+              loop: true,
+            }}
+            className="w-full"
           >
-            <div className="flex items-center gap-2 mb-3">
-              <div className="p-1.5 bg-amber-500/20 rounded-full">
-                <Lightbulb className="h-4 w-4 text-amber-400" />
-              </div>
-              <span className="text-sm font-semibold text-amber-400">
-                {language === "pt-BR" ? "Você Sabia?" : "Did You Know?"}
-              </span>
-            </div>
-            <p className="text-sm text-white/80 leading-relaxed">
-              {factText}
-            </p>
-          </div>
+            <CarouselContent>
+              {facts.map((fact, idx) => (
+                <CarouselItem key={idx}>
+                  <div className="bg-white/10 backdrop-blur-md rounded-2xl p-5 border border-white/20">
+                    <div className="flex items-center gap-2 mb-3">
+                      <div className="p-1.5 bg-amber-500/20 rounded-full">
+                        <Lightbulb className="h-4 w-4 text-amber-400" />
+                      </div>
+                      <span className="text-sm font-semibold text-amber-400">
+                        {language === "pt-BR" ? "Você Sabia?" : "Did You Know?"}
+                      </span>
+                    </div>
+                    <p className="text-sm text-white/80 leading-relaxed">
+                      {getFactText(fact)}
+                    </p>
+                  </div>
+                </CarouselItem>
+              ))}
+            </CarouselContent>
+          </Carousel>
 
           {/* Progress dots */}
           <div className="flex justify-center gap-1.5 mt-4">
             {facts.map((_, idx) => (
-              <div
+              <button
                 key={idx}
+                onClick={() => api?.scrollTo(idx)}
                 className={`h-1.5 rounded-full transition-all duration-300 ${
                   idx === currentIndex
                     ? "w-4 bg-primary"
-                    : "w-1.5 bg-white/30"
+                    : "w-1.5 bg-white/30 hover:bg-white/50"
                 }`}
+                aria-label={`Go to fact ${idx + 1}`}
               />
             ))}
           </div>
