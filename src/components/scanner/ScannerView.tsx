@@ -26,6 +26,58 @@ import { useNativeCameraPreview } from "@/hooks/useNativeCameraPreview";
 import { useScannerPersistence } from "@/hooks/useScannerPersistence";
 import { Capacitor } from "@capacitor/core";
 import { Camera as CapacitorCamera } from "@capacitor/camera";
+
+// OPTIMIZATION: Process items with cropping and duplicate check in parallel
+async function processItemsOptimized(
+  items: AnalysisResult[],
+  imageBase64: string,
+  userId: string | undefined,
+  checkDuplicate: typeof checkDuplicateInCollection,
+  cropImage: typeof cropImageByBoundingBox
+): Promise<AnalysisResult[]> {
+  // Process all items in parallel - each item does crop AND duplicate check simultaneously
+  return Promise.all(
+    items.map(async (item) => {
+      // Run crop and duplicate check in parallel for each item
+      const [croppedImage, duplicateResult] = await Promise.all([
+        // Crop task
+        (async () => {
+          if (item.boundingBox && imageBase64) {
+            try {
+              return await cropImage(imageBase64, item.boundingBox as BoundingBox);
+            } catch {
+              return imageBase64;
+            }
+          }
+          return imageBase64;
+        })(),
+        // Duplicate check task (only if user is logged in)
+        (async () => {
+          if (userId && item.realCar?.brand && item.realCar?.model) {
+            try {
+              return await checkDuplicate(
+                userId,
+                item.realCar.brand,
+                item.realCar.model,
+                item.collectible?.color
+              );
+            } catch {
+              return null;
+            }
+          }
+          return null;
+        })()
+      ]);
+
+      return {
+        ...item,
+        croppedImage,
+        isDuplicate: duplicateResult?.isDuplicate || false,
+        existingItemImage: duplicateResult?.existingItemImage
+      };
+    })
+  );
+}
 interface AnalysisResult {
   boundingBox?: BoundingBox;
   realCar: {
@@ -209,33 +261,41 @@ export const ScannerView = () => {
     };
   }, [videoPreviewUrl]);
 
-  // Enrich analysis results with real car photos from Wikimedia
-  // Use a ref to track which results have been enriched to avoid infinite loops
+  // OPTIMIZED: Lazy-load real car photos AFTER results are displayed
+  // This runs in the background and doesn't block the initial result display
   const enrichedResultsRef = useRef<Set<string>>(new Set());
+  const enrichTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   useEffect(() => {
-    const enrichPhotos = async () => {
-      if (analysisResults.length === 0) return;
-      
-      // Create a unique key for the current results set
-      const resultsKey = analysisResults.map(r => 
-        `${r.realCar.brand}-${r.realCar.model}-${r.realCar.year}`
-      ).join("|");
-      
-      // Skip if already enriched this exact set
-      if (enrichedResultsRef.current.has(resultsKey)) return;
-      
-      // Check if any result is missing photos
-      const needsPhotos = analysisResults.some(
-        (r) => !r.realCarPhotos || r.realCarPhotos.length === 0
-      );
-      
-      if (!needsPhotos) {
-        enrichedResultsRef.current.add(resultsKey);
-        return;
-      }
-      
-      console.log("[Scanner] Enriching results with real car photos...");
+    // Clear any pending enrichment when results change
+    if (enrichTimeoutRef.current) {
+      clearTimeout(enrichTimeoutRef.current);
+    }
+    
+    if (analysisResults.length === 0) return;
+    
+    // Create a unique key for the current results set
+    const resultsKey = analysisResults.map(r => 
+      `${r.realCar.brand}-${r.realCar.model}-${r.realCar.year}`
+    ).join("|");
+    
+    // Skip if already enriched this exact set
+    if (enrichedResultsRef.current.has(resultsKey)) return;
+    
+    // Check if any result is missing photos
+    const needsPhotos = analysisResults.some(
+      (r) => !r.realCarPhotos || r.realCarPhotos.length === 0
+    );
+    
+    if (!needsPhotos) {
+      enrichedResultsRef.current.add(resultsKey);
+      return;
+    }
+    
+    // OPTIMIZATION: Delay photo enrichment by 500ms to let UI render first
+    // This makes the scanner feel much faster as results appear immediately
+    enrichTimeoutRef.current = setTimeout(async () => {
+      console.log("[Scanner] Enriching results with real car photos (lazy)...");
       
       try {
         const enrichedResults = await enrichResultsWithPhotos(analysisResults);
@@ -258,9 +318,13 @@ export const ScannerView = () => {
       } catch (err) {
         console.error("[Scanner] Failed to enrich photos:", err);
       }
-    };
+    }, 500); // 500ms delay for lazy loading
     
-    enrichPhotos();
+    return () => {
+      if (enrichTimeoutRef.current) {
+        clearTimeout(enrichTimeoutRef.current);
+      }
+    };
   }, [analysisResults]);
 
   // Make html/body/#root transparent when using native camera preview
@@ -672,40 +736,16 @@ export const ScannerView = () => {
             });
             setAnalysisResults([]);
           } else {
-            const itemsWithCrops = await Promise.all(
-              response.items.map(async (item) => {
-                if (item.boundingBox && result.base64Image) {
-                  try {
-                    const croppedImage = await cropImageByBoundingBox(result.base64Image, item.boundingBox as BoundingBox);
-                    return { ...item, croppedImage };
-                  } catch (err) {
-                    return { ...item, croppedImage: result.base64Image };
-                  }
-                }
-                return { ...item, croppedImage: result.base64Image };
-              })
+            // OPTIMIZED: Process cropping and duplicate check in parallel
+            const processedItems = await processItemsOptimized(
+              response.items,
+              result.base64Image,
+              user?.id,
+              checkDuplicateInCollection,
+              cropImageByBoundingBox
             );
             
-            const itemsWithDuplicateCheck = await Promise.all(
-              itemsWithCrops.map(async (item) => {
-                if (user) {
-                  try {
-                    const duplicate = await checkDuplicateInCollection(
-                      user.id,
-                      item.realCar.brand,
-                      item.realCar.model,
-                      item.collectible?.color
-                    );
-                    return { ...item, isDuplicate: duplicate.isDuplicate, existingItemImage: duplicate.existingItemImage };
-                  } catch (err) {
-                    return item;
-                  }
-                }
-                return item;
-              })
-            );
-            
-            setAnalysisResults(itemsWithDuplicateCheck);
+            setAnalysisResults(processedItems);
             setAddedIndices(new Set());
             setSkippedIndices(new Set());
             
@@ -906,48 +946,16 @@ export const ScannerView = () => {
           });
           setAnalysisResults([]);
         } else {
-          // Crop individual car images from bounding boxes
-          const itemsWithCrops = await Promise.all(
-            response.items.map(async (item) => {
-              if (item.boundingBox && imageBase64) {
-                try {
-                  const croppedImage = await cropImageByBoundingBox(imageBase64, item.boundingBox as BoundingBox);
-                  return { ...item, croppedImage };
-                } catch (error) {
-                  console.error("Failed to crop image:", error);
-                  return { ...item, croppedImage: imageBase64 };
-                }
-              }
-              return { ...item, croppedImage: imageBase64 };
-            })
+          // OPTIMIZED: Process cropping and duplicate check in parallel
+          const processedItems = await processItemsOptimized(
+            response.items,
+            imageBase64,
+            user?.id,
+            checkDuplicateInCollection,
+            cropImageByBoundingBox
           );
           
-          // Check for duplicates in user's collection
-          const itemsWithDuplicateCheck = await Promise.all(
-            itemsWithCrops.map(async (item) => {
-              if (user) {
-                try {
-                  const duplicate = await checkDuplicateInCollection(
-                    user.id,
-                    item.realCar.brand,
-                    item.realCar.model,
-                    item.collectible?.color
-                  );
-                  return {
-                    ...item,
-                    isDuplicate: duplicate.isDuplicate,
-                    existingItemImage: duplicate.existingItemImage
-                  };
-                } catch (error) {
-                  console.error("Failed to check duplicate:", error);
-                  return item;
-                }
-              }
-              return item;
-            })
-          );
-          
-          setAnalysisResults(itemsWithDuplicateCheck);
+          setAnalysisResults(processedItems);
           setAddedIndices(new Set());
           setSkippedIndices(new Set());
           
@@ -1070,48 +1078,16 @@ export const ScannerView = () => {
           });
           setAnalysisResults([]);
         } else {
-          // Crop individual car images from bounding boxes
-          const itemsWithCrops = await Promise.all(
-            response.items.map(async (item) => {
-              if (item.boundingBox && imageBase64) {
-                try {
-                  const croppedImage = await cropImageByBoundingBox(imageBase64, item.boundingBox as BoundingBox);
-                  return { ...item, croppedImage };
-                } catch (error) {
-                  console.error("Failed to crop image:", error);
-                  return { ...item, croppedImage: imageBase64 };
-                }
-              }
-              return { ...item, croppedImage: imageBase64 };
-            })
+          // OPTIMIZED: Process cropping and duplicate check in parallel
+          const processedItems = await processItemsOptimized(
+            response.items,
+            imageBase64,
+            user?.id,
+            checkDuplicateInCollection,
+            cropImageByBoundingBox
           );
           
-          // Check for duplicates in user's collection
-          const itemsWithDuplicateCheck = await Promise.all(
-            itemsWithCrops.map(async (item) => {
-              if (user) {
-                try {
-                  const duplicate = await checkDuplicateInCollection(
-                    user.id,
-                    item.realCar.brand,
-                    item.realCar.model,
-                    item.collectible?.color
-                  );
-                  return {
-                    ...item,
-                    isDuplicate: duplicate.isDuplicate,
-                    existingItemImage: duplicate.existingItemImage
-                  };
-                } catch (error) {
-                  console.error("Failed to check duplicate:", error);
-                  return item;
-                }
-              }
-              return item;
-            })
-          );
-          
-          setAnalysisResults(itemsWithDuplicateCheck);
+          setAnalysisResults(processedItems);
           setAddedIndices(new Set());
           setSkippedIndices(new Set());
           
@@ -1222,46 +1198,16 @@ export const ScannerView = () => {
           });
           setAnalysisResults([]);
         } else {
-          const itemsWithCrops = await Promise.all(
-            response.items.map(async (item) => {
-              if (item.boundingBox && imageBase64) {
-                try {
-                  const croppedImage = await cropImageByBoundingBox(imageBase64, item.boundingBox as BoundingBox);
-                  return { ...item, croppedImage };
-                } catch (error) {
-                  console.error("Failed to crop image:", error);
-                  return { ...item, croppedImage: imageBase64 };
-                }
-              }
-              return { ...item, croppedImage: imageBase64 };
-            })
+          // OPTIMIZED: Process cropping and duplicate check in parallel
+          const processedItems = await processItemsOptimized(
+            response.items,
+            imageBase64,
+            user?.id,
+            checkDuplicateInCollection,
+            cropImageByBoundingBox
           );
           
-          const itemsWithDuplicateCheck = await Promise.all(
-            itemsWithCrops.map(async (item) => {
-              if (user) {
-                try {
-                  const duplicate = await checkDuplicateInCollection(
-                    user.id,
-                    item.realCar.brand,
-                    item.realCar.model,
-                    item.collectible?.color
-                  );
-                  return {
-                    ...item,
-                    isDuplicate: duplicate.isDuplicate,
-                    existingItemImage: duplicate.existingItemImage
-                  };
-                } catch (error) {
-                  console.error("Failed to check duplicate:", error);
-                  return item;
-                }
-              }
-              return item;
-            })
-          );
-          
-          setAnalysisResults(itemsWithDuplicateCheck);
+          setAnalysisResults(processedItems);
           setAddedIndices(new Set());
           setSkippedIndices(new Set());
           
@@ -1339,21 +1285,16 @@ export const ScannerView = () => {
           });
           setAnalysisResults([]);
         } else {
-          const itemsWithCrops = await Promise.all(
-            response.items.map(async (item) => {
-              if (item.boundingBox && imageBase64) {
-                try {
-                  const croppedImage = await cropImageByBoundingBox(imageBase64, item.boundingBox as BoundingBox);
-                  return { ...item, croppedImage };
-                } catch (error) {
-                  return { ...item, croppedImage: imageBase64 };
-                }
-              }
-              return { ...item, croppedImage: imageBase64 };
-            })
+          // OPTIMIZED: Process cropping and duplicate check in parallel
+          const processedItems = await processItemsOptimized(
+            response.items,
+            imageBase64,
+            user?.id,
+            checkDuplicateInCollection,
+            cropImageByBoundingBox
           );
           
-          setAnalysisResults(itemsWithCrops);
+          setAnalysisResults(processedItems);
           setAddedIndices(new Set());
           setSkippedIndices(new Set());
         }
@@ -1471,49 +1412,18 @@ export const ScannerView = () => {
             }
           }
           
-          // Crop individual car images from bounding boxes
-          const itemsWithCrops = await Promise.all(
-            response.items.map(async (item) => {
-              if (item.boundingBox && baseImageForCropping) {
-                try {
-                  const croppedImage = await cropImageByBoundingBox(baseImageForCropping, item.boundingBox as BoundingBox);
-                  return { ...item, croppedImage };
-                } catch (error) {
-                  console.error("Failed to crop image:", error);
-                  return { ...item, croppedImage: baseImageForCropping };
-                }
-              }
-              // Fallback to extracted frame or undefined
-              return { ...item, croppedImage: baseImageForCropping || undefined };
-            })
-          );
+          // OPTIMIZED: Process cropping and duplicate check in parallel
+          const processedItems = baseImageForCropping 
+            ? await processItemsOptimized(
+                response.items,
+                baseImageForCropping,
+                user?.id,
+                checkDuplicateInCollection,
+                cropImageByBoundingBox
+              )
+            : response.items.map(item => ({ ...item, croppedImage: undefined }));
           
-          // Check for duplicates in user's collection
-          const itemsWithDuplicateCheck = await Promise.all(
-            itemsWithCrops.map(async (item) => {
-              if (user) {
-                try {
-                  const duplicate = await checkDuplicateInCollection(
-                    user.id,
-                    item.realCar.brand,
-                    item.realCar.model,
-                    item.collectible?.color
-                  );
-                  return {
-                    ...item,
-                    isDuplicate: duplicate.isDuplicate,
-                    existingItemImage: duplicate.existingItemImage
-                  };
-                } catch (error) {
-                  console.error("Failed to check duplicate:", error);
-                  return item;
-                }
-              }
-              return item;
-            })
-          );
-          
-          setAnalysisResults(itemsWithDuplicateCheck);
+          setAnalysisResults(processedItems);
           setAddedIndices(new Set());
           setSkippedIndices(new Set());
           
@@ -1634,46 +1544,16 @@ export const ScannerView = () => {
               });
               setAnalysisResults([]);
             } else {
-              const itemsWithCrops = await Promise.all(
-                response.items.map(async (item) => {
-                  if (item.boundingBox && imageBase64) {
-                    try {
-                      const croppedImage = await cropImageByBoundingBox(imageBase64, item.boundingBox as BoundingBox);
-                      return { ...item, croppedImage };
-                    } catch (error) {
-                      console.error("Failed to crop image:", error);
-                      return { ...item, croppedImage: imageBase64 };
-                    }
-                  }
-                  return { ...item, croppedImage: imageBase64 };
-                })
+              // OPTIMIZED: Process cropping and duplicate check in parallel
+              const processedItems = await processItemsOptimized(
+                response.items,
+                imageBase64,
+                user?.id,
+                checkDuplicateInCollection,
+                cropImageByBoundingBox
               );
               
-              const itemsWithDuplicateCheck = await Promise.all(
-                itemsWithCrops.map(async (item) => {
-                  if (user) {
-                    try {
-                      const duplicate = await checkDuplicateInCollection(
-                        user.id,
-                        item.realCar.brand,
-                        item.realCar.model,
-                        item.collectible?.color
-                      );
-                      return {
-                        ...item,
-                        isDuplicate: duplicate.isDuplicate,
-                        existingItemImage: duplicate.existingItemImage
-                      };
-                    } catch (error) {
-                      console.error("Failed to check duplicate:", error);
-                      return item;
-                    }
-                  }
-                  return item;
-                })
-              );
-              
-              setAnalysisResults(itemsWithDuplicateCheck);
+              setAnalysisResults(processedItems);
               setAddedIndices(new Set());
               setSkippedIndices(new Set());
               

@@ -150,19 +150,18 @@ async function getMLEnhancements(sb: any): Promise<{
   corrections: RAGCorrection[];
 }> {
   try {
-    // 1. Select A/B test variant
-    const { data: variantData } = await sb.rpc('select_prompt_variant');
-    const variant = variantData?.[0] || null;
+    // OPTIMIZATION: Run all 3 ML queries in parallel instead of sequentially
+    const [variantResult, patternsResult, correctionsResult] = await Promise.all([
+      sb.rpc('select_prompt_variant').catch(() => ({ data: null })),
+      sb.rpc('get_active_patterns', { p_limit: 3 }).catch(() => ({ data: null })), // Reduced from 5 to 3
+      sb.rpc('get_relevant_corrections', { p_limit: 3 }).catch(() => ({ data: null })) // Reduced from 5 to 3
+    ]);
 
-    // 2. Get active learned patterns
-    const { data: patternsData } = await sb.rpc('get_active_patterns', { p_limit: 5 });
-    const patterns = patternsData || [];
-
-    // 3. Get relevant corrections for RAG (recent corrections)
-    const { data: correctionsData } = await sb.rpc('get_relevant_corrections', { p_limit: 5 });
-    const corrections = correctionsData || [];
-
-    return { variant, patterns, corrections };
+    return {
+      variant: variantResult.data?.[0] || null,
+      patterns: patternsResult.data || [],
+      corrections: correctionsResult.data || []
+    };
   } catch (e) {
     console.error("[ML] Error fetching enhancements:", e);
     return { variant: null, patterns: [], corrections: [] };
@@ -231,7 +230,7 @@ serve(async (req) => {
   const startTime = Date.now();
 
   try {
-    const { imageBase64 } = await req.json();
+    const { imageBase64, skipML } = await req.json();
     if (!imageBase64) return new Response(JSON.stringify({ error: "Image required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
     const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
@@ -239,14 +238,20 @@ serve(async (req) => {
 
     const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
-    let uid: string | null = null;
-    const auth = req.headers.get("authorization");
-    if (auth) try { uid = (await sb.auth.getUser(auth.replace("Bearer ", ""))).data.user?.id || null; } catch {}
+    // OPTIMIZATION: Auth check and ML enhancements in parallel
+    const authPromise = (async () => {
+      const auth = req.headers.get("authorization");
+      if (auth) try { return (await sb.auth.getUser(auth.replace("Bearer ", ""))).data.user?.id || null; } catch {}
+      return null;
+    })();
 
-    // =====================================================
-    // ML: Fetch dynamic enhancements
-    // =====================================================
-    const { variant, patterns, corrections } = await getMLEnhancements(sb);
+    // Skip ML enhancements if requested (faster scan for subsequent scans)
+    const mlPromise = skipML 
+      ? Promise.resolve({ variant: null, patterns: [], corrections: [] })
+      : getMLEnhancements(sb);
+
+    const [uid, { variant, patterns, corrections }] = await Promise.all([authPromise, mlPromise]);
+    
     const dynamicPrompt = buildDynamicPrompt(BASE_PROMPT, variant, patterns, corrections);
 
     const isVid = imageBase64.startsWith("data:video/");
