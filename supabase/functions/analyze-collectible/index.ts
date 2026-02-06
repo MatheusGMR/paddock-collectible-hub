@@ -30,7 +30,10 @@ async function logUsage(sb: any, uid: string | null, fn: string, m: string, i: n
   } catch (e) { console.error("[Log]", e); }
 }
 
-const PROMPT = `Especialista apaixonado em carrinhos colecionáveis diecast E veículos reais. Você é um historiador automotivo, curador de memórias e DJ nostálgico.
+// =====================================================
+// BASE PROMPT - Core identification instructions
+// =====================================================
+const BASE_PROMPT = `Especialista apaixonado em carrinhos colecionáveis diecast E veículos reais. Você é um historiador automotivo, curador de memórias e DJ nostálgico.
 
 🚨 REGRA OBRIGATÓRIA DE IDIOMA: TODO o conteúdo gerado DEVE estar em PORTUGUÊS BRASILEIRO.
 
@@ -114,8 +117,118 @@ VERIFICAÇÃO FINAL CRÍTICA:
 
 Apenas JSON, sem markdown.`;
 
+// =====================================================
+// ML SYSTEM - Build dynamic prompt with learned patterns
+// =====================================================
+interface PromptVariant {
+  variant_id: string;
+  variant_name: string;
+  prompt_snippet: string;
+}
+
+interface LearnedPattern {
+  pattern_type: string;
+  trigger_condition: string;
+  correction_prompt: string;
+  effectiveness_score: number;
+}
+
+interface RAGCorrection {
+  original_brand: string;
+  original_model: string;
+  original_manufacturer: string;
+  corrected_brand: string;
+  corrected_model: string;
+  corrected_manufacturer: string;
+  visual_cues: string;
+}
+
+// deno-lint-ignore no-explicit-any
+async function getMLEnhancements(sb: any): Promise<{
+  variant: PromptVariant | null;
+  patterns: LearnedPattern[];
+  corrections: RAGCorrection[];
+}> {
+  try {
+    // 1. Select A/B test variant
+    const { data: variantData } = await sb.rpc('select_prompt_variant');
+    const variant = variantData?.[0] || null;
+
+    // 2. Get active learned patterns
+    const { data: patternsData } = await sb.rpc('get_active_patterns', { p_limit: 5 });
+    const patterns = patternsData || [];
+
+    // 3. Get relevant corrections for RAG (recent corrections)
+    const { data: correctionsData } = await sb.rpc('get_relevant_corrections', { p_limit: 5 });
+    const corrections = correctionsData || [];
+
+    return { variant, patterns, corrections };
+  } catch (e) {
+    console.error("[ML] Error fetching enhancements:", e);
+    return { variant: null, patterns: [], corrections: [] };
+  }
+}
+
+function buildDynamicPrompt(
+  basePrompt: string,
+  variant: PromptVariant | null,
+  patterns: LearnedPattern[],
+  corrections: RAGCorrection[]
+): string {
+  let enhancedPrompt = basePrompt;
+
+  // Add A/B test variant snippet
+  if (variant?.prompt_snippet) {
+    enhancedPrompt += `\n\n🔬 MELHORIA EXPERIMENTAL:\n${variant.prompt_snippet}`;
+  }
+
+  // Add learned patterns
+  if (patterns.length > 0) {
+    const patternSnippets = patterns
+      .map(p => `- ${p.correction_prompt}`)
+      .join('\n');
+    enhancedPrompt += `\n\n📊 PADRÕES APRENDIDOS (baseado em erros anteriores):\n${patternSnippets}`;
+  }
+
+  // Add RAG corrections as examples
+  if (corrections.length > 0) {
+    const correctionExamples = corrections
+      .filter(c => c.original_manufacturer && c.corrected_manufacturer)
+      .map(c => {
+        const cues = c.visual_cues ? ` (${c.visual_cues})` : '';
+        return `- "${c.original_manufacturer}" na verdade era "${c.corrected_manufacturer}"${cues}`;
+      })
+      .slice(0, 3)
+      .join('\n');
+    
+    if (correctionExamples) {
+      enhancedPrompt += `\n\n🎯 CORREÇÕES RECENTES DE USUÁRIOS (aprenda com esses erros!):\n${correctionExamples}`;
+    }
+  }
+
+  return enhancedPrompt;
+}
+
+// deno-lint-ignore no-explicit-any
+async function recordABResult(sb: any, variantId: string, itemId: string | null, userId: string | null, responseTimeMs: number, model: string) {
+  try {
+    await sb.rpc('record_ab_result', {
+      p_variant_id: variantId,
+      p_item_id: itemId,
+      p_user_id: userId,
+      p_was_successful: true, // Will be updated by feedback
+      p_response_time_ms: responseTimeMs,
+      p_model_used: model
+    });
+  } catch (e) {
+    console.error("[ML] Error recording A/B result:", e);
+  }
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+
+  const startTime = Date.now();
 
   try {
     const { imageBase64 } = await req.json();
@@ -130,6 +243,12 @@ serve(async (req) => {
     const auth = req.headers.get("authorization");
     if (auth) try { uid = (await sb.auth.getUser(auth.replace("Bearer ", ""))).data.user?.id || null; } catch {}
 
+    // =====================================================
+    // ML: Fetch dynamic enhancements
+    // =====================================================
+    const { variant, patterns, corrections } = await getMLEnhancements(sb);
+    const dynamicPrompt = buildDynamicPrompt(BASE_PROMPT, variant, patterns, corrections);
+
     const isVid = imageBase64.startsWith("data:video/");
     const imageUrl = imageBase64.startsWith("data:") ? imageBase64 : `data:image/jpeg;base64,${imageBase64}`;
 
@@ -138,7 +257,7 @@ serve(async (req) => {
       : "Analyze image. Determine if collectible or real vehicle.";
 
     const PRIMARY_MODEL = "gpt-4o";
-    const FALLBACK_MODEL = "gpt-4o"; // Same model for retry
+    const FALLBACK_MODEL = "gpt-4o";
 
     const stripFences = (s: string) => s.replace(/```json\n?|\n?```/g, "").trim();
 
@@ -157,7 +276,7 @@ serve(async (req) => {
 
     const fetchAndParse = async (model: string, attempt: number, reason: string) => {
       const messages = [
-        { role: "system", content: PROMPT },
+        { role: "system", content: dynamicPrompt },
         {
           role: "user",
           content: isVid
@@ -195,10 +314,7 @@ serve(async (req) => {
             ok: false as const,
             httpResponse: new Response(
               JSON.stringify({ error: "Rate limit. Try again." }),
-              {
-                status: 429,
-                headers: { ...corsHeaders, "Content-Type": "application/json" },
-              }
+              { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
             ),
           };
         }
@@ -207,10 +323,7 @@ serve(async (req) => {
             ok: false as const,
             httpResponse: new Response(
               JSON.stringify({ error: "OpenAI API key invalid or quota exceeded." }),
-              {
-                status: 402,
-                headers: { ...corsHeaders, "Content-Type": "application/json" },
-              }
+              { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
             ),
           };
         }
@@ -223,13 +336,18 @@ serve(async (req) => {
 
       const usage = data.usage || {};
       await logUsage(
-        sb,
-        uid,
-        "analyze-collectible",
-        model,
-        usage.prompt_tokens || estimateTokens(PROMPT + uPrompt, !isVid, isVid),
+        sb, uid, "analyze-collectible", model,
+        usage.prompt_tokens || estimateTokens(dynamicPrompt + uPrompt, !isVid, isVid),
         usage.completion_tokens || estimateTokens(content),
-        { type: isVid ? "video" : "image", attempt, reason }
+        { 
+          type: isVid ? "video" : "image", 
+          attempt, 
+          reason,
+          variant_id: variant?.variant_id || null,
+          variant_name: variant?.variant_name || "none",
+          patterns_used: patterns.length,
+          corrections_used: corrections.length
+        }
       );
 
       try {
@@ -257,25 +375,44 @@ serve(async (req) => {
       }
 
       result = fallback.parsed;
-      return new Response(JSON.stringify(result), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    } else {
+      result = primary.parsed;
 
-    result = primary.parsed;
-
-    // If identification failed, retry once
-    if (shouldRetry(result)) {
-      const fallback = await fetchAndParse(FALLBACK_MODEL, 2, "not_identified");
-      if (!fallback.ok) {
-        if ("httpResponse" in fallback) return fallback.httpResponse;
-        console.error("[AI] Fallback attempt failed:", fallback.error);
-      } else if (!shouldRetry(fallback.parsed)) {
-        result = fallback.parsed;
+      // If identification failed, retry once
+      if (shouldRetry(result)) {
+        const fallback = await fetchAndParse(FALLBACK_MODEL, 2, "not_identified");
+        if (!fallback.ok) {
+          if ("httpResponse" in fallback) return fallback.httpResponse;
+          console.error("[AI] Fallback attempt failed:", fallback.error);
+        } else if (!shouldRetry(fallback.parsed)) {
+          result = fallback.parsed;
+        }
       }
     }
 
-    return new Response(JSON.stringify(result), {
+    // =====================================================
+    // ML: Record A/B test result
+    // =====================================================
+    const responseTime = Date.now() - startTime;
+    if (variant?.variant_id) {
+      // Get first item ID if available
+      // deno-lint-ignore no-explicit-any
+      const firstItemId = (result as any)?.items?.[0]?.id || null;
+      await recordABResult(sb, variant.variant_id, firstItemId, uid, responseTime, PRIMARY_MODEL);
+    }
+
+    // Add ML metadata to response
+    const responseWithMeta = {
+      ...(result as object),
+      _ml_metadata: {
+        variant_name: variant?.variant_name || "none",
+        patterns_applied: patterns.length,
+        corrections_used: corrections.length,
+        response_time_ms: responseTime
+      }
+    };
+
+    return new Response(JSON.stringify(responseWithMeta), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {

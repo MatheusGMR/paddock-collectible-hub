@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ThumbsUp, AlertCircle, X, Check, Loader2 } from "lucide-react";
+import { ThumbsUp, AlertCircle, Check, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -13,6 +13,7 @@ import { toast } from "sonner";
 
 interface ScanFeedbackProps {
   itemId?: string;
+  variantId?: string; // ML A/B testing variant ID
   collectibleData: {
     manufacturer: string;
     scale: string;
@@ -44,29 +45,41 @@ const fieldLabels: Record<FieldKey, string> = {
   car_year: "Ano do carro",
 };
 
-export const ScanFeedback = ({ itemId, collectibleData, realCarData }: ScanFeedbackProps) => {
+export const ScanFeedback = ({ itemId, variantId, collectibleData, realCarData }: ScanFeedbackProps) => {
   const { user } = useAuth();
   const [liked, setLiked] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
   const [selectedField, setSelectedField] = useState<FieldKey | null>(null);
   const [correction, setCorrection] = useState("");
+  const [visualCues, setVisualCues] = useState("");
   const [submitting, setSubmitting] = useState(false);
+
+  // Send feedback to ML system via edge function
+  const sendMLFeedback = async (payload: Record<string, unknown>) => {
+    try {
+      const { error } = await supabase.functions.invoke("ml-feedback", {
+        body: payload,
+      });
+      if (error) throw error;
+    } catch (e) {
+      console.error("[ML] Feedback error:", e);
+      // Non-blocking - still show success to user
+    }
+  };
 
   const handleLike = async () => {
     if (!user || liked) return;
     
     setLiked(true);
     
-    try {
-      await supabase.from("scan_feedback").insert({
-        user_id: user.id,
-        item_id: itemId || null,
-        feedback_type: "like",
-      });
-      toast.success("Obrigado pelo feedback! 🎉");
-    } catch (error) {
-      console.error("Error submitting like:", error);
-    }
+    // Send to ML system
+    await sendMLFeedback({
+      type: "like",
+      item_id: itemId,
+      variant_id: variantId,
+    });
+    
+    toast.success("Obrigado pelo feedback! 🎉");
   };
 
   const handleSubmitReport = async () => {
@@ -77,19 +90,27 @@ export const ScanFeedback = ({ itemId, collectibleData, realCarData }: ScanFeedb
     try {
       const originalValue = getOriginalValue(selectedField);
       
-      await supabase.from("scan_feedback").insert({
-        user_id: user.id,
-        item_id: itemId || null,
-        feedback_type: "error_report",
+      // Send to ML system with full context
+      await sendMLFeedback({
+        type: "error",
+        item_id: itemId,
+        variant_id: variantId,
         error_field: selectedField,
-        error_correction: correction.trim(),
         original_value: originalValue,
+        corrected_value: correction.trim(),
+        visual_cues: visualCues.trim() || null,
+        original_brand: realCarData.brand,
+        original_model: realCarData.model,
+        original_manufacturer: collectibleData.manufacturer,
+        original_scale: collectibleData.scale,
+        original_year: collectibleData.year,
       });
       
-      toast.success("Erro reportado! Vamos melhorar a IA. 🔧");
+      toast.success("Erro reportado! A IA vai aprender com isso. 🧠");
       setReportOpen(false);
       setSelectedField(null);
       setCorrection("");
+      setVisualCues("");
     } catch (error) {
       console.error("Error submitting report:", error);
       toast.error("Erro ao enviar. Tente novamente.");
@@ -193,20 +214,40 @@ export const ScanFeedback = ({ itemId, collectibleData, realCarData }: ScanFeedb
 
             {/* Correction input */}
             {selectedField && (
-              <div className="space-y-2 animate-in fade-in slide-in-from-bottom-2">
-                <label className="text-sm font-medium text-foreground">
-                  Qual é o valor correto para "{fieldLabels[selectedField]}"?
-                </label>
-                <input
-                  type="text"
-                  value={correction}
-                  onChange={(e) => setCorrection(e.target.value)}
-                  placeholder={`Digite o ${fieldLabels[selectedField].toLowerCase()} correto...`}
-                  className="w-full px-4 py-3 rounded-xl bg-muted border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                />
-                <p className="text-xs text-muted-foreground">
-                  Valor atual: <span className="font-medium">{getOriginalValue(selectedField)}</span>
-                </p>
+              <div className="space-y-3 animate-in fade-in slide-in-from-bottom-2">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-foreground">
+                    Qual é o valor correto para "{fieldLabels[selectedField]}"?
+                  </label>
+                  <input
+                    type="text"
+                    value={correction}
+                    onChange={(e) => setCorrection(e.target.value)}
+                    placeholder={`Digite o ${fieldLabels[selectedField].toLowerCase()} correto...`}
+                    className="w-full px-4 py-3 rounded-xl bg-muted border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Valor atual: <span className="font-medium">{getOriginalValue(selectedField)}</span>
+                  </p>
+                </div>
+
+                {/* Visual cues for ML learning */}
+                <div className="space-y-2 pt-2 border-t border-border/50">
+                  <label className="text-sm font-medium text-foreground flex items-center gap-2">
+                    <span className="text-xs bg-primary/20 text-primary px-2 py-0.5 rounded">ML</span>
+                    Como você identificou? (opcional)
+                  </label>
+                  <input
+                    type="text"
+                    value={visualCues}
+                    onChange={(e) => setVisualCues(e.target.value)}
+                    placeholder="Ex: base preta com logo verde, pneus de borracha..."
+                    className="w-full px-4 py-3 rounded-xl bg-muted border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                  />
+                  <p className="text-xs text-muted-foreground/80">
+                    🧠 Isso ajuda a IA a aprender padrões visuais para identificações futuras
+                  </p>
+                </div>
               </div>
             )}
           </div>
