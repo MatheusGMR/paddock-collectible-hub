@@ -7,7 +7,7 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const MODEL_PRICING = { "google/gemini-3-flash-preview": { input: 0.50, output: 3.00 } };
+const MODEL_PRICING = { "gpt-4o": { input: 2.50, output: 10.00 } };
 
 function estimateTokens(content: string, isImage = false, isVideo = false): number {
   const t = Math.ceil(content.length / 4);
@@ -15,7 +15,7 @@ function estimateTokens(content: string, isImage = false, isVideo = false): numb
 }
 
 function calculateCost(i: number, o: number): number {
-  const p = MODEL_PRICING["google/gemini-3-flash-preview"];
+  const p = MODEL_PRICING["gpt-4o"];
   return (i / 1e6) * p.input + (o / 1e6) * p.output;
 }
 
@@ -78,8 +78,8 @@ serve(async (req) => {
     const { imageBase64 } = await req.json();
     if (!imageBase64) return new Response(JSON.stringify({ error: "Image required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
-    const API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!API_KEY) throw new Error("LOVABLE_API_KEY not configured");
+    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+    if (!OPENAI_API_KEY) throw new Error("OPENAI_API_KEY not configured");
 
     const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
@@ -88,16 +88,14 @@ serve(async (req) => {
     if (auth) try { uid = (await sb.auth.getUser(auth.replace("Bearer ", ""))).data.user?.id || null; } catch {}
 
     const isVid = imageBase64.startsWith("data:video/");
-    const media = isVid
-      ? { type: "video_url" as const, video_url: { url: imageBase64 } }
-      : { type: "image_url" as const, image_url: { url: imageBase64.startsWith("data:") ? imageBase64 : `data:image/jpeg;base64,${imageBase64}` } };
+    const imageUrl = imageBase64.startsWith("data:") ? imageBase64 : `data:image/jpeg;base64,${imageBase64}`;
 
     const uPrompt = isVid
       ? "Analyze video of collectible cars (max 7)."
       : "Analyze image. Determine if collectible or real vehicle.";
 
-    const PRIMARY_MODEL = "google/gemini-3-flash-preview";
-    const FALLBACK_MODEL = "google/gemini-3-pro-preview";
+    const PRIMARY_MODEL = "gpt-4o";
+    const FALLBACK_MODEL = "gpt-4o"; // Same model for retry
 
     const stripFences = (s: string) => s.replace(/```json\n?|\n?```/g, "").trim();
 
@@ -115,22 +113,40 @@ serve(async (req) => {
     };
 
     const fetchAndParse = async (model: string, attempt: number, reason: string) => {
-      const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      const messages = [
+        { role: "system", content: PROMPT },
+        {
+          role: "user",
+          content: isVid
+            ? [
+                { type: "text", text: uPrompt },
+                { type: "image_url", image_url: { url: imageUrl, detail: "high" } }
+              ]
+            : [
+                { type: "text", text: uPrompt },
+                { type: "image_url", image_url: { url: imageUrl, detail: "high" } }
+              ],
+        },
+      ];
+
+      const res = await fetch("https://api.openai.com/v1/chat/completions", {
         method: "POST",
-        headers: { Authorization: `Bearer ${API_KEY}`, "Content-Type": "application/json" },
+        headers: {
+          Authorization: `Bearer ${OPENAI_API_KEY}`,
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify({
           model,
-          messages: [
-            { role: "system", content: PROMPT },
-            {
-              role: "user",
-              content: [{ type: "text", text: uPrompt }, media],
-            },
-          ],
+          messages,
+          max_tokens: 4096,
+          response_format: { type: "json_object" },
         }),
       });
 
       if (!res.ok) {
+        const errorText = await res.text();
+        console.error(`[OpenAI] Error ${res.status}:`, errorText);
+        
         if (res.status === 429) {
           return {
             ok: false as const,
@@ -143,11 +159,11 @@ serve(async (req) => {
             ),
           };
         }
-        if (res.status === 402) {
+        if (res.status === 402 || res.status === 401) {
           return {
             ok: false as const,
             httpResponse: new Response(
-              JSON.stringify({ error: "Credits exhausted." }),
+              JSON.stringify({ error: "OpenAI API key invalid or quota exceeded." }),
               {
                 status: 402,
                 headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -155,20 +171,21 @@ serve(async (req) => {
             ),
           };
         }
-        return { ok: false as const, error: new Error(`AI error: ${res.status}`) };
+        return { ok: false as const, error: new Error(`OpenAI error: ${res.status}`) };
       }
 
       const data = await res.json();
       const content = data.choices?.[0]?.message?.content;
       if (!content) return { ok: false as const, error: new Error("No AI response") };
 
+      const usage = data.usage || {};
       await logUsage(
         sb,
         uid,
         "analyze-collectible",
         model,
-        estimateTokens(PROMPT + uPrompt, !isVid, isVid),
-        estimateTokens(content),
+        usage.prompt_tokens || estimateTokens(PROMPT + uPrompt, !isVid, isVid),
+        usage.completion_tokens || estimateTokens(content),
         { type: isVid ? "video" : "image", attempt, reason }
       );
 
@@ -204,7 +221,7 @@ serve(async (req) => {
 
     result = primary.parsed;
 
-    // If identification failed, retry once with a stronger model
+    // If identification failed, retry once
     if (shouldRetry(result)) {
       const fallback = await fetchAndParse(FALLBACK_MODEL, 2, "not_identified");
       if (!fallback.ok) {
