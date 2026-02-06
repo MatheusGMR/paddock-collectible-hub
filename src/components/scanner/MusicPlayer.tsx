@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { Music2, Play, Loader2, ExternalLink } from "lucide-react";
+import { useState } from "react";
+import { Music2, Play, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -25,31 +25,16 @@ const parseMusicSuggestion = (suggestion: string) => {
   return { title: suggestion, artist: "", year: null };
 };
 
-// Get Spotify search URL (fallback)
+// Get Spotify search URL
 const getSpotifySearchUrl = (title: string, artist: string) => {
   const query = encodeURIComponent(`${title} ${artist}`.trim());
   return `https://open.spotify.com/search/${query}`;
 };
 
-
-// Spotify oEmbed API to get embed URL
-const getSpotifyEmbedUrl = async (title: string, artist: string): Promise<string | null> => {
-  try {
-    // Use Spotify's oEmbed endpoint with a search-based URL
-    const searchQuery = encodeURIComponent(`${title} ${artist}`.trim());
-    const spotifySearchUrl = `https://open.spotify.com/search/${searchQuery}`;
-    
-    // Unfortunately, oEmbed doesn't work with search URLs
-    // We need to construct a generic embed URL that will show search results
-    // Spotify doesn't support this directly, so we'll use a workaround
-    
-    // The best approach is to embed based on track name pattern
-    // Since we don't have the track ID, we'll show the player in a search-like state
-    return null;
-  } catch (error) {
-    console.error("Error fetching Spotify embed:", error);
-    return null;
-  }
+// Get YouTube Music search URL as fallback
+const getYouTubeMusicUrl = (title: string, artist: string) => {
+  const query = encodeURIComponent(`${title} ${artist}`.trim());
+  return `https://music.youtube.com/search?q=${query}`;
 };
 
 export const MusicPlayer = ({ 
@@ -58,25 +43,18 @@ export const MusicPlayer = ({
   listeningTip,
 }: MusicPlayerProps) => {
   const { title, artist, year } = parseMusicSuggestion(suggestion);
-  const [showEmbed, setShowEmbed] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [showOptions, setShowOptions] = useState(false);
 
   const handlePlayClick = () => {
-    setIsLoading(true);
-    setShowEmbed(true);
-  };
-
-  const handleOpenSpotify = () => {
+    // Open Spotify search directly - most reliable method
     window.open(getSpotifySearchUrl(title, artist), "_blank", "noopener,noreferrer");
   };
 
+  const handleYouTubeMusic = () => {
+    window.open(getYouTubeMusicUrl(title, artist), "_blank", "noopener,noreferrer");
+  };
 
   if (!suggestion) return null;
-
-  // Construct Spotify embed URL using search
-  // Note: Spotify embed requires a track/album/playlist URI, not search
-  // We'll use a workaround by embedding a search-like experience
-  const spotifyEmbedUrl = `https://open.spotify.com/embed/search/${encodeURIComponent(`${title} ${artist}`.trim())}?utm_source=generator&theme=0`;
 
   return (
     <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-primary/20 via-primary/10 to-background border border-primary/20">
@@ -88,86 +66,67 @@ export const MusicPlayer = ({
           </div>
           <div className="flex-1">
             <p className="text-xs font-semibold text-primary">Trilha Sonora</p>
-            <p className="text-[10px] text-muted-foreground">
-              {showEmbed ? "Ouça agora" : "Toque para ouvir"}
-            </p>
+            <p className="text-[10px] text-muted-foreground">Toque para ouvir</p>
           </div>
         </div>
 
-        {/* Spotify Embed or Song Info */}
-        {showEmbed ? (
-          <div className="space-y-3">
-            {/* Spotify Embed iframe */}
-            <div className="relative w-full rounded-lg overflow-hidden bg-black/20">
-              {isLoading && (
-                <div className="absolute inset-0 flex items-center justify-center bg-black/40 z-10">
-                  <Loader2 className="h-6 w-6 animate-spin text-primary" />
-                </div>
-              )}
-              <iframe
-                src={`https://open.spotify.com/embed/search/${encodeURIComponent(`${title} ${artist}`.trim())}?utm_source=generator&theme=0`}
-                width="100%"
-                height="152"
-                frameBorder="0"
-                allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-                loading="lazy"
-                onLoad={() => setIsLoading(false)}
-                onError={() => {
-                  setIsLoading(false);
-                  // Fallback: open Spotify directly
-                  handleOpenSpotify();
-                }}
-                className="rounded-lg"
-                style={{ borderRadius: '12px' }}
-              />
-            </div>
-
-            {/* Fallback link */}
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleOpenSpotify}
-              className="w-full text-xs text-muted-foreground gap-2"
-            >
-              <ExternalLink className="h-3 w-3" />
-              Abrir no Spotify
-            </Button>
+        {/* Song info and main play button */}
+        <div className="flex items-center gap-3">
+          {/* Album art placeholder */}
+          <div className="relative w-16 h-16 rounded-lg bg-gradient-to-br from-primary/30 to-primary/10 flex items-center justify-center overflow-hidden">
+            <Music2 className="h-6 w-6 text-primary/60" />
           </div>
-        ) : (
-          <>
-            {/* Song info and main play button */}
-            <div className="flex items-center gap-3">
-              {/* Album art placeholder */}
-              <div className="relative w-16 h-16 rounded-lg bg-gradient-to-br from-primary/30 to-primary/10 flex items-center justify-center overflow-hidden">
-                <Music2 className="h-6 w-6 text-primary/60" />
-              </div>
 
-              {/* Song details */}
-              <div className="flex-1 min-w-0">
-                <p className="font-semibold text-foreground truncate">{title}</p>
-                {artist && (
-                  <p className="text-sm text-muted-foreground truncate">{artist}</p>
-                )}
-                {year && (
-                  <p className="text-xs text-muted-foreground/70">{year}</p>
-                )}
-              </div>
+          {/* Song details */}
+          <div className="flex-1 min-w-0">
+            <p className="font-semibold text-foreground truncate">{title}</p>
+            {artist && (
+              <p className="text-sm text-muted-foreground truncate">{artist}</p>
+            )}
+            {year && (
+              <p className="text-xs text-muted-foreground/70">{year}</p>
+            )}
+          </div>
 
-              {/* Play button - shows Spotify embed */}
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={handlePlayClick}
-                className={cn(
-                  "h-12 w-12 rounded-full transition-all",
-                  "bg-[#1DB954]/20 text-[#1DB954] hover:bg-[#1DB954]/30"
-                )}
-              >
-                <Play className="h-6 w-6 ml-0.5" />
-              </Button>
-            </div>
-          </>
-        )}
+          {/* Play button - opens Spotify directly */}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handlePlayClick}
+            className={cn(
+              "h-12 w-12 rounded-full transition-all",
+              "bg-[#1DB954]/20 text-[#1DB954] hover:bg-[#1DB954]/30"
+            )}
+          >
+            <Play className="h-6 w-6 ml-0.5" />
+          </Button>
+        </div>
+
+        {/* Alternative streaming options */}
+        <div className="flex gap-2 mt-3">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handlePlayClick}
+            className="flex-1 text-xs gap-1.5 h-8 border-[#1DB954]/30 text-[#1DB954] hover:bg-[#1DB954]/10"
+          >
+            <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/>
+            </svg>
+            Spotify
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleYouTubeMusic}
+            className="flex-1 text-xs gap-1.5 h-8 border-red-500/30 text-red-500 hover:bg-red-500/10"
+          >
+            <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 0C5.376 0 0 5.376 0 12s5.376 12 12 12 12-5.376 12-12S18.624 0 12 0zm0 19.104c-3.924 0-7.104-3.18-7.104-7.104S8.076 4.896 12 4.896s7.104 3.18 7.104 7.104-3.18 7.104-7.104 7.104zm0-13.332c-3.432 0-6.228 2.796-6.228 6.228S8.568 18.228 12 18.228s6.228-2.796 6.228-6.228S15.432 5.772 12 5.772zM9.684 15.54V8.46L15.816 12l-6.132 3.54z"/>
+            </svg>
+            YouTube
+          </Button>
+        </div>
 
         {/* Selection reason */}
         {selectionReason && (
