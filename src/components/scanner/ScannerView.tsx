@@ -210,22 +210,38 @@ export const ScannerView = () => {
   }, [videoPreviewUrl]);
 
   // Enrich analysis results with real car photos from Wikimedia
-  // This runs whenever analysisResults changes and photos are missing
+  // Use a ref to track which results have been enriched to avoid infinite loops
+  const enrichedResultsRef = useRef<Set<string>>(new Set());
+  
   useEffect(() => {
     const enrichPhotos = async () => {
       if (analysisResults.length === 0) return;
+      
+      // Create a unique key for the current results set
+      const resultsKey = analysisResults.map(r => 
+        `${r.realCar.brand}-${r.realCar.model}-${r.realCar.year}`
+      ).join("|");
+      
+      // Skip if already enriched this exact set
+      if (enrichedResultsRef.current.has(resultsKey)) return;
       
       // Check if any result is missing photos
       const needsPhotos = analysisResults.some(
         (r) => !r.realCarPhotos || r.realCarPhotos.length === 0
       );
       
-      if (!needsPhotos) return;
+      if (!needsPhotos) {
+        enrichedResultsRef.current.add(resultsKey);
+        return;
+      }
       
       console.log("[Scanner] Enriching results with real car photos...");
       
       try {
         const enrichedResults = await enrichResultsWithPhotos(analysisResults);
+        
+        // Mark as enriched
+        enrichedResultsRef.current.add(resultsKey);
         
         // Only update if we actually got new photos
         const hasNewPhotos = enrichedResults.some(
@@ -245,8 +261,7 @@ export const ScannerView = () => {
     };
     
     enrichPhotos();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [analysisResults.length]); // Only run when results count changes, not on every update
+  }, [analysisResults]);
 
   // Make html/body/#root transparent when using native camera preview
   // This is CRITICAL for iOS where the camera renders behind the WebView
