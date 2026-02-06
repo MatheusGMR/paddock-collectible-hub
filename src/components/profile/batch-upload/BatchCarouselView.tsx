@@ -1,11 +1,13 @@
 import { useState, useCallback } from "react";
-import { Check, Plus, RotateCcw, ChevronLeft, ChevronRight, Loader2, CheckCircle2, SkipForward, AlertTriangle, Car, Package, History, ChevronDown, ChevronUp, ImageIcon } from "lucide-react";
+import { Check, Plus, RotateCcw, ChevronLeft, ChevronRight, Loader2, CheckCircle2, SkipForward, AlertTriangle, Car, Package, History, ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { IndexBadge } from "@/components/index/IndexBadge";
 import { cn } from "@/lib/utils";
 import { ConsolidatedResult } from "./types";
+import { MusicPlayer } from "@/components/scanner/MusicPlayer";
+import { RealCarGallery } from "@/components/scanner/RealCarGallery";
 
 interface BatchCarouselViewProps {
   results: ConsolidatedResult[];
@@ -201,19 +203,13 @@ export function BatchCarouselView({
         )}
 
         <div className="p-4 space-y-4">
-          {/* Hero image */}
-          <div className="relative w-full aspect-square rounded-2xl overflow-hidden bg-gradient-to-b from-muted to-muted/50">
-            {result.croppedImage ? (
-              <img
-                src={result.croppedImage}
-                alt={`${result.realCar.brand} ${result.realCar.model}`}
-                className="w-full h-full object-contain"
-              />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center">
-                <ImageIcon className="h-16 w-16 text-muted-foreground" />
-              </div>
-            )}
+          {/* Hero image - ALWAYS use cropped image with object-contain for consistent display */}
+          <div className="relative w-full aspect-square rounded-2xl overflow-hidden bg-black">
+            <img
+              src={result.croppedImage}
+              alt={`${result.realCar.brand} ${result.realCar.model}`}
+              className="w-full h-full object-contain"
+            />
             {/* Car badge */}
             <div className="absolute top-3 left-3 flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/60 backdrop-blur-sm">
               <Car className="h-3.5 w-3.5 text-primary" />
@@ -292,6 +288,24 @@ export function BatchCarouselView({
                   "{result.realCar.historicalFact}"
                 </p>
               </CollapsibleSection>
+            )}
+            
+            {/* Music Player - same as scanner */}
+            {result.musicSuggestion && (
+              <MusicPlayer 
+                suggestion={result.musicSuggestion} 
+                selectionReason={result.musicSelectionReason}
+                listeningTip={result.musicListeningTip}
+                carBrand={result.realCar.brand}
+              />
+            )}
+            
+            {/* Real Car Photos Gallery - same as scanner */}
+            {result.realCarPhotos && result.realCarPhotos.length > 0 && (
+              <RealCarGallery 
+                photos={result.realCarPhotos} 
+                carName={`${result.realCar.brand} ${result.realCar.model}`}
+              />
             )}
           </div>
         </div>
