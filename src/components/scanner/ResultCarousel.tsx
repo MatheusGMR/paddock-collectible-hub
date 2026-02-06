@@ -51,6 +51,7 @@ interface ResultCarouselProps {
   addedIndices: Set<number>;
   skippedIndices: Set<number>;
   warning?: string;
+  mlVariantId?: string; // ML A/B testing variant ID
 }
 
 // Component to show original image with highlighted bounding box
@@ -163,6 +164,7 @@ export const ResultCarousel = ({
   onComplete,
   onScanAgain,
   addedIndices,
+  mlVariantId,
 }: ResultCarouselProps) => {
   const { t } = useLanguage();
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -504,6 +506,7 @@ export const ResultCarousel = ({
 
             {/* Feedback buttons */}
             <ScanFeedback
+              variantId={mlVariantId}
               collectibleData={{
                 manufacturer: result.collectible.manufacturer,
                 scale: result.collectible.scale,

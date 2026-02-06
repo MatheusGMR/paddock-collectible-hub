@@ -371,6 +371,197 @@ export type Database = {
           },
         ]
       }
+      ml_ab_results: {
+        Row: {
+          created_at: string
+          error_field: string | null
+          id: string
+          item_id: string | null
+          model_used: string | null
+          response_time_ms: number | null
+          user_id: string | null
+          variant_id: string | null
+          was_successful: boolean | null
+        }
+        Insert: {
+          created_at?: string
+          error_field?: string | null
+          id?: string
+          item_id?: string | null
+          model_used?: string | null
+          response_time_ms?: number | null
+          user_id?: string | null
+          variant_id?: string | null
+          was_successful?: boolean | null
+        }
+        Update: {
+          created_at?: string
+          error_field?: string | null
+          id?: string
+          item_id?: string | null
+          model_used?: string | null
+          response_time_ms?: number | null
+          user_id?: string | null
+          variant_id?: string | null
+          was_successful?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ml_ab_results_variant_id_fkey"
+            columns: ["variant_id"]
+            isOneToOne: false
+            referencedRelation: "ml_prompt_variants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ml_corrections: {
+        Row: {
+          confidence_boost: number | null
+          corrected_brand: string | null
+          corrected_field: string
+          corrected_manufacturer: string | null
+          corrected_model: string | null
+          corrected_scale: string | null
+          corrected_year: string | null
+          created_at: string
+          id: string
+          is_validated: boolean | null
+          original_brand: string | null
+          original_manufacturer: string | null
+          original_model: string | null
+          original_scale: string | null
+          original_year: string | null
+          times_used: number | null
+          validation_count: number | null
+          visual_cues: string | null
+        }
+        Insert: {
+          confidence_boost?: number | null
+          corrected_brand?: string | null
+          corrected_field: string
+          corrected_manufacturer?: string | null
+          corrected_model?: string | null
+          corrected_scale?: string | null
+          corrected_year?: string | null
+          created_at?: string
+          id?: string
+          is_validated?: boolean | null
+          original_brand?: string | null
+          original_manufacturer?: string | null
+          original_model?: string | null
+          original_scale?: string | null
+          original_year?: string | null
+          times_used?: number | null
+          validation_count?: number | null
+          visual_cues?: string | null
+        }
+        Update: {
+          confidence_boost?: number | null
+          corrected_brand?: string | null
+          corrected_field?: string
+          corrected_manufacturer?: string | null
+          corrected_model?: string | null
+          corrected_scale?: string | null
+          corrected_year?: string | null
+          created_at?: string
+          id?: string
+          is_validated?: boolean | null
+          original_brand?: string | null
+          original_manufacturer?: string | null
+          original_model?: string | null
+          original_scale?: string | null
+          original_year?: string | null
+          times_used?: number | null
+          validation_count?: number | null
+          visual_cues?: string | null
+        }
+        Relationships: []
+      }
+      ml_learned_patterns: {
+        Row: {
+          correction_prompt: string
+          created_at: string
+          effectiveness_score: number | null
+          examples: Json | null
+          id: string
+          last_occurrence: string | null
+          occurrence_count: number | null
+          pattern_type: string
+          trigger_condition: string
+          updated_at: string
+        }
+        Insert: {
+          correction_prompt: string
+          created_at?: string
+          effectiveness_score?: number | null
+          examples?: Json | null
+          id?: string
+          last_occurrence?: string | null
+          occurrence_count?: number | null
+          pattern_type: string
+          trigger_condition: string
+          updated_at?: string
+        }
+        Update: {
+          correction_prompt?: string
+          created_at?: string
+          effectiveness_score?: number | null
+          examples?: Json | null
+          id?: string
+          last_occurrence?: string | null
+          occurrence_count?: number | null
+          pattern_type?: string
+          trigger_condition?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      ml_prompt_variants: {
+        Row: {
+          accuracy_rate: number | null
+          created_at: string
+          description: string | null
+          error_reports: number | null
+          id: string
+          is_active: boolean | null
+          is_control: boolean | null
+          name: string
+          prompt_snippet: string
+          successful_identifications: number | null
+          target_field: string | null
+          total_uses: number | null
+        }
+        Insert: {
+          accuracy_rate?: number | null
+          created_at?: string
+          description?: string | null
+          error_reports?: number | null
+          id?: string
+          is_active?: boolean | null
+          is_control?: boolean | null
+          name: string
+          prompt_snippet: string
+          successful_identifications?: number | null
+          target_field?: string | null
+          total_uses?: number | null
+        }
+        Update: {
+          accuracy_rate?: number | null
+          created_at?: string
+          description?: string | null
+          error_reports?: number | null
+          id?: string
+          is_active?: boolean | null
+          is_control?: boolean | null
+          name?: string
+          prompt_snippet?: string
+          successful_identifications?: number | null
+          target_field?: string | null
+          total_uses?: number | null
+        }
+        Relationships: []
+      }
       news_articles: {
         Row: {
           category: string
@@ -923,6 +1114,15 @@ export type Database = {
         Args: { other_user_id: string }
         Returns: string
       }
+      get_active_patterns: {
+        Args: { p_limit?: number }
+        Returns: {
+          correction_prompt: string
+          effectiveness_score: number
+          pattern_type: string
+          trigger_condition: string
+        }[]
+      }
       get_admin_ai_usage_stats: { Args: { days_back?: number }; Returns: Json }
       get_admin_page_analytics: { Args: { days_back?: number }; Returns: Json }
       get_admin_scanner_performance: {
@@ -933,6 +1133,19 @@ export type Database = {
       get_admin_subscription_stats: { Args: never; Returns: Json }
       get_admin_user_growth: { Args: never; Returns: Json }
       get_admin_users: { Args: never; Returns: Json }
+      get_relevant_corrections: {
+        Args: { p_brand?: string; p_limit?: number; p_manufacturer?: string }
+        Returns: {
+          confidence_boost: number
+          corrected_brand: string
+          corrected_manufacturer: string
+          corrected_model: string
+          original_brand: string
+          original_manufacturer: string
+          original_model: string
+          visual_cues: string
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -941,6 +1154,26 @@ export type Database = {
         Returns: boolean
       }
       is_admin: { Args: never; Returns: boolean }
+      record_ab_result: {
+        Args: {
+          p_error_field?: string
+          p_item_id?: string
+          p_model_used?: string
+          p_response_time_ms?: number
+          p_user_id?: string
+          p_variant_id: string
+          p_was_successful?: boolean
+        }
+        Returns: string
+      }
+      select_prompt_variant: {
+        Args: never
+        Returns: {
+          prompt_snippet: string
+          variant_id: string
+          variant_name: string
+        }[]
+      }
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"
