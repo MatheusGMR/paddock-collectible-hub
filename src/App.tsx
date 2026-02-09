@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import { Capacitor } from "@capacitor/core";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -43,8 +44,9 @@ const AnalyticsTracker = () => {
 // Component that handles subscription flow
 const SubscriptionFlow = ({ children }: { children: React.ReactNode }) => {
   const { user, loading: authLoading } = useAuth();
-  const { status, isNewUser, isLoading: subLoading, startTrial, createCheckout } = useSubscription();
+  const { status, isNewUser, isLoading: subLoading, startTrial, createCheckout, checkSubscription } = useSubscription();
   const { markOnboardingComplete } = useGuidedTips();
+  const navigate = useNavigate();
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showEmbeddedCheckout, setShowEmbeddedCheckout] = useState(false);
@@ -146,20 +148,26 @@ const SubscriptionFlow = ({ children }: { children: React.ReactNode }) => {
   }, [isOnboardingInProgress]);
 
   const handleCheckoutComplete = useCallback(async () => {
-    // Checkout completed - show biometric prompt then navigate
+    // Checkout completed - navigate directly, skip biometric on web
     setShowEmbeddedCheckout(false);
     setIsOnboardingInProgress(false);
     markOnboardingComplete();
     
-    // Show biometric prompt before navigating
-    setShowBiometricPrompt(true);
-  }, [markOnboardingComplete]);
+    if (Capacitor.isNativePlatform()) {
+      // Show biometric prompt only on native
+      setShowBiometricPrompt(true);
+    } else {
+      // On web, just refresh subscription and navigate
+      await checkSubscription();
+      navigate("/", { replace: true });
+    }
+  }, [markOnboardingComplete, checkSubscription, navigate]);
 
   const handleBiometricComplete = useCallback(() => {
     setShowBiometricPrompt(false);
-    // Refresh subscription status before navigating
-    window.location.href = "/subscription-success";
-  }, []);
+    // Use navigate instead of window.location.href to avoid full reload
+    navigate("/", { replace: true });
+  }, [navigate]);
 
   const handleSkipOnboarding = useCallback(async () => {
     if (!user) return;
@@ -172,14 +180,18 @@ const SubscriptionFlow = ({ children }: { children: React.ReactNode }) => {
       const success = await startTrial();
       
       // Always close onboarding after attempting trial
-      // Even if trial fails, user marked as onboarding complete
       markOnboardingComplete();
       setIsOnboardingInProgress(false);
       setShowOnboarding(false);
       
       if (success) {
-        // Show biometric prompt after trial starts
-        setShowBiometricPrompt(true);
+        if (Capacitor.isNativePlatform()) {
+          // Show biometric prompt on native
+          setShowBiometricPrompt(true);
+        } else {
+          // On web, just navigate directly
+          navigate("/", { replace: true });
+        }
       }
     } catch (err) {
       console.error("Error starting trial:", err);
@@ -189,7 +201,7 @@ const SubscriptionFlow = ({ children }: { children: React.ReactNode }) => {
     } finally {
       setCheckoutLoading(false);
     }
-  }, [startTrial, markOnboardingComplete, markUserOnboardingComplete, user]);
+  }, [startTrial, markOnboardingComplete, markUserOnboardingComplete, user, navigate]);
 
   const handleSubscribe = useCallback(() => {
     // Show embedded checkout instead of redirecting
