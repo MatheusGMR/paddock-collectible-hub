@@ -25,6 +25,8 @@ import { trackInteraction, trackEvent } from "@/lib/analytics";
 import { useNativeCamera } from "@/hooks/useNativeCamera";
 import { useNativeCameraPreview } from "@/hooks/useNativeCameraPreview";
 import { useScannerPersistence } from "@/hooks/useScannerPersistence";
+import { useObjectDetection } from "@/hooks/useObjectDetection";
+import { DetectionIndicator } from "@/components/scanner/DetectionIndicator";
 import { Capacitor } from "@capacitor/core";
 import { Camera as CapacitorCamera } from "@capacitor/camera";
 
@@ -218,6 +220,10 @@ export const ScannerView = () => {
   const nativeCamera = useNativeCamera();
   const cameraPreview = useNativeCameraPreview();
   const scannerPersistence = useScannerPersistence();
+  
+  // Object detection for web camera mode (not native)
+  const detectionEnabled = cameraActive && !capturedImage && !isScanning && !Capacitor.isNativePlatform();
+  const { detectedCount, isModelLoading, isModelReady } = useObjectDetection(videoRef, detectionEnabled);
   
   // Track if we're using native camera preview (embedded live preview) vs fallback (opens native UI)
   const [useNativeFallback, setUseNativeFallback] = useState(false);
@@ -2181,6 +2187,11 @@ export const ScannerView = () => {
                 </button>
                 
                 <div className="flex flex-col items-center gap-3">
+                  <DetectionIndicator
+                    detectedCount={detectedCount}
+                    isModelLoading={isModelLoading}
+                    isModelReady={isModelReady}
+                  />
                   <p className="text-[11px] text-white/50 text-center tracking-wide">
                     {t.scanner.tapToCapture}
                   </p>
