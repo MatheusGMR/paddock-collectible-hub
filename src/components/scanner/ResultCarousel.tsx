@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef } from "react";
-import { Check, Plus, RotateCcw, ChevronLeft, ChevronRight, Loader2, CheckCircle2, SkipForward, AlertTriangle, Car, Package, History, ChevronDown, ChevronUp } from "lucide-react";
+import { Check, Plus, RotateCcw, ChevronLeft, ChevronRight, Loader2, CheckCircle2, SkipForward, AlertTriangle, Car, Package, History, ChevronDown, ChevronUp, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -45,6 +45,7 @@ interface ResultCarouselProps {
   results: AnalysisResult[];
   originalImage?: string;
   onAddToCollection: (index: number) => Promise<void>;
+  onAddAndPost: (index: number) => Promise<void>;
   onSkip: (index: number) => void;
   onComplete: () => void;
   onScanAgain: () => void;
@@ -190,6 +191,7 @@ export const ResultCarousel = ({
   results,
   originalImage,
   onAddToCollection,
+  onAddAndPost,
   onSkip,
   onComplete,
   onScanAgain,
@@ -481,9 +483,9 @@ export const ResultCarousel = ({
             </div>
 
             {/* Action buttons */}
-            <div className="flex gap-3 pt-2 sticky bottom-0 bg-card">
+            <div className="flex flex-col gap-2 pt-2 sticky bottom-0 bg-card">
               {result.isDuplicate ? (
-                <>
+                <div className="flex gap-3">
                   <Button
                     variant="outline"
                     onClick={() => handleSkip(originalIndex)}
@@ -505,32 +507,43 @@ export const ResultCarousel = ({
                     )}
                     {t.scanner.addAnyway}
                   </Button>
-                </>
+                </div>
               ) : (
                 <>
-                  <Button
-                    onClick={() => handleAdd(originalIndex)}
-                    disabled={addingIndex === originalIndex}
-                    className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90"
-                  >
-                    {addingIndex === originalIndex ? (
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    ) : justAddedIndex === originalIndex ? (
-                      <Check className="h-4 w-4 mr-2" />
-                    ) : (
-                      <Plus className="h-4 w-4 mr-2" />
-                    )}
-                    {t.scanner.addToCollection}
-                  </Button>
-                  {remainingResults.length > 1 && (
+                  <div className="flex gap-3">
                     <Button
+                      onClick={() => handleAdd(originalIndex)}
+                      disabled={addingIndex === originalIndex}
+                      className="flex-1 border-border text-foreground hover:bg-muted"
                       variant="outline"
-                      onClick={() => handleSkip(originalIndex)}
-                      className="border-border text-foreground hover:bg-muted"
                     >
-                      <SkipForward className="h-4 w-4" />
+                      {addingIndex === originalIndex ? (
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      ) : justAddedIndex === originalIndex ? (
+                        <Check className="h-4 w-4 mr-2" />
+                      ) : (
+                        <Plus className="h-4 w-4 mr-2" />
+                      )}
+                      {t.scanner.addToCollection}
                     </Button>
-                  )}
+                    {remainingResults.length > 1 && (
+                      <Button
+                        variant="ghost"
+                        onClick={() => handleSkip(originalIndex)}
+                        className="text-foreground hover:bg-muted px-3"
+                      >
+                        <SkipForward className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                  <Button
+                    onClick={() => onAddAndPost(originalIndex)}
+                    disabled={addingIndex === originalIndex}
+                    className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
+                  >
+                    <Send className="h-4 w-4 mr-2" />
+                    Adicionar e Anunciar
+                  </Button>
                 </>
               )}
             </div>
