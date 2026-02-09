@@ -40,6 +40,7 @@ const Auth = () => {
   const { t } = useLanguage();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const location = window.location;
   
   const {
     isAvailable: biometricAvailable,
@@ -50,12 +51,49 @@ const Auth = () => {
     loading: biometricCheckLoading,
   } = useBiometricAuth();
 
+  // Detect if we're returning from an OAuth callback (Apple/Google)
+  const isOAuthCallback = (() => {
+    try {
+      const sp = new URLSearchParams(location.search);
+      return (
+        sp.has("code") ||
+        sp.has("access_token") ||
+        location.hash.includes("access_token=")
+      );
+    } catch {
+      return false;
+    }
+  })();
+
   // Redirect if already authenticated
   useEffect(() => {
     if (!authLoading && user) {
       navigate("/", { replace: true });
     }
   }, [user, authLoading, navigate]);
+
+  // If OAuth callback is detected but user is not yet set, show a timeout fallback
+  useEffect(() => {
+    if (!isOAuthCallback) return;
+    
+    // After 15 seconds, if still no user, something went wrong
+    const timeout = setTimeout(() => {
+      if (!user) {
+        console.error("[Auth] OAuth callback timed out - no session received");
+        // Clean the URL and show the login form again
+        window.history.replaceState({}, "", "/auth");
+        toast({
+          title: "Erro na autenticação",
+          description: "Não foi possível completar o login. Tente novamente.",
+          variant: "destructive",
+        });
+        // Force reload to reset state
+        window.location.href = "/auth";
+      }
+    }, 15000);
+
+    return () => clearTimeout(timeout);
+  }, [isOAuthCallback, user, toast]);
 
   // Auto-trigger biometric auth if enabled
   useEffect(() => {
@@ -165,6 +203,19 @@ const Auth = () => {
       setGoogleLoading(false);
     }
   };
+
+  // If we're processing an OAuth callback, show a loading screen instead of the form
+  if (isOAuthCallback && !user) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6">
+        <PaddockLogo variant="wordmark" size={96} />
+        <div className="mt-8 flex flex-col items-center gap-3">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <p className="text-sm text-muted-foreground">Completando login...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6">
