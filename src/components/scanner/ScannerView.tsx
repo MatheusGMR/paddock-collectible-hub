@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { X, RotateCcw, Camera as CameraIcon, SwitchCamera, Loader2, ImageIcon } from "lucide-react";
 import { PhotoUploadSheet } from "@/components/profile/PhotoUploadSheet";
+import { CreatePostDialog } from "@/components/posts/CreatePostDialog";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -224,6 +225,11 @@ export const ScannerView = () => {
   const [useCameraPreview, setUseCameraPreview] = useState(false);
   // Batch upload sheet for multiple photo selection
   const [showBatchUpload, setShowBatchUpload] = useState(false);
+  // Post dialog state for "Add & Post" flow
+  const [showPostDialog, setShowPostDialog] = useState(false);
+  const [postImageBase64, setPostImageBase64] = useState<string | undefined>();
+  const [postItemTitle, setPostItemTitle] = useState<string | undefined>();
+  const [postCollectionItemId, setPostCollectionItemId] = useState<string | undefined>();
   
   // Restore pending results from localStorage on mount
   useEffect(() => {
@@ -1765,6 +1771,85 @@ export const ScannerView = () => {
     }
   };
 
+  // "Add & Post" handler: adds to collection then opens post dialog
+  const handleAddAndPost = async (index: number) => {
+    if (!user) {
+      toast({
+        title: t.scanner.signInRequired,
+        description: t.scanner.signInRequiredDesc,
+      });
+      navigate("/auth");
+      return;
+    }
+
+    const result = analysisResults[index];
+    if (!result) return;
+
+    try {
+      // Same add-to-collection logic
+      const imageToSave = analysisResults.length === 1 
+        ? (capturedImage || result.croppedImage)
+        : (result.croppedImage || capturedImage);
+
+      let imageUrl: string | undefined;
+      if (imageToSave && isBase64DataUri(imageToSave)) {
+        const uploadedUrl = await uploadCollectionImage(user.id, imageToSave);
+        if (uploadedUrl) imageUrl = uploadedUrl;
+      } else if (imageToSave) {
+        imageUrl = imageToSave;
+      }
+
+      await addToCollection(
+        user.id,
+        {
+          real_car_brand: result.realCar.brand,
+          real_car_model: result.realCar.model,
+          real_car_year: result.realCar.year,
+          historical_fact: result.realCar.historicalFact,
+          collectible_manufacturer: result.collectible.manufacturer,
+          collectible_scale: result.collectible.scale,
+          collectible_year: result.collectible.estimatedYear,
+          collectible_origin: result.collectible.origin,
+          collectible_series: result.collectible.series,
+          collectible_condition: result.collectible.condition,
+          collectible_color: result.collectible.color || null,
+          collectible_notes: result.collectible.notes,
+          price_index: result.priceIndex?.score || null,
+          rarity_tier: result.priceIndex?.tier || null,
+          index_breakdown: result.priceIndex?.breakdown || null,
+          music_suggestion: result.musicSuggestion || null,
+          music_selection_reason: result.musicSelectionReason || null,
+          real_car_photos: result.realCarPhotos || null,
+        },
+        imageUrl
+      );
+
+      setAddedIndices(prev => new Set(prev).add(index));
+
+      toast({
+        title: t.scanner.addedToCollection,
+        description: `${result.realCar.brand} ${result.realCar.model}`,
+      });
+
+      trackInteraction("add_and_post", "add_and_post_button", {
+        brand: result.realCar.brand,
+        model: result.realCar.model,
+      });
+
+      // Open post dialog with the image
+      setPostImageBase64(imageToSave || undefined);
+      setPostItemTitle(`${result.realCar.brand} ${result.realCar.model}`);
+      setShowPostDialog(true);
+    } catch (error) {
+      console.error("Add and post error:", error);
+      toast({
+        title: t.scanner.addError,
+        description: t.scanner.addErrorDesc,
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleSkipItem = (index: number) => {
     setSkippedIndices(prev => new Set(prev).add(index));
   };
@@ -1996,6 +2081,7 @@ export const ScannerView = () => {
           results={analysisResults}
           originalImage={capturedImage || undefined}
           onAddToCollection={handleAddToCollection}
+          onAddAndPost={handleAddAndPost}
           onSkip={handleSkipItem}
           onComplete={handleComplete}
           onScanAgain={resetScan}
@@ -2122,6 +2208,15 @@ export const ScannerView = () => {
       <PhotoUploadSheet
         open={showBatchUpload}
         onOpenChange={setShowBatchUpload}
+      />
+
+      {/* Post dialog for "Add & Post" flow */}
+      <CreatePostDialog
+        open={showPostDialog}
+        onOpenChange={setShowPostDialog}
+        imageBase64={postImageBase64}
+        itemTitle={postItemTitle}
+        collectionItemId={postCollectionItemId}
       />
     </div>
   );
