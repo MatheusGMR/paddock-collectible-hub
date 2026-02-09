@@ -54,18 +54,79 @@ interface ResultCarouselProps {
   mlVariantId?: string; // ML A/B testing variant ID
 }
 
-// Component to show cropped car image - ALWAYS use cropped for consistency
+// Component to show car image with bounding box indicator on original photo
 interface HighlightedImageProps {
   originalImage: string;
   croppedImage?: string;
   boundingBox?: BoundingBox;
   carName: string;
   carYear: string;
+  totalResults?: number;
 }
 
-const HighlightedImage = ({ originalImage, croppedImage, carName, carYear }: HighlightedImageProps) => {
-  // ALWAYS prioritize cropped image for consistent square layout centered on the car
-  // This ensures multi-car results look identical to single-car results
+const HighlightedImage = ({ originalImage, croppedImage, boundingBox, carName, carYear, totalResults = 1 }: HighlightedImageProps) => {
+  // For multi-car: show original image with bounding box overlay so user knows which car
+  // For single car: show cropped image directly
+  const showBoundingBoxOverlay = totalResults > 1 && boundingBox && originalImage;
+  
+  if (showBoundingBoxOverlay) {
+    return (
+      <div className="space-y-2">
+        {/* Original image with bounding box indicator */}
+        <div className="relative w-full aspect-[4/3] rounded-2xl overflow-hidden bg-black">
+          <img
+            src={originalImage}
+            alt="Foto original"
+            className="w-full h-full object-contain"
+          />
+          {/* Bounding box overlay */}
+          <div
+            className="absolute border-2 border-primary rounded-lg shadow-[0_0_12px_rgba(var(--primary),0.4)] pointer-events-none transition-all"
+            style={{
+              left: `${boundingBox.x}%`,
+              top: `${boundingBox.y}%`,
+              width: `${boundingBox.width}%`,
+              height: `${boundingBox.height}%`,
+            }}
+          >
+            {/* Label on bounding box */}
+            <div className="absolute -top-6 left-0 flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-primary text-primary-foreground text-[10px] font-semibold whitespace-nowrap">
+              <Car className="h-3 w-3" />
+              {carName}
+            </div>
+            {/* Corner accents */}
+            <div className="absolute -top-[2px] -left-[2px] w-3 h-3 border-t-2 border-l-2 border-primary rounded-tl-md" />
+            <div className="absolute -top-[2px] -right-[2px] w-3 h-3 border-t-2 border-r-2 border-primary rounded-tr-md" />
+            <div className="absolute -bottom-[2px] -left-[2px] w-3 h-3 border-b-2 border-l-2 border-primary rounded-bl-md" />
+            <div className="absolute -bottom-[2px] -right-[2px] w-3 h-3 border-b-2 border-r-2 border-primary rounded-br-md" />
+          </div>
+          {/* Dim everything outside the box */}
+          <div className="absolute inset-0 pointer-events-none" style={{
+            background: `linear-gradient(to bottom, 
+              rgba(0,0,0,0.4) 0%, rgba(0,0,0,0.4) ${boundingBox.y}%, 
+              transparent ${boundingBox.y}%, transparent ${boundingBox.y + boundingBox.height}%, 
+              rgba(0,0,0,0.4) ${boundingBox.y + boundingBox.height}%, rgba(0,0,0,0.4) 100%)`
+          }} />
+        </div>
+        {/* Cropped image below - smaller */}
+        {croppedImage && (
+          <div className="relative w-full aspect-square rounded-2xl overflow-hidden bg-black">
+            <img
+              src={croppedImage}
+              alt={carName}
+              className="w-full h-full object-contain"
+            />
+            <div className="absolute top-3 left-3 flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/60 backdrop-blur-sm">
+              <Car className="h-3.5 w-3.5 text-primary" />
+              <span className="text-xs font-medium text-white">{carYear}</span>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Single car or no bounding box: show cropped image directly  
   const displayImage = croppedImage || originalImage;
   
   return (
@@ -75,7 +136,6 @@ const HighlightedImage = ({ originalImage, croppedImage, carName, carYear }: Hig
         alt={carName}
         className="w-full h-full object-contain bg-black"
       />
-      {/* Car badge */}
       <div className="absolute top-3 left-3 flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/60 backdrop-blur-sm">
         <Car className="h-3.5 w-3.5 text-primary" />
         <span className="text-xs font-medium text-white">{carYear}</span>
@@ -322,6 +382,7 @@ export const ResultCarousel = ({
               boundingBox={result.boundingBox}
               carName={`${result.realCar.brand} ${result.realCar.model}`}
               carYear={result.realCar.year}
+              totalResults={results.length}
             />
 
             {/* Duplicate Warning */}
