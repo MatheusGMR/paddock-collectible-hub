@@ -1,121 +1,82 @@
 
-# Plano de Correção dos Warnings do Build
 
-## Resumo
+## Deteccao em Tempo Real no Viewfinder do Scanner
 
-O build **funcionou com sucesso**, mas há **4 warnings** que devemos corrigir para garantir estabilidade e performance otimizada do app nativo.
+### Objetivo
+Adicionar um indicador visual no feed da camera que orienta o usuario se carrinhos estao sendo detectados no enquadramento, antes mesmo de capturar a foto.
 
----
+### Abordagem Tecnica
 
-## Problemas Identificados
+A solucao mais viavel e usar **TensorFlow.js com o modelo COCO-SSD** para deteccao de objetos no dispositivo (on-device), sem chamadas de API. Esse modelo e leve (~5MB), roda no browser e consegue identificar objetos da classe "car" em tempo real.
 
-| # | Problema | Severidade | Impacto |
-|---|----------|------------|---------|
-| 1 | Git pull bloqueado | Operacional | Impede sincronização |
-| 2 | Peer dependency Capacitor | Baixa | Warning apenas |
-| 3 | CSS @import mal posicionado | Média | Pode causar problemas de fonte |
-| 4 | Dynamic import misto | Baixa | Afeta code-splitting |
-| 5 | Bundle muito grande | Média | Afeta tempo de carregamento |
+### Como Funciona
 
----
+1. O modelo COCO-SSD roda localmente no browser/WebView
+2. A cada ~1.5 segundos, um frame do video e analisado
+3. Se objetos "car" forem detectados, um indicador visual muda de estado
+4. Nenhuma chamada de API e feita - tudo roda no dispositivo
 
-## Correções Propostas
+### Interface Visual
 
-### Correção 1: CSS @import Order
+O indicador sera sutil e nao-intrusivo, posicionado na parte inferior do viewfinder:
 
-**Arquivo**: `src/index.css`
+- **Sem deteccao:** Texto discreto "Aponte para um carrinho" com icone cinza pulsante
+- **Detectando:** Badge verde com "N carrinho(s) detectado(s)" com animacao suave de entrada
+- **Transicao:** Fade suave entre estados para evitar flickering
 
-O `@import` da fonte Google precisa vir **antes** de qualquer outra declaração CSS:
+### Limitacoes e Mitigacoes
+
+| Limitacao | Mitigacao |
+|-----------|-----------|
+| COCO-SSD detecta "car" genericamente (real ou miniatura) | Aceitavel - serve como guia de enquadramento, nao como identificacao |
+| No modo nativo (camera-preview no iOS), nao ha acesso direto aos frames do video | O indicador funciona apenas no modo web (getUserMedia). No nativo, mantemos o UX atual |
+| Modelo adiciona ~5MB ao bundle | Carregamento lazy - so baixa o modelo quando o scanner e aberto |
+| Pode haver falsos negativos em miniaturas muito pequenas | Texto de fallback "Aponte para um carrinho" permanece visivel |
+
+### Plano de Implementacao
+
+**1. Instalar dependencia**
+- Adicionar `@tensorflow/tfjs` e `@tensorflow-models/coco-ssd`
+
+**2. Criar hook `useObjectDetection.ts`**
+- Carrega o modelo COCO-SSD de forma lazy (apenas quando chamado)
+- Recebe uma ref de video e retorna objetos detectados
+- Intervalo de analise: ~1500ms para balancear performance/responsividade
+- Filtra apenas objetos da classe "car", "truck", "bus" com confianca > 50%
+- Limpa o intervalo automaticamente no unmount
+
+**3. Criar componente `DetectionIndicator.tsx`**
+- Recebe a contagem de carros detectados
+- Exibe o badge animado com feedback visual
+- Posicionado logo acima do texto "Toque para capturar"
+
+**4. Integrar no `ScannerView.tsx`**
+- Conectar o hook ao `videoRef` existente (modo web apenas)
+- Renderizar o `DetectionIndicator` entre as guias de canto e os controles inferiores
+- Desativar deteccao quando: esta escaneando, tem imagem capturada, ou esta em modo nativo
+
+### Secao Tecnica
 
 ```text
-ANTES (linha 1-7):
-┌─────────────────────────────────────┐
-│ @tailwind base;                     │ ← Linha 1
-│ @tailwind components;               │
-│ @tailwind utilities;                │
-│                                     │
-│ /* Paddock Design System */         │
-│                                     │
-│ @import url('https://fonts...');    │ ← Linha 7 (ERRADO)
-└─────────────────────────────────────┘
+Fluxo de dados:
 
-DEPOIS:
-┌─────────────────────────────────────┐
-│ @import url('https://fonts...');    │ ← Linha 1 (CORRETO)
-│                                     │
-│ @tailwind base;                     │
-│ @tailwind components;               │
-│ @tailwind utilities;                │
-│                                     │
-│ /* Paddock Design System */         │
-└─────────────────────────────────────┘
+  videoRef (HTMLVideoElement)
+       |
+       v
+  useObjectDetection (a cada 1.5s)
+       |
+       +--> canvas offscreen (drawImage)
+       +--> model.detect(canvas)
+       +--> filtra classe "car" | "truck"
+       |
+       v
+  detectedCount: number
+       |
+       v
+  DetectionIndicator (UI)
+       +--> 0 carros: "Aponte para um carrinho" (cinza)
+       +--> 1+ carros: "N carrinho(s) detectado(s)" (verde)
 ```
 
----
+O modelo COCO-SSD sera carregado com `@tensorflow/tfjs-backend-webgl` para usar aceleracao GPU quando disponivel, garantindo que a deteccao nao impacte a fluidez do feed da camera.
 
-### Correção 2: Unificar Imports do Supabase Client
-
-**Arquivos**: `src/lib/analytics.ts` e `src/pages/Auth.tsx`
-
-Converter imports dinâmicos para estáticos (o client é usado em quase todos os lugares):
-
-```typescript
-// ANTES (analytics.ts linha 28)
-const { supabase } = await import("@/integrations/supabase/client");
-
-// DEPOIS
-import { supabase } from "@/integrations/supabase/client";
-```
-
-```typescript
-// ANTES (Auth.tsx linha 86)
-const { data: { session } } = await (await import("@/integrations/supabase/client")).supabase.auth.getSession();
-
-// DEPOIS (usar supabase já importado do contexto ou importar estaticamente)
-import { supabase } from "@/integrations/supabase/client";
-// ...
-const { data: { session } } = await supabase.auth.getSession();
-```
-
----
-
-### Correção 3: Instruções para Git Pull
-
-Para resolver o conflito do git, execute no terminal:
-
-```bash
-# Opção A: Descartar mudanças locais no package-lock.json
-git checkout -- package-lock.json
-git pull origin main
-
-# Opção B: Guardar mudanças temporariamente
-git stash
-git pull origin main
-git stash pop
-npm install
-```
-
----
-
-### Sobre os Outros Warnings
-
-**Peer Dependencies do Capacitor**: Este é um warning conhecido porque `@aparajita/capacitor-biometric-auth` ainda não lançou versão compatível com Capacitor 8. O app funciona normalmente em iOS. Para Android, pode precisar de testes adicionais.
-
-**Bundle Size**: Otimização de code-splitting pode ser feita futuramente com `manualChunks` no Vite config, mas não é urgente.
-
----
-
-## Arquivos a Modificar
-
-1. `src/index.css` - Mover @import para o topo
-2. `src/lib/analytics.ts` - Converter para import estático
-3. `src/pages/Auth.tsx` - Converter para import estático
-
----
-
-## Resultado Esperado
-
-Após as correções:
-- Build sem warnings de CSS
-- Build sem warnings de dynamic import
-- Git pull funcionando normalmente
