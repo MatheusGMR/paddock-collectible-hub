@@ -353,11 +353,12 @@ export const en: Translations = {
     slide4Text: "Discover collectors and their collections, get information about the world of collectibles and the car universe",
     
     // Pricing slide
-    pricingTitle: "Collector's Challenge",
+    pricingTitle: "Paddock Premium",
     freeTrial: "7 days free to try everything",
     originalPrice: "$39.90/month",
     discountedPrice: "$19.90/month",
-    challengeBadge: "SPECIAL CHALLENGE",
+    challengeBadge: "EXCLUSIVE BONUS",
+    challengeSubtitle: "Collector's Challenge",
     limitedTime: "Limited time offer",
     startTrial: "Start Now",
     

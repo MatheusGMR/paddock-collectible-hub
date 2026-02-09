@@ -351,11 +351,12 @@ export const ptBR = {
     slide4Text: "Descubra colecionadores e suas coleções, tenha informações sobre o mundo dos colecionáveis e o universo dos carros",
     
     // Pricing slide
-    pricingTitle: "Desafio do Colecionador",
+    pricingTitle: "Paddock Premium",
     freeTrial: "7 dias grátis para experimentar tudo",
     originalPrice: "R$ 39,90/mês",
     discountedPrice: "R$ 19,90/mês",
-    challengeBadge: "DESAFIO ESPECIAL",
+    challengeBadge: "BÔNUS EXCLUSIVO",
+    challengeSubtitle: "Desafio do Colecionador",
     limitedTime: "Oferta por tempo limitado",
     startTrial: "Começar Agora",
     
