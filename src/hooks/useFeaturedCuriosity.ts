@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 
+const CURIOSITY_STORAGE_KEY = "paddock_curiosity_of_day";
+
 export interface FeaturedCuriosity {
   id: string;
   imageUrl: string;
@@ -20,18 +22,60 @@ export interface FeaturedCuriosity {
   };
 }
 
+interface StoredCuriosity {
+  date: string; // YYYY-MM-DD
+  data: FeaturedCuriosity;
+}
+
+/** Get today's date string in YYYY-MM-DD format */
+const getTodayKey = (): string => {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+};
+
+/** Try to load today's cached curiosity from localStorage */
+const loadCachedCuriosity = (): FeaturedCuriosity | null => {
+  try {
+    const stored = localStorage.getItem(CURIOSITY_STORAGE_KEY);
+    if (!stored) return null;
+    const parsed: StoredCuriosity = JSON.parse(stored);
+    if (parsed.date === getTodayKey() && parsed.data) {
+      return parsed.data;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+};
+
+/** Save curiosity to localStorage with today's date */
+const saveCuriosity = (data: FeaturedCuriosity) => {
+  try {
+    const stored: StoredCuriosity = { date: getTodayKey(), data };
+    localStorage.setItem(CURIOSITY_STORAGE_KEY, JSON.stringify(stored));
+  } catch {
+    // Ignore storage errors
+  }
+};
+
 export const useFeaturedCuriosity = () => {
-  const [curiosity, setCuriosity] = useState<FeaturedCuriosity | null>(null);
-  const [loading, setLoading] = useState(true);
+  const cached = loadCachedCuriosity();
+  const [curiosity, setCuriosity] = useState<FeaturedCuriosity | null>(cached);
+  const [loading, setLoading] = useState(!cached);
   const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
 
-  const fetchRandomCuriosity = useCallback(async () => {
+  const fetchRandomCuriosity = useCallback(async (forceRefresh = false) => {
+    // If we already have today's cached curiosity and not forcing, skip fetch
+    if (!forceRefresh && curiosity) {
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
       setError(null);
 
-      // Fetch only items with historical facts and images, limit to 15 for efficiency
       const { data: collectionItems, error: collectionError } = await supabase
         .from("user_collection")
         .select(`
@@ -62,45 +106,38 @@ export const useFeaturedCuriosity = () => {
         return;
       }
 
-      // Sort by rarity (prioritize rare items) and pick one randomly from top items
-      // Prefer items from other users, but include own items if needed
-      const sortedItems = [...collectionItems]
-        .sort((a, b) => {
-          // Prioritize other users' items
-          const isOwnA = user?.id && a.user_id === user.id ? 0 : 1;
-          const isOwnB = user?.id && b.user_id === user.id ? 0 : 1;
-          if (isOwnA !== isOwnB) return isOwnB - isOwnA;
-          
-          // Then by rarity
-          const scoreA = a.item?.price_index || 0;
-          const scoreB = b.item?.price_index || 0;
-          return scoreB - scoreA; // Higher score first
-        });
+      // Sort: prefer other users' items, then by rarity
+      const sortedItems = [...collectionItems].sort((a, b) => {
+        const isOwnA = user?.id && a.user_id === user.id ? 0 : 1;
+        const isOwnB = user?.id && b.user_id === user.id ? 0 : 1;
+        if (isOwnA !== isOwnB) return isOwnB - isOwnA;
+        const scoreA = a.item?.price_index || 0;
+        const scoreB = b.item?.price_index || 0;
+        return scoreB - scoreA;
+      });
 
-      // Pick from top items (already filtered by query to have historical_fact)
       const itemsToChooseFrom = sortedItems.slice(0, Math.min(10, sortedItems.length));
-
       if (itemsToChooseFrom.length === 0) {
         setCuriosity(null);
         return;
       }
 
-      // Pick a random item from the top ones
-      const randomItem = itemsToChooseFrom[Math.floor(Math.random() * itemsToChooseFrom.length)];
+      // Use today's date as seed for deterministic daily selection
+      const todayHash = getTodayKey().split("").reduce((acc, c) => acc + c.charCodeAt(0), 0);
+      const randomItem = itemsToChooseFrom[todayHash % itemsToChooseFrom.length];
 
       if (!randomItem.item) {
         setCuriosity(null);
         return;
       }
 
-      // Fetch the owner's profile
       const { data: profile } = await supabase
         .from("profiles")
         .select("user_id, username, avatar_url")
         .eq("user_id", randomItem.user_id)
         .single();
 
-      setCuriosity({
+      const result: FeaturedCuriosity = {
         id: randomItem.id,
         imageUrl: randomItem.image_url!,
         carBrand: randomItem.item.real_car_brand,
@@ -116,7 +153,10 @@ export const useFeaturedCuriosity = () => {
           username: profile?.username || "Colecionador",
           avatarUrl: profile?.avatar_url || null,
         },
-      });
+      };
+
+      setCuriosity(result);
+      saveCuriosity(result);
     } catch (err) {
       console.error("Error fetching featured curiosity:", err);
       setError("Erro ao carregar curiosidade");
@@ -124,15 +164,15 @@ export const useFeaturedCuriosity = () => {
     } finally {
       setLoading(false);
     }
-  }, [user?.id]);
+  }, [user?.id, curiosity]);
 
   const refresh = useCallback(() => {
-    fetchRandomCuriosity();
+    fetchRandomCuriosity(true);
   }, [fetchRandomCuriosity]);
 
   useEffect(() => {
     fetchRandomCuriosity();
-  }, [fetchRandomCuriosity]);
+  }, []);  // eslint-disable-line react-hooks/exhaustive-deps
 
   return { curiosity, loading, error, refresh };
 };
