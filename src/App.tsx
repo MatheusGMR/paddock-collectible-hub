@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, lazy, Suspense } from "react";
 import { Capacitor } from "@capacitor/core";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -19,21 +19,40 @@ import { SubscriptionGate } from "@/components/onboarding/SubscriptionGate";
 import { ChallengeCelebrationModal } from "@/components/challenge/ChallengeCelebrationModal";
 import { BiometricPrompt } from "@/components/auth/BiometricPrompt";
 import { usePageTracking } from "@/hooks/usePageTracking";
-import Index from "./pages/Index";
-import Mercado from "./pages/Mercado";
-import Scanner from "./pages/Scanner";
-import Notifications from "./pages/Notifications";
-import Profile from "./pages/Profile";
-import UserProfile from "./pages/UserProfile";
-import Admin from "./pages/Admin";
-import Auth from "./pages/Auth";
-import NotFound from "./pages/NotFound";
-import ListingDetails from "./pages/ListingDetails";
-import PaymentSuccess from "./pages/PaymentSuccess";
-import PrivacyPolicy from "./pages/PrivacyPolicy";
-import PaymentCanceled from "./pages/PaymentCanceled";
+import { Loader2 } from "lucide-react";
 
-const queryClient = new QueryClient();
+// Lazy-loaded route components for code splitting
+const Index = lazy(() => import("./pages/Index"));
+const Mercado = lazy(() => import("./pages/Mercado"));
+const Scanner = lazy(() => import("./pages/Scanner"));
+const Notifications = lazy(() => import("./pages/Notifications"));
+const Profile = lazy(() => import("./pages/Profile"));
+const UserProfile = lazy(() => import("./pages/UserProfile"));
+const Admin = lazy(() => import("./pages/Admin"));
+const Auth = lazy(() => import("./pages/Auth"));
+const NotFound = lazy(() => import("./pages/NotFound"));
+const ListingDetails = lazy(() => import("./pages/ListingDetails"));
+const PaymentSuccess = lazy(() => import("./pages/PaymentSuccess"));
+const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy"));
+const PaymentCanceled = lazy(() => import("./pages/PaymentCanceled"));
+
+// Suspense fallback for lazy routes
+const RouteFallback = () => (
+  <div className="min-h-screen flex items-center justify-center bg-background">
+    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+  </div>
+);
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1000 * 60 * 2, // 2 minutes - avoid unnecessary refetches on navigation
+      gcTime: 1000 * 60 * 10, // 10 minutes garbage collection
+      retry: 1, // Only retry once to avoid hammering on errors
+      refetchOnWindowFocus: false, // Prevent refetch when switching tabs
+    },
+  },
+});
 
 // Analytics tracker component
 const AnalyticsTracker = () => {
@@ -274,20 +293,21 @@ const AppContent = () => {
 
   // If we just returned from an OAuth provider, the URL can contain callback params.
   // We must NOT redirect away (and drop query/hash) before the auth client exchanges them.
-  const hasOAuthCallbackParams = (() => {
+  // Using useRef to compute once and avoid recalculating on every render
+  const hasOAuthCallbackParams = useRef((() => {
     try {
-      const sp = new URLSearchParams(location.search);
+      const sp = new URLSearchParams(window.location.search);
       return (
         sp.has("code") ||
         sp.has("access_token") ||
         sp.has("refresh_token") ||
-        location.hash.includes("access_token=") ||
-        location.hash.includes("refresh_token=")
+        window.location.hash.includes("access_token=") ||
+        window.location.hash.includes("refresh_token=")
       );
     } catch {
       return false;
     }
-  })();
+  })()).current;
 
   // After splash completes, mark it as done
   const handleSplashComplete = () => {
@@ -323,31 +343,35 @@ const AppContent = () => {
       {showSplash && <SplashScreen onComplete={handleSplashComplete} />}
       <AnalyticsTracker />
       <SubscriptionFlow>
-        <Routes>
-          <Route path="/auth" element={<Auth />} />
-          <Route path="/scanner" element={<Scanner />} />
-          <Route path="/admin" element={<Admin />} />
-          <Route path="/listing/:id" element={<ListingDetails />} />
-          <Route path="/user/:userId" element={<UserProfile />} />
-          <Route path="/privacy" element={<PrivacyPolicy />} />
-          <Route path="/payment-success" element={<PaymentSuccess />} />
-          <Route path="/payment-canceled" element={<PaymentCanceled />} />
-          <Route path="/subscription-success" element={<PaymentSuccess />} />
-          <Route
-            path="/*"
-            element={
-              <AppLayout>
-                <Routes>
-                  <Route path="/" element={<Index />} />
-                  <Route path="/mercado" element={<Mercado />} />
-                  <Route path="/notifications" element={<Notifications />} />
-                  <Route path="/profile" element={<Profile />} />
-                  <Route path="*" element={<NotFound />} />
-                </Routes>
-              </AppLayout>
-            }
-          />
-        </Routes>
+        <Suspense fallback={<RouteFallback />}>
+          <Routes>
+            <Route path="/auth" element={<Auth />} />
+            <Route path="/scanner" element={<Scanner />} />
+            <Route path="/admin" element={<Admin />} />
+            <Route path="/listing/:id" element={<ListingDetails />} />
+            <Route path="/user/:userId" element={<UserProfile />} />
+            <Route path="/privacy" element={<PrivacyPolicy />} />
+            <Route path="/payment-success" element={<PaymentSuccess />} />
+            <Route path="/payment-canceled" element={<PaymentCanceled />} />
+            <Route path="/subscription-success" element={<PaymentSuccess />} />
+            <Route
+              path="/*"
+              element={
+                <AppLayout>
+                  <Suspense fallback={<RouteFallback />}>
+                    <Routes>
+                      <Route path="/" element={<Index />} />
+                      <Route path="/mercado" element={<Mercado />} />
+                      <Route path="/notifications" element={<Notifications />} />
+                      <Route path="/profile" element={<Profile />} />
+                      <Route path="*" element={<NotFound />} />
+                    </Routes>
+                  </Suspense>
+                </AppLayout>
+              }
+            />
+          </Routes>
+        </Suspense>
       </SubscriptionFlow>
     </>
   );

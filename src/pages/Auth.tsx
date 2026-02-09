@@ -80,20 +80,20 @@ const Auth = () => {
     const timeout = setTimeout(() => {
       if (!user) {
         console.error("[Auth] OAuth callback timed out - no session received");
-        // Clean the URL and show the login form again
+        // Clean the URL without full page reload
         window.history.replaceState({}, "", "/auth");
         toast({
           title: "Erro na autenticação",
           description: "Não foi possível completar o login. Tente novamente.",
           variant: "destructive",
         });
-        // Force reload to reset state
-        window.location.href = "/auth";
+        // Use navigate instead of window.location.href to avoid full page reload
+        navigate("/auth", { replace: true });
       }
     }, 15000);
 
     return () => clearTimeout(timeout);
-  }, [isOAuthCallback, user, toast]);
+  }, [isOAuthCallback, user, toast, navigate]);
 
   // Auto-trigger biometric auth if enabled
   useEffect(() => {

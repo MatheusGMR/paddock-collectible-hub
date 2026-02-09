@@ -147,13 +147,13 @@ export const SubscriptionProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [user, session, checkSubscription]);
 
-  // Refresh subscription check every minute
+  // Refresh subscription check every 5 minutes (was 1 minute - too aggressive)
   useEffect(() => {
     if (!user || !session) return;
 
     const interval = setInterval(() => {
       checkSubscription();
-    }, 60000); // 1 minute
+    }, 300000); // 5 minutes
 
     return () => clearInterval(interval);
   }, [user, session, checkSubscription]);

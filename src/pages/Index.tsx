@@ -28,34 +28,41 @@ const Index = () => {
   // Trigger guided tips for feed screen
   useScreenTips("feed", 800);
 
-  // Setup infinite scroll observer
-  const setupObserver = useCallback(() => {
-    if (observerRef.current) {
-      observerRef.current.disconnect();
-    }
+  // Setup infinite scroll observer - stable callback refs to avoid re-creating observer
+  const hasMoreRef = useRef(hasMore);
+  const loadingMoreRef = useRef(loadingMore);
+  const loadMoreRef = useRef(loadMore);
+  
+  // Keep refs in sync without triggering observer recreation
+  useEffect(() => { hasMoreRef.current = hasMore; }, [hasMore]);
+  useEffect(() => { loadingMoreRef.current = loadingMore; }, [loadingMore]);
+  useEffect(() => { loadMoreRef.current = loadMore; }, [loadMore]);
 
-    observerRef.current = new IntersectionObserver(
+  // Create observer only once on mount
+  useEffect(() => {
+    const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting && hasMore && !loadingMore) {
-          loadMore();
+        if (entries[0].isIntersecting && hasMoreRef.current && !loadingMoreRef.current) {
+          loadMoreRef.current();
         }
       },
       { threshold: 0.1, rootMargin: "100px" }
     );
 
-    if (loadMoreTriggerRef.current) {
-      observerRef.current.observe(loadMoreTriggerRef.current);
-    }
-  }, [hasMore, loadingMore, loadMore]);
+    observerRef.current = observer;
 
+    return () => observer.disconnect();
+  }, []);
+
+  // Observe/unobserve the trigger element
   useEffect(() => {
-    setupObserver();
-    return () => {
-      if (observerRef.current) {
-        observerRef.current.disconnect();
-      }
-    };
-  }, [setupObserver]);
+    const observer = observerRef.current;
+    const trigger = loadMoreTriggerRef.current;
+    if (observer && trigger) {
+      observer.observe(trigger);
+      return () => observer.unobserve(trigger);
+    }
+  }, [posts.length]); // Re-observe when posts change (trigger element may remount)
 
   // Transform curiosity into a post format (read-only, no interactions)
   const curiosityAsPost: FeedPost | null = useMemo(() => {
