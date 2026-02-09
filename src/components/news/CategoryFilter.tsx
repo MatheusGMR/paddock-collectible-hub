@@ -27,7 +27,7 @@ export const CategoryFilter = ({
   ];
 
   return (
-    <div className="px-4 pb-3">
+    <div className="px-4 pb-3" data-tip="category-filter">
       <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
         {categories.map((category) => (
           <Button

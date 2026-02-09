@@ -57,13 +57,14 @@ interface CollapsibleSectionProps {
   icon: React.ReactNode;
   defaultOpen?: boolean;
   children: React.ReactNode;
+  dataTip?: string;
 }
 
-const CollapsibleSection = ({ title, icon, defaultOpen = false, children }: CollapsibleSectionProps) => {
+const CollapsibleSection = ({ title, icon, defaultOpen = false, children, dataTip }: CollapsibleSectionProps) => {
   const [isOpen, setIsOpen] = useState(defaultOpen);
   
   return (
-    <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+    <Collapsible open={isOpen} onOpenChange={setIsOpen} data-tip={dataTip}>
       <CollapsibleTrigger className="flex items-center justify-between w-full py-3 px-4 bg-muted/50 rounded-lg hover:bg-muted transition-colors">
         <div className="flex items-center gap-2">
           {icon}
@@ -149,7 +150,7 @@ export const CollectibleDetailCard = ({ item, open, onOpenChange, onDelete }: Co
               
               {/* Price Index Badge */}
               {score > 0 && (
-                <div className="flex justify-center">
+                <div className="flex justify-center" data-tip="price-index">
                   <IndexBadge
                     score={score}
                     tier={tier}
@@ -165,6 +166,7 @@ export const CollectibleDetailCard = ({ item, open, onOpenChange, onDelete }: Co
                   title="Dados do Carro Real" 
                   icon={<Car className="h-4 w-4 text-primary" />}
                   defaultOpen
+                  dataTip="item-specs"
                 >
                   <div className="space-y-0">
                     <DetailRow label="Marca" value={data.real_car_brand} />
@@ -200,6 +202,7 @@ export const CollectibleDetailCard = ({ item, open, onOpenChange, onDelete }: Co
                   <CollapsibleSection 
                     title="Fato Histórico" 
                     icon={<History className="h-4 w-4 text-primary" />}
+                    dataTip="historical-fact"
                   >
                     <p className="text-sm text-foreground/90 leading-relaxed italic">
                       "{data.historical_fact}"

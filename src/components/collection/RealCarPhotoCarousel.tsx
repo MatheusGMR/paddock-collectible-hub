@@ -68,7 +68,7 @@ export const RealCarPhotoCarousel = ({
   if (displayPhotos.length === 0) return null;
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3" data-tip="real-car-photos">
       {/* Header */}
       <div className="flex items-center gap-2 px-1">
         <Images className="h-4 w-4 text-primary" />
