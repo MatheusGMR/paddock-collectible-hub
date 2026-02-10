@@ -1,82 +1,85 @@
 
 
-## Deteccao em Tempo Real no Viewfinder do Scanner
+# Novo Fluxo de Autenticação - Cadastro Guiado
 
-### Objetivo
-Adicionar um indicador visual no feed da camera que orienta o usuario se carrinhos estao sendo detectados no enquadramento, antes mesmo de capturar a foto.
+## Visao Geral
 
-### Abordagem Tecnica
+Remover login social (Google/Apple) e criar um fluxo de cadastro multi-etapas fluido para novos usuarios, com reconhecimento facial para usuarios existentes.
 
-A solucao mais viavel e usar **TensorFlow.js com o modelo COCO-SSD** para deteccao de objetos no dispositivo (on-device), sem chamadas de API. Esse modelo e leve (~5MB), roda no browser e consegue identificar objetos da classe "car" em tempo real.
+## Fluxo do Usuario
 
-### Como Funciona
+### Novo Usuario
+1. Tela inicial pergunta o email
+2. Sistema verifica se email ja existe no banco
+3. Se nao existe, inicia cadastro em etapas:
+   - **Etapa 1**: Nome completo
+   - **Etapa 2**: Nome de usuario (como quer ser identificado)
+   - **Etapa 3**: Telefone
+   - **Etapa 4**: Senha (com confirmacao)
+4. Apos criar conta, solicita aprovacao do Face ID / Touch ID
+5. Solicita permissao da camera (para o scanner)
+6. Redireciona para o Onboarding
 
-1. O modelo COCO-SSD roda localmente no browser/WebView
-2. A cada ~1.5 segundos, um frame do video e analisado
-3. Se objetos "car" forem detectados, um indicador visual muda de estado
-4. Nenhuma chamada de API e feita - tudo roda no dispositivo
+### Usuario Existente
+1. Tela inicial pergunta o email
+2. Sistema verifica se email ja existe
+3. Se existe, exibe o nome do usuario pre-preenchido
+4. Tenta autenticar via Face ID / Touch ID
+5. Se biometria falhar ou nao estiver disponivel, mostra campo de senha como fallback
+6. Redireciona para o app
 
-### Interface Visual
+## Mudancas Tecnicas
 
-O indicador sera sutil e nao-intrusivo, posicionado na parte inferior do viewfinder:
+### 1. `capacitor.config.ts`
+- Reverter `backgroundColor` para `#00000000` (usar o historico de versoes)
 
-- **Sem deteccao:** Texto discreto "Aponte para um carrinho" com icone cinza pulsante
-- **Detectando:** Badge verde com "N carrinho(s) detectado(s)" com animacao suave de entrada
-- **Transicao:** Fade suave entre estados para evitar flickering
+### 2. `src/pages/Auth.tsx` (reescrita completa)
+- Remover botoes de Google e Apple OAuth
+- Remover imports do `lovable`, `Browser`, `CapApp`, e logica OAuth nativa
+- Criar componente multi-etapas com estados:
+  - `step`: "email" | "register-name" | "register-username" | "register-phone" | "register-password" | "login" | "permissions"
+  - `formData`: objeto com nome, username, telefone, email, senha
+- Na etapa "email": campo de email + botao "Continuar"
+  - Ao submeter, chamar `supabase.auth.signInWithOtp` ou verificar existencia do usuario via tabela profiles
+  - Se usuario existe -> ir para "login"
+  - Se nao existe -> ir para "register-name"
+- Etapas de registro: campos individuais com animacao de transicao suave (framer-motion)
+- Etapa "login": mostrar avatar/nome do usuario + Face ID automatico + campo de senha como fallback
+- Etapa "permissions": solicitar Face ID e Camera
 
-### Limitacoes e Mitigacoes
+### 3. Verificacao de usuario existente
+- Consultar tabela `profiles` pelo email para determinar se e novo ou existente
+- Nao depender de `signIn` para verificar existencia (evitar expor informacao de conta)
 
-| Limitacao | Mitigacao |
-|-----------|-----------|
-| COCO-SSD detecta "car" genericamente (real ou miniatura) | Aceitavel - serve como guia de enquadramento, nao como identificacao |
-| No modo nativo (camera-preview no iOS), nao ha acesso direto aos frames do video | O indicador funciona apenas no modo web (getUserMedia). No nativo, mantemos o UX atual |
-| Modelo adiciona ~5MB ao bundle | Carregamento lazy - so baixa o modelo quando o scanner e aberto |
-| Pode haver falsos negativos em miniaturas muito pequenas | Texto de fallback "Aponte para um carrinho" permanece visivel |
+### 4. Fluxo de permissoes pos-cadastro
+- Apos criar conta com sucesso:
+  - Solicitar Face ID via `BiometricAuth.authenticate()` 
+  - Solicitar permissao de camera via API nativa
+  - Transicao suave para o Onboarding existente
 
-### Plano de Implementacao
+### 5. Campos do banco de dados
+- Verificar se a tabela `profiles` ja possui campo `phone` -- se nao, criar via migracao
+- O campo `username` ja deve existir
 
-**1. Instalar dependencia**
-- Adicionar `@tensorflow/tfjs` e `@tensorflow-models/coco-ssd`
+### 6. `src/contexts/AuthContext.tsx`
+- Atualizar `signUp` para incluir telefone nos metadados do usuario
 
-**2. Criar hook `useObjectDetection.ts`**
-- Carrega o modelo COCO-SSD de forma lazy (apenas quando chamado)
-- Recebe uma ref de video e retorna objetos detectados
-- Intervalo de analise: ~1500ms para balancear performance/responsividade
-- Filtra apenas objetos da classe "car", "truck", "bus" com confianca > 50%
-- Limpa o intervalo automaticamente no unmount
+## Detalhes de UI
 
-**3. Criar componente `DetectionIndicator.tsx`**
-- Recebe a contagem de carros detectados
-- Exibe o badge animado com feedback visual
-- Posicionado logo acima do texto "Toque para capturar"
+- Cada etapa ocupa a tela inteira com animacao de slide (esquerda/direita)
+- Botao "Voltar" em cada etapa (exceto email)
+- Progresso visual (dots ou barra) mostrando em qual etapa esta
+- Inputs grandes e claros com labels em portugues
+- Validacao em tempo real (email valido, username minimo 3 chars, senha minimo 6 chars)
+- Tela de login para usuario existente: avatar grande + nome + animacao de Face ID + link "Usar senha"
 
-**4. Integrar no `ScannerView.tsx`**
-- Conectar o hook ao `videoRef` existente (modo web apenas)
-- Renderizar o `DetectionIndicator` entre as guias de canto e os controles inferiores
-- Desativar deteccao quando: esta escaneando, tem imagem capturada, ou esta em modo nativo
+## Arquivos Afetados
 
-### Secao Tecnica
-
-```text
-Fluxo de dados:
-
-  videoRef (HTMLVideoElement)
-       |
-       v
-  useObjectDetection (a cada 1.5s)
-       |
-       +--> canvas offscreen (drawImage)
-       +--> model.detect(canvas)
-       +--> filtra classe "car" | "truck"
-       |
-       v
-  detectedCount: number
-       |
-       v
-  DetectionIndicator (UI)
-       +--> 0 carros: "Aponte para um carrinho" (cinza)
-       +--> 1+ carros: "N carrinho(s) detectado(s)" (verde)
-```
-
-O modelo COCO-SSD sera carregado com `@tensorflow/tfjs-backend-webgl` para usar aceleracao GPU quando disponivel, garantindo que a deteccao nao impacte a fluidez do feed da camera.
+| Arquivo | Acao |
+|---------|------|
+| `capacitor.config.ts` | Reverter backgroundColor (via historico) |
+| `src/pages/Auth.tsx` | Reescrever completamente |
+| `src/contexts/AuthContext.tsx` | Adicionar telefone ao signUp |
+| `src/components/auth/BiometricPrompt.tsx` | Sem mudancas (reutilizar) |
+| Migracao SQL | Adicionar coluna `phone` em profiles se necessario |
 
