@@ -1,6 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Capacitor } from "@capacitor/core";
+import { Browser } from "@capacitor/browser";
+import { App as CapApp } from "@capacitor/app";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useBiometricAuth } from "@/hooks/useBiometricAuth";
@@ -12,20 +14,26 @@ import { PaddockLogo } from "@/components/icons/PaddockLogo";
 import { useToast } from "@/hooks/use-toast";
 import { Eye, EyeOff, Loader2, Fingerprint } from "lucide-react";
 
-// Get the appropriate redirect URI based on platform
+// OAuth broker base URL (used on native to open OAuth in external browser)
+const OAUTH_BROKER_BASE = "https://ec821420-56a9-4147-adde-54a8d514aaac.lovableproject.com";
+
 const getRedirectUri = () => {
-  // On native, we must use a real web URL as redirect_uri.
-  // Using a custom scheme (paddock://) causes the WebView to navigate to an
-  // invalid URL after OAuth, resulting in a white screen.
-  // The preview URL loads the /auth page which detects OAuth params and sets the session.
   if (Capacitor.isNativePlatform()) {
-    return "https://ec821420-56a9-4147-adde-54a8d514aaac.lovableproject.com/auth";
+    // On native, redirect via deep link so app captures tokens without navigating WebView
+    return "paddock://auth/callback";
   }
   return `${window.location.origin}/auth`;
 };
 
-// Check if running on native platform
 const isNativePlatform = Capacitor.isNativePlatform();
+
+// Generate a random state string for OAuth CSRF protection
+function generateOAuthState() {
+  if (typeof crypto !== "undefined" && crypto.getRandomValues) {
+    return [...crypto.getRandomValues(new Uint8Array(16))].map((b) => b.toString(16).padStart(2, "0")).join("");
+  }
+  return Math.random().toString(36).substring(2) + Date.now().toString(36);
+}
 
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -172,13 +180,86 @@ const Auth = () => {
     }
   };
 
+  // Native OAuth: opens external browser, captures deep link callback
+  const handleNativeOAuth = useCallback(async (provider: "google" | "apple") => {
+    const state = generateOAuthState();
+    const redirectUri = getRedirectUri();
+    const params = new URLSearchParams({
+      provider,
+      redirect_uri: redirectUri,
+      state,
+    });
+    const oauthUrl = `${OAUTH_BROKER_BASE}/~oauth/initiate?${params.toString()}`;
+    console.log(`[Auth] Opening native OAuth for ${provider}:`, oauthUrl);
+
+    // Listen for the deep link callback BEFORE opening the browser
+    const listenerHandle = await CapApp.addListener("appUrlOpen", async (event) => {
+      console.log("[Auth] Deep link received:", event.url);
+      try {
+        const url = new URL(event.url);
+        let accessToken = url.searchParams.get("access_token");
+        let refreshToken = url.searchParams.get("refresh_token");
+
+        // Also check hash fragment
+        if (!accessToken && url.hash) {
+          const hashParams = new URLSearchParams(url.hash.substring(1));
+          accessToken = hashParams.get("access_token");
+          refreshToken = hashParams.get("refresh_token");
+        }
+
+        if (accessToken && refreshToken) {
+          console.log("[Auth] Setting session from OAuth callback tokens");
+          const { error } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken,
+          });
+          if (error) {
+            console.error("[Auth] Error setting session:", error);
+            toast({
+              title: t.common.error,
+              description: "Falha ao completar autenticação.",
+              variant: "destructive",
+            });
+          }
+        } else {
+          console.warn("[Auth] No tokens found in deep link");
+          toast({
+            title: t.common.error,
+            description: "Não foi possível completar o login. Tente novamente.",
+            variant: "destructive",
+          });
+        }
+      } catch (err) {
+        console.error("[Auth] Error processing OAuth callback:", err);
+        toast({
+          title: t.common.error,
+          description: "Erro ao processar autenticação.",
+          variant: "destructive",
+        });
+      } finally {
+        // Clean up: close browser and remove listener
+        try { await Browser.close(); } catch {}
+        listenerHandle.remove();
+        setAppleLoading(false);
+        setGoogleLoading(false);
+      }
+    });
+
+    // Open OAuth in external browser (SFSafariViewController on iOS)
+    await Browser.open({ url: oauthUrl, presentationStyle: "popover" });
+  }, [toast, t]);
+
   const handleAppleSignIn = async () => {
     setAppleLoading(true);
     try {
-      const { error } = await lovable.auth.signInWithOAuth("apple", {
-        redirect_uri: getRedirectUri(),
-      });
-      if (error) throw error;
+      if (isNativePlatform) {
+        await handleNativeOAuth("apple");
+      } else {
+        const { error } = await lovable.auth.signInWithOAuth("apple", {
+          redirect_uri: getRedirectUri(),
+        });
+        if (error) throw error;
+      }
     } catch (error) {
       toast({
         title: t.common.error,
@@ -192,10 +273,14 @@ const Auth = () => {
   const handleGoogleSignIn = async () => {
     setGoogleLoading(true);
     try {
-      const { error } = await lovable.auth.signInWithOAuth("google", {
-        redirect_uri: getRedirectUri(),
-      });
-      if (error) throw error;
+      if (isNativePlatform) {
+        await handleNativeOAuth("google");
+      } else {
+        const { error } = await lovable.auth.signInWithOAuth("google", {
+          redirect_uri: getRedirectUri(),
+        });
+        if (error) throw error;
+      }
     } catch (error) {
       toast({
         title: t.common.error,
