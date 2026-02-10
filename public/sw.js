@@ -1,7 +1,10 @@
 // Paddock Push Notifications Service Worker
 
 self.addEventListener('install', (event) => {
-  console.log('[SW] Service Worker installing');
+  console.log('[SW] Service Worker installing - clearing old caches');
+  event.waitUntil(
+    caches.keys().then(names => Promise.all(names.map(name => caches.delete(name))))
+  );
   self.skipWaiting();
 });
 
