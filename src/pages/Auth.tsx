@@ -14,11 +14,13 @@ import { Eye, EyeOff, Loader2, Fingerprint } from "lucide-react";
 
 // Get the appropriate redirect URI based on platform
 const getRedirectUri = () => {
+  // On native, we must use a real web URL as redirect_uri.
+  // Using a custom scheme (paddock://) causes the WebView to navigate to an
+  // invalid URL after OAuth, resulting in a white screen.
+  // The preview URL loads the /auth page which detects OAuth params and sets the session.
   if (Capacitor.isNativePlatform()) {
-    return "paddock://auth/callback";
+    return "https://ec821420-56a9-4147-adde-54a8d514aaac.lovableproject.com/auth";
   }
-  // On web, return to /auth so we don't lose the OAuth callback params (code/state)
-  // due to the app auto-redirecting unauthenticated users.
   return `${window.location.origin}/auth`;
 };
 
