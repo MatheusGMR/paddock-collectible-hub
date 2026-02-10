@@ -1,85 +1,66 @@
 
 
-# Novo Fluxo de Autenticação - Cadastro Guiado
+# Solucao: Forcar limpeza de cache no WKWebView via Capacitor
 
-## Visao Geral
+## Problema
+O codigo-fonte nao contem botoes de Google/Apple. Todos os componentes de auth (`Auth.tsx`, `AuthStepEmail.tsx`, `AuthStepLogin.tsx`) estao corretos. O problema e exclusivamente cache do WKWebView no iOS, que persiste assets antigos mesmo apos `npm run build` e `npx cap sync ios`.
 
-Remover login social (Google/Apple) e criar um fluxo de cadastro multi-etapas fluido para novos usuarios, com reconhecimento facial para usuarios existentes.
+## Abordagens ja testadas (sem sucesso)
+1. Hard refresh / force close do app
+2. `git pull` + `npm install` + `npm run build` + `npx cap sync ios`
+3. Deletar app do dispositivo + Clean Build Folder no Xcode
+4. Limpar DerivedData
 
-## Fluxo do Usuario
+## Solucao proposta
 
-### Novo Usuario
-1. Tela inicial pergunta o email
-2. Sistema verifica se email ja existe no banco
-3. Se nao existe, inicia cadastro em etapas:
-   - **Etapa 1**: Nome completo
-   - **Etapa 2**: Nome de usuario (como quer ser identificado)
-   - **Etapa 3**: Telefone
-   - **Etapa 4**: Senha (com confirmacao)
-4. Apos criar conta, solicita aprovacao do Face ID / Touch ID
-5. Solicita permissao da camera (para o scanner)
-6. Redireciona para o Onboarding
+Adicionar um script de limpeza de cache do WKWebView que roda na inicializacao do app, garantindo que assets web antigos sejam descartados.
 
-### Usuario Existente
-1. Tela inicial pergunta o email
-2. Sistema verifica se email ja existe
-3. Se existe, exibe o nome do usuario pre-preenchido
-4. Tenta autenticar via Face ID / Touch ID
-5. Se biometria falhar ou nao estiver disponivel, mostra campo de senha como fallback
-6. Redireciona para o app
+### Passo 1: Adicionar versao de build no HTML
+Inserir uma meta tag com timestamp de build no `index.html` para invalidar cache:
 
-## Mudancas Tecnicas
+```html
+<meta name="build-version" content="__BUILD_TIMESTAMP__" />
+```
 
-### 1. `capacitor.config.ts`
-- Reverter `backgroundColor` para `#00000000` (usar o historico de versoes)
+E configurar o `vite.config.ts` para substituir `__BUILD_TIMESTAMP__` automaticamente em cada build.
 
-### 2. `src/pages/Auth.tsx` (reescrita completa)
-- Remover botoes de Google e Apple OAuth
-- Remover imports do `lovable`, `Browser`, `CapApp`, e logica OAuth nativa
-- Criar componente multi-etapas com estados:
-  - `step`: "email" | "register-name" | "register-username" | "register-phone" | "register-password" | "login" | "permissions"
-  - `formData`: objeto com nome, username, telefone, email, senha
-- Na etapa "email": campo de email + botao "Continuar"
-  - Ao submeter, chamar `supabase.auth.signInWithOtp` ou verificar existencia do usuario via tabela profiles
-  - Se usuario existe -> ir para "login"
-  - Se nao existe -> ir para "register-name"
-- Etapas de registro: campos individuais com animacao de transicao suave (framer-motion)
-- Etapa "login": mostrar avatar/nome do usuario + Face ID automatico + campo de senha como fallback
-- Etapa "permissions": solicitar Face ID e Camera
+### Passo 2: Cache-busting no service worker
+Atualizar `public/sw.js` para nao cachear a pagina de auth e forcar atualizacao.
 
-### 3. Verificacao de usuario existente
-- Consultar tabela `profiles` pelo email para determinar se e novo ou existente
-- Nao depender de `signIn` para verificar existencia (evitar expor informacao de conta)
+### Passo 3: Limpeza de cache via Capacitor plugin (principal)
+No `App.tsx` ou no ponto de entrada, adicionar logica que:
+- Compara o `WEB_BUILD_ID` atual com o armazenado no `localStorage`
+- Se diferente, limpa caches do WKWebView usando `caches.delete()` e forca reload
 
-### 4. Fluxo de permissoes pos-cadastro
-- Apos criar conta com sucesso:
-  - Solicitar Face ID via `BiometricAuth.authenticate()` 
-  - Solicitar permissao de camera via API nativa
-  - Transicao suave para o Onboarding existente
+```typescript
+const currentBuild = "__BUILD_TIMESTAMP__";
+const storedBuild = localStorage.getItem("app_build_id");
+if (storedBuild && storedBuild !== currentBuild) {
+  caches.keys().then(names => names.forEach(name => caches.delete(name)));
+  localStorage.setItem("app_build_id", currentBuild);
+  window.location.reload();
+} else {
+  localStorage.setItem("app_build_id", currentBuild);
+}
+```
 
-### 5. Campos do banco de dados
-- Verificar se a tabela `profiles` ja possui campo `phone` -- se nao, criar via migracao
-- O campo `username` ja deve existir
+### Passo 4: Headers de cache no Capacitor
+Atualizar `capacitor.config.ts` para desabilitar cache do servidor local:
 
-### 6. `src/contexts/AuthContext.tsx`
-- Atualizar `signUp` para incluir telefone nos metadados do usuario
+```typescript
+server: {
+  androidScheme: 'https',
+  iosScheme: 'capacitor',
+  cleartext: true,
+}
+```
 
-## Detalhes de UI
+## Arquivos modificados
+1. `vite.config.ts` - adicionar plugin de replace para BUILD_TIMESTAMP
+2. `index.html` - meta tag de versao
+3. `src/main.tsx` - logica de cache-busting na inicializacao
+4. `public/sw.js` - nao cachear rotas de auth
 
-- Cada etapa ocupa a tela inteira com animacao de slide (esquerda/direita)
-- Botao "Voltar" em cada etapa (exceto email)
-- Progresso visual (dots ou barra) mostrando em qual etapa esta
-- Inputs grandes e claros com labels em portugues
-- Validacao em tempo real (email valido, username minimo 3 chars, senha minimo 6 chars)
-- Tela de login para usuario existente: avatar grande + nome + animacao de Face ID + link "Usar senha"
-
-## Arquivos Afetados
-
-| Arquivo | Acao |
-|---------|------|
-| `capacitor.config.ts` | Reverter backgroundColor (via historico) |
-| `src/pages/Auth.tsx` | Reescrever completamente |
-| `src/contexts/AuthContext.tsx` | Adicionar telefone ao signUp |
-| `src/components/auth/BiometricPrompt.tsx` | Sem mudancas (reutilizar) |
-| Migracao SQL | Adicionar coluna `phone` em profiles se necessario |
+## Resultado esperado
+Cada novo build gera um timestamp unico. Quando o app iOS detecta uma versao diferente da armazenada, limpa todos os caches e recarrega, garantindo que a UI mais recente seja sempre exibida.
 
