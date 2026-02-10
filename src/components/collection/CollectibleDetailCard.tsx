@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { X, Car, Package, History, ChevronDown, ChevronUp, Trash2, Loader2 } from "lucide-react";
+import { useState, useEffect } from "react";
+import { X, Car, Package, History, ChevronDown, ChevronUp, Trash2, Loader2, ImageOff } from "lucide-react";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerClose } from "@/components/ui/drawer";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
@@ -97,6 +97,14 @@ export const CollectibleDetailCard = ({ item, open, onOpenChange, onDelete }: Co
   const [breakdownOpen, setBreakdownOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [imageLoaded, setImageLoaded] = useState(false);
+  const [imageFailed, setImageFailed] = useState(false);
+  
+  // Reset image state when item changes
+  useEffect(() => {
+    setImageLoaded(false);
+    setImageFailed(false);
+  }, [item?.id]);
   
   if (!item?.item) return null;
   
@@ -131,11 +139,35 @@ export const CollectibleDetailCard = ({ item, open, onOpenChange, onDelete }: Co
             <div className="py-4 space-y-4">
               {/* Hero Image - square format with object-contain to show full vehicle */}
               <div className="relative aspect-square rounded-xl overflow-hidden bg-gradient-to-b from-muted to-muted/50">
-                <img
-                  src={item.image_url || "/placeholder.svg"}
-                  alt={`${data.real_car_brand} ${data.real_car_model}`}
-                  className="w-full h-full object-contain"
-                />
+                {imageFailed ? (
+                  <div className="w-full h-full flex flex-col items-center justify-center">
+                    <ImageOff className="h-12 w-12 text-muted-foreground/40 mb-2" />
+                    <span className="text-sm text-muted-foreground/60">Imagem indisponível</span>
+                  </div>
+                ) : (
+                  <>
+                    {!imageLoaded && (
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground/50" />
+                      </div>
+                    )}
+                    <img
+                      src={item.image_url || "/placeholder.svg"}
+                      alt={`${data.real_car_brand} ${data.real_car_model}`}
+                      className={cn("w-full h-full object-contain transition-opacity", imageLoaded ? "opacity-100" : "opacity-0")}
+                      onLoad={(e) => {
+                        const img = e.currentTarget;
+                        // Detect corrupt/empty base64 images (tiny natural dimensions)
+                        if (img.naturalWidth < 10 || img.naturalHeight < 10) {
+                          setImageFailed(true);
+                        } else {
+                          setImageLoaded(true);
+                        }
+                      }}
+                      onError={() => setImageFailed(true)}
+                    />
+                  </>
+                )}
               </div>
               
               {/* Title & Year */}
