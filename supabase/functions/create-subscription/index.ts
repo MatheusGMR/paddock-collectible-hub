@@ -45,18 +45,43 @@ serve(async (req) => {
     if (!user?.email) throw new Error("User not authenticated or email not available");
     logStep("User authenticated", { userId: user.id, email: user.email });
 
-    // Parse request body to check for embedded mode
+    // Parse request body
     let embedded = false;
+    let action = "checkout";
     try {
       const body = await req.json();
       embedded = body?.embedded === true;
+      if (body?.action) action = body.action;
     } catch {
-      // No body or invalid JSON - default to redirect mode
+      // No body or invalid JSON - default to checkout
     }
-    logStep("Checkout mode", { embedded });
+    logStep("Action", { action, embedded });
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
+    const origin = req.headers.get("origin") || "https://paddock-collectible-hub.lovable.app";
 
+    // Handle portal action - Customer Portal for managing subscription
+    if (action === "portal") {
+      const customers = await stripe.customers.list({ email: user.email, limit: 1 });
+      if (customers.data.length === 0) {
+        throw new Error("Nenhuma conta Stripe encontrada. Assine primeiro.");
+      }
+      const customerId = customers.data[0].id;
+      logStep("Portal: Found Stripe customer", { customerId });
+
+      const portalSession = await stripe.billingPortal.sessions.create({
+        customer: customerId,
+        return_url: `${origin}/`,
+      });
+      logStep("Portal session created", { url: portalSession.url });
+
+      return new Response(JSON.stringify({ url: portalSession.url }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      });
+    }
+
+    // Default: Create checkout session
     // Check if user has completed the challenge (50 cars)
     const { data: subscription } = await supabaseClient
       .from("user_subscriptions")
@@ -76,23 +101,17 @@ serve(async (req) => {
       logStep("Found existing Stripe customer", { customerId });
     }
 
-    // Get origin for redirect URLs
-    const origin = req.headers.get("origin") || "https://paddock-collectible-hub.lovable.app";
-
     // Determine trial period and coupon based on challenge completion
     let trialDays = 7; // Default trial
     let couponId: string | undefined;
 
     if (challengeCompleted) {
-      // Challenge completed: 30 days free (1st month) + 50% off coupon
-      trialDays = 30; // First month free
+      trialDays = 30;
       
-      // Ensure the coupon exists
       try {
         await stripe.coupons.retrieve(CHALLENGE_COUPON_ID);
         logStep("Found existing challenge coupon");
       } catch {
-        // Create coupon if it doesn't exist
         await stripe.coupons.create({
           id: CHALLENGE_COUPON_ID,
           percent_off: 50,
@@ -129,7 +148,6 @@ serve(async (req) => {
       },
     };
 
-    // Configure based on embedded or redirect mode
     if (embedded) {
       sessionConfig.ui_mode = "embedded";
       sessionConfig.return_url = `${origin}/subscription-success?session_id={CHECKOUT_SESSION_ID}`;
@@ -138,7 +156,6 @@ serve(async (req) => {
       sessionConfig.cancel_url = `${origin}/`;
     }
 
-    // Add coupon/discount if challenge was completed
     if (couponId) {
       sessionConfig.discounts = [{ coupon: couponId }];
     }
@@ -153,7 +170,6 @@ serve(async (req) => {
       hasCoupon: !!couponId
     });
 
-    // If challenge completed and not yet marked as rewarded, update it
     if (challengeCompleted && !subscription?.challenge_rewarded) {
       await supabaseClient
         .from("user_subscriptions")
@@ -166,7 +182,6 @@ serve(async (req) => {
       logStep("Marked challenge as rewarded in database");
     }
 
-    // Return appropriate response based on mode
     if (embedded) {
       return new Response(JSON.stringify({ clientSecret: session.client_secret }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },

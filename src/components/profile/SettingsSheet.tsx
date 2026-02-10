@@ -42,6 +42,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Capacitor } from "@capacitor/core";
 import { App } from "@capacitor/app";
 import { resetBiometricPrompt } from "@/components/auth/BiometricPrompt";
+import { SubscriptionSheet } from "@/components/profile/SubscriptionSheet";
 
 interface SettingsSheetProps {
   open: boolean;
@@ -63,8 +64,9 @@ export const SettingsSheet = ({ open, onOpenChange, onSignOut }: SettingsSheetPr
   
   const [pushEnabled, setPushEnabled] = useState(false);
   const [pushLoading, setPushLoading] = useState(false);
-  const [pushSupported] = useState(isPushSupported());
+  const [pushSupported] = useState(isPushSupported() || Capacitor.isNativePlatform());
   const [biometricLoading, setBiometricLoading] = useState(false);
+  const [subscriptionSheetOpen, setSubscriptionSheetOpen] = useState(false);
 
   const {
     isAvailable: biometricAvailable,
@@ -126,20 +128,8 @@ export const SettingsSheet = ({ open, onOpenChange, onSignOut }: SettingsSheetPr
     }
   };
 
-  const handleManageSubscription = async () => {
-    try {
-      const { data, error } = await supabase.functions.invoke("create-subscription", {
-        body: { action: "portal" },
-      });
-      
-      if (error) throw error;
-      
-      if (data?.url) {
-        window.open(data.url, "_blank");
-      }
-    } catch (error) {
-      console.error("Error opening subscription portal:", error);
-    }
+  const handleManageSubscription = () => {
+    setSubscriptionSheetOpen(true);
   };
 
   const getSubscriptionStatus = () => {
@@ -275,7 +265,7 @@ export const SettingsSheet = ({ open, onOpenChange, onSignOut }: SettingsSheetPr
                 />
               </div>
               
-              {!pushSupported && (
+              {!pushSupported && !Capacitor.isNativePlatform() && (
                 <div className="px-4 pb-4">
                   <p className="text-xs text-amber-500">
                     Push não suportado neste navegador
@@ -464,6 +454,12 @@ export const SettingsSheet = ({ open, onOpenChange, onSignOut }: SettingsSheetPr
           </motion.div>
         </div>
       </SheetContent>
+
+      {/* Subscription Management Sheet */}
+      <SubscriptionSheet
+        open={subscriptionSheetOpen}
+        onOpenChange={setSubscriptionSheetOpen}
+      />
     </Sheet>
   );
 };
