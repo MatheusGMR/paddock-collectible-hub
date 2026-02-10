@@ -1,79 +1,58 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Capacitor } from "@capacitor/core";
-import { Browser } from "@capacitor/browser";
-import { App as CapApp } from "@capacitor/app";
 import { useAuth } from "@/contexts/AuthContext";
-import { useLanguage } from "@/contexts/LanguageContext";
 import { useBiometricAuth } from "@/hooks/useBiometricAuth";
-import { lovable } from "@/integrations/lovable/index";
 import { supabase } from "@/integrations/supabase/client";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { PaddockLogo } from "@/components/icons/PaddockLogo";
 import { useToast } from "@/hooks/use-toast";
-import { Eye, EyeOff, Loader2, Fingerprint } from "lucide-react";
+import { AuthStepEmail } from "@/components/auth/AuthStepEmail";
+import { AuthStepField } from "@/components/auth/AuthStepField";
+import { AuthStepPassword } from "@/components/auth/AuthStepPassword";
+import { AuthStepLogin } from "@/components/auth/AuthStepLogin";
+import { AuthStepPermissions } from "@/components/auth/AuthStepPermissions";
+import { AuthProgressDots } from "@/components/auth/AuthProgressDots";
+import { AnimatePresence, motion } from "framer-motion";
 
-// OAuth broker base URL (used on native to open OAuth in external browser)
-const OAUTH_BROKER_BASE = "https://ec821420-56a9-4147-adde-54a8d514aaac.lovableproject.com";
+type AuthStep = "email" | "register-name" | "register-username" | "register-phone" | "register-password" | "login" | "permissions";
 
-const getRedirectUri = () => {
-  if (Capacitor.isNativePlatform()) {
-    // On native, redirect via deep link so app captures tokens without navigating WebView
-    return "paddock://auth/callback";
-  }
-  return `${window.location.origin}/auth`;
-};
+const REGISTER_STEPS: AuthStep[] = ["email", "register-name", "register-username", "register-phone", "register-password"];
 
-const isNativePlatform = Capacitor.isNativePlatform();
+interface FormData {
+  email: string;
+  name: string;
+  username: string;
+  phone: string;
+}
 
-// Generate a random state string for OAuth CSRF protection
-function generateOAuthState() {
-  if (typeof crypto !== "undefined" && crypto.getRandomValues) {
-    return [...crypto.getRandomValues(new Uint8Array(16))].map((b) => b.toString(16).padStart(2, "0")).join("");
-  }
-  return Math.random().toString(36).substring(2) + Date.now().toString(36);
+interface UserProfile {
+  username: string;
+  avatar_url: string | null;
 }
 
 const Auth = () => {
-  const [isLogin, setIsLogin] = useState(true);
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [username, setUsername] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [appleLoading, setAppleLoading] = useState(false);
-  const [googleLoading, setGoogleLoading] = useState(false);
-  const [biometricLoading, setBiometricLoading] = useState(false);
-  
+  const [step, setStep] = useState<AuthStep>("email");
+  const [formData, setFormData] = useState<FormData>({
+    email: "",
+    name: "",
+    username: "",
+    phone: "",
+  });
+  const [existingProfile, setExistingProfile] = useState<UserProfile | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [direction, setDirection] = useState(1); // 1 = forward, -1 = back
+
   const { signIn, signUp, user, loading: authLoading } = useAuth();
-  const { t } = useLanguage();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const location = window.location;
-  
+
   const {
     isAvailable: biometricAvailable,
     isEnabled: biometricEnabled,
     storedEmail,
     authenticate: biometricAuthenticate,
+    enableBiometric,
     getBiometryLabel,
-    loading: biometricCheckLoading,
   } = useBiometricAuth();
-
-  // Detect if we're returning from an OAuth callback (Apple/Google)
-  const isOAuthCallback = (() => {
-    try {
-      const sp = new URLSearchParams(location.search);
-      return (
-        sp.has("code") ||
-        sp.has("access_token") ||
-        location.hash.includes("access_token=")
-      );
-    } catch {
-      return false;
-    }
-  })();
 
   // Redirect if already authenticated
   useEffect(() => {
@@ -82,392 +61,256 @@ const Auth = () => {
     }
   }, [user, authLoading, navigate]);
 
-  // If OAuth callback is detected but user is not yet set, show a timeout fallback
-  useEffect(() => {
-    if (!isOAuthCallback) return;
-    
-    // After 15 seconds, if still no user, something went wrong
-    const timeout = setTimeout(() => {
-      if (!user) {
-        console.error("[Auth] OAuth callback timed out - no session received");
-        // Clean the URL without full page reload
-        window.history.replaceState({}, "", "/auth");
-        toast({
-          title: "Erro na autenticação",
-          description: "Não foi possível completar o login. Tente novamente.",
-          variant: "destructive",
-        });
-        // Use navigate instead of window.location.href to avoid full page reload
-        navigate("/auth", { replace: true });
+  // Check if email exists in profiles
+  const checkEmailExists = async (email: string): Promise<UserProfile | null> => {
+    try {
+      // Query profiles by joining with auth - we look for the email in auth metadata
+      // Since we can't query auth.users directly, we try signIn with wrong password approach
+      // Instead, we use a simple approach: check profiles table
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("username, avatar_url, user_id")
+        .limit(100);
+      
+      if (error || !data) return null;
+
+      // We need to check auth.users for email match - use a different approach
+      // Try to get user by email through auth admin (not available client-side)
+      // Fallback: just proceed with registration flow, Supabase will tell us if email exists
+      return null;
+    } catch {
+      return null;
+    }
+  };
+
+  const handleEmailContinue = async () => {
+    setLoading(true);
+    try {
+      // Try to sign in with a dummy password to check if user exists
+      // If error is "Invalid login credentials" -> user exists
+      // If error is "Email not confirmed" -> user exists but not confirmed
+      const { error } = await supabase.auth.signInWithPassword({
+        email: formData.email,
+        password: "__check_exists__" + Math.random(),
+      });
+
+      if (error) {
+        const msg = error.message.toLowerCase();
+        if (msg.includes("invalid login credentials") || msg.includes("email not confirmed")) {
+          // User exists - go to login
+          // Try to fetch their profile
+          setDirection(1);
+          setStep("login");
+        } else {
+          // User doesn't exist - start registration
+          setDirection(1);
+          setStep("register-name");
+        }
       }
-    }, 15000);
+    } catch {
+      // Default to registration
+      setDirection(1);
+      setStep("register-name");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    return () => clearTimeout(timeout);
-  }, [isOAuthCallback, user, toast, navigate]);
+  const goToStep = (newStep: AuthStep, dir: number = 1) => {
+    setDirection(dir);
+    setStep(newStep);
+  };
 
-  // Auto-trigger biometric auth if enabled
-  useEffect(() => {
-    const tryBiometricLogin = async () => {
-      if (
-        !authLoading &&
-        !user &&
-        biometricEnabled &&
-        storedEmail &&
-        !biometricCheckLoading
-      ) {
-        await handleBiometricLogin();
-      }
-    };
-    tryBiometricLogin();
-  }, [biometricEnabled, storedEmail, authLoading, user, biometricCheckLoading]);
+  const handlePasswordRegister = async (password: string) => {
+    setLoading(true);
+    try {
+      const { error } = await signUp(
+        formData.email,
+        password,
+        formData.username,
+        formData.name,
+        formData.phone
+      );
+      if (error) throw error;
 
-  // Handle biometric login
-  const handleBiometricLogin = async () => {
-    if (!storedEmail || biometricLoading) return;
-    
-    setBiometricLoading(true);
+      // After signup, go to permissions
+      goToStep("permissions");
+    } catch (error) {
+      toast({
+        title: "Erro",
+        description: error instanceof Error ? error.message : "Erro ao criar conta",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePasswordLogin = async (password: string) => {
+    setLoading(true);
+    try {
+      const { error } = await signIn(formData.email, password);
+      if (error) throw error;
+      navigate("/", { replace: true });
+    } catch (error) {
+      toast({
+        title: "Erro",
+        description: error instanceof Error ? error.message : "Credenciais inválidas",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleBiometricLogin = async (): Promise<boolean> => {
     try {
       const success = await biometricAuthenticate();
       if (success) {
-        // User authenticated with biometrics - get their session from stored token
-        // Since we can't store passwords securely, biometric just confirms identity
-        // The session should still be active from Supabase's persistence
         const { data: { session } } = await supabase.auth.getSession();
-        
         if (session) {
           navigate("/", { replace: true });
+          return true;
         } else {
-          // Session expired, need to login again
           toast({
             title: "Sessão expirada",
-            description: "Por favor, faça login novamente.",
+            description: "Por favor, faça login com sua senha.",
             variant: "destructive",
           });
+          return false;
         }
       }
-    } catch (error) {
-      console.error("[Biometric] Login error:", error);
-    } finally {
-      setBiometricLoading(false);
+      return false;
+    } catch {
+      return false;
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-
-    try {
-      if (isLogin) {
-        const { error } = await signIn(email, password);
-        if (error) throw error;
-        navigate("/");
-      } else {
-        if (!username.trim()) {
-          throw new Error(t.errors.usernameRequired);
-        }
-        const { error } = await signUp(email, password, username);
-        if (error) throw error;
-        navigate("/");
-      }
-    } catch (error) {
-      toast({
-        title: t.common.error,
-        description: error instanceof Error ? error.message : t.errors.errorOccurred,
-        variant: "destructive"
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
+  const handlePermissionsComplete = () => {
+    navigate("/", { replace: true });
   };
 
-  // Native OAuth: opens external browser, captures deep link callback
-  const handleNativeOAuth = useCallback(async (provider: "google" | "apple") => {
-    const state = generateOAuthState();
-    const redirectUri = getRedirectUri();
-    const params = new URLSearchParams({
-      provider,
-      redirect_uri: redirectUri,
-      state,
-    });
-    const oauthUrl = `${OAUTH_BROKER_BASE}/~oauth/initiate?${params.toString()}`;
-    console.log(`[Auth] Opening native OAuth for ${provider}:`, oauthUrl);
-
-    // Listen for the deep link callback BEFORE opening the browser
-    const listenerHandle = await CapApp.addListener("appUrlOpen", async (event) => {
-      console.log("[Auth] Deep link received:", event.url);
-      try {
-        const url = new URL(event.url);
-        let accessToken = url.searchParams.get("access_token");
-        let refreshToken = url.searchParams.get("refresh_token");
-
-        // Also check hash fragment
-        if (!accessToken && url.hash) {
-          const hashParams = new URLSearchParams(url.hash.substring(1));
-          accessToken = hashParams.get("access_token");
-          refreshToken = hashParams.get("refresh_token");
-        }
-
-        if (accessToken && refreshToken) {
-          console.log("[Auth] Setting session from OAuth callback tokens");
-          const { error } = await supabase.auth.setSession({
-            access_token: accessToken,
-            refresh_token: refreshToken,
-          });
-          if (error) {
-            console.error("[Auth] Error setting session:", error);
-            toast({
-              title: t.common.error,
-              description: "Falha ao completar autenticação.",
-              variant: "destructive",
-            });
-          }
-        } else {
-          console.warn("[Auth] No tokens found in deep link");
-          toast({
-            title: t.common.error,
-            description: "Não foi possível completar o login. Tente novamente.",
-            variant: "destructive",
-          });
-        }
-      } catch (err) {
-        console.error("[Auth] Error processing OAuth callback:", err);
-        toast({
-          title: t.common.error,
-          description: "Erro ao processar autenticação.",
-          variant: "destructive",
-        });
-      } finally {
-        // Clean up: close browser and remove listener
-        try { await Browser.close(); } catch {}
-        listenerHandle.remove();
-        setAppleLoading(false);
-        setGoogleLoading(false);
-      }
-    });
-
-    // Open OAuth in external browser (SFSafariViewController on iOS)
-    await Browser.open({ url: oauthUrl, presentationStyle: "popover" });
-  }, [toast, t]);
-
-  const handleAppleSignIn = async () => {
-    setAppleLoading(true);
-    try {
-      if (isNativePlatform) {
-        await handleNativeOAuth("apple");
-      } else {
-        const { error } = await lovable.auth.signInWithOAuth("apple", {
-          redirect_uri: getRedirectUri(),
-        });
-        if (error) throw error;
-      }
-    } catch (error) {
-      toast({
-        title: t.common.error,
-        description: error instanceof Error ? error.message : t.errors.failedAppleSignIn,
-        variant: "destructive"
-      });
-      setAppleLoading(false);
-    }
+  const handleEnableBiometric = async (): Promise<boolean> => {
+    return await enableBiometric(formData.email);
   };
 
-  const handleGoogleSignIn = async () => {
-    setGoogleLoading(true);
-    try {
-      if (isNativePlatform) {
-        await handleNativeOAuth("google");
-      } else {
-        const { error } = await lovable.auth.signInWithOAuth("google", {
-          redirect_uri: getRedirectUri(),
-        });
-        if (error) throw error;
-      }
-    } catch (error) {
-      toast({
-        title: t.common.error,
-        description: error instanceof Error ? error.message : t.errors.failedGoogleSignIn,
-        variant: "destructive"
-      });
-      setGoogleLoading(false);
-    }
-  };
+  // Calculate progress for registration steps
+  const currentRegisterIndex = REGISTER_STEPS.indexOf(step);
+  const isRegistering = currentRegisterIndex > 0;
 
-  // If we're processing an OAuth callback, show a loading screen instead of the form
-  if (isOAuthCallback && !user) {
-    return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6">
-        <PaddockLogo variant="wordmark" size={96} />
-        <div className="mt-8 flex flex-col items-center gap-3">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          <p className="text-sm text-muted-foreground">Completando login...</p>
-        </div>
-      </div>
-    );
-  }
+  const slideVariants = {
+    enter: (dir: number) => ({ x: dir > 0 ? 300 : -300, opacity: 0 }),
+    center: { x: 0, opacity: 1 },
+    exit: (dir: number) => ({ x: dir > 0 ? -300 : 300, opacity: 0 }),
+  };
 
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6">
       {/* Logo */}
-      <div className="mb-10 animate-scale-in">
-        <PaddockLogo variant="wordmark" size={96} />
+      <div className="mb-8 animate-scale-in">
+        <PaddockLogo variant="wordmark" size={80} />
       </div>
 
-      {/* Form Card */}
-      <div className="w-full max-w-sm space-y-6 animate-fade-in">
-        <div className="text-center">
-          <h1 className="text-2xl font-semibold text-foreground">
-            {isLogin ? t.auth.welcomeBack : t.auth.createAccount}
-          </h1>
-          <p className="text-sm text-foreground-secondary mt-1">
-            {isLogin ? t.auth.enterEmail : t.auth.joinCommunity}
-          </p>
+      {/* Progress dots for registration */}
+      {isRegistering && step !== "permissions" && (
+        <div className="mb-6">
+          <AuthProgressDots currentStep={currentRegisterIndex - 1} totalSteps={4} />
         </div>
+      )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {!isLogin && (
-            <div>
-              <Input
-                type="text"
-                placeholder={t.auth.username}
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                className="h-12 bg-muted border-0 text-foreground placeholder:text-foreground-secondary focus-visible:ring-1 focus-visible:ring-primary"
-                required={!isLogin}
+      {/* Step content */}
+      <div className="w-full max-w-sm min-h-[320px] flex items-start">
+        <AnimatePresence mode="wait" custom={direction}>
+          <motion.div
+            key={step}
+            custom={direction}
+            variants={slideVariants}
+            initial="enter"
+            animate="center"
+            exit="exit"
+            transition={{ type: "tween", duration: 0.25 }}
+            className="w-full"
+          >
+            {step === "email" && (
+              <AuthStepEmail
+                email={formData.email}
+                onEmailChange={(email) => setFormData((p) => ({ ...p, email }))}
+                onContinue={handleEmailContinue}
+                loading={loading}
               />
-            </div>
-          )}
-
-          <div>
-            <Input
-              type="email"
-              placeholder={t.auth.email}
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="h-12 bg-muted border-0 text-foreground placeholder:text-foreground-secondary focus-visible:ring-1 focus-visible:ring-primary"
-              required
-            />
-          </div>
-
-          <div className="relative">
-            <Input
-              type={showPassword ? "text" : "password"}
-              placeholder={t.auth.password}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="h-12 bg-muted border-0 text-foreground placeholder:text-foreground-secondary focus-visible:ring-1 focus-visible:ring-primary pr-12"
-              required
-              minLength={6}
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-foreground-secondary hover:text-foreground transition-colors"
-            >
-              {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-            </button>
-          </div>
-
-          <Button
-            type="submit"
-            disabled={isSubmitting}
-            className="w-full h-12 bg-primary text-primary-foreground hover:bg-primary/90 font-medium"
-          >
-            {isSubmitting ? (
-              <Loader2 className="h-5 w-5 animate-spin" />
-            ) : isLogin ? (
-              t.auth.signIn
-            ) : (
-              t.auth.createAccount
             )}
-          </Button>
-        </form>
 
-        {/* Biometric Login Button - Only shown when available and enabled */}
-        {biometricAvailable && biometricEnabled && storedEmail && (
-          <Button
-            type="button"
-            variant="outline"
-            onClick={handleBiometricLogin}
-            disabled={biometricLoading}
-            className="w-full h-14 bg-primary/10 text-primary hover:bg-primary/20 border border-primary/30 font-medium gap-3"
-          >
-            {biometricLoading ? (
-              <Loader2 className="h-6 w-6 animate-spin" />
-            ) : (
-              <>
-                <Fingerprint className="h-6 w-6" />
-                Entrar com {getBiometryLabel()}
-              </>
+            {step === "register-name" && (
+              <AuthStepField
+                title="Como você se chama?"
+                subtitle="Seu nome completo"
+                placeholder="Nome completo"
+                value={formData.name}
+                onChange={(name) => setFormData((p) => ({ ...p, name }))}
+                onNext={() => goToStep("register-username")}
+                onBack={() => goToStep("email", -1)}
+              />
             )}
-          </Button>
-        )}
 
-        {/* Divider */}
-        <div className="relative">
-          <div className="absolute inset-0 flex items-center">
-            <span className="w-full border-t border-border" />
-          </div>
-          <div className="relative flex justify-center text-xs">
-            <span className="bg-background px-2 text-muted-foreground">{t.common.or}</span>
-          </div>
-        </div>
-
-        {/* Google Sign In */}
-        <Button
-          type="button"
-          variant="outline"
-          onClick={handleGoogleSignIn}
-          disabled={googleLoading}
-          className="w-full h-12 bg-card text-foreground hover:bg-muted border border-border font-medium gap-2"
-        >
-          {googleLoading ? (
-            <Loader2 className="h-5 w-5 animate-spin" />
-          ) : (
-            <>
-              <svg className="h-5 w-5" viewBox="0 0 24 24">
-                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-              </svg>
-              {t.auth.continueWithGoogle}
-            </>
-          )}
-        </Button>
-
-        {/* Apple Sign In */}
-        <Button
-          type="button"
-          variant="outline"
-          onClick={handleAppleSignIn}
-          disabled={appleLoading}
-          className="w-full h-12 bg-foreground text-background hover:bg-foreground/90 border-0 font-medium gap-2"
-        >
-          {appleLoading ? (
-            <Loader2 className="h-5 w-5 animate-spin" />
-          ) : (
-            <>
-              <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09l.01-.01zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
-              </svg>
-              {t.auth.continueWithApple}
-            </>
-          )}
-        </Button>
-
-        {/* Toggle */}
-        <div className="text-center">
-          <button
-            type="button"
-            onClick={() => setIsLogin(!isLogin)}
-            className="text-sm text-foreground-secondary hover:text-primary transition-colors"
-          >
-            {isLogin ? (
-              <>{t.auth.dontHaveAccount} <span className="text-primary font-medium">{t.auth.signUp}</span></>
-            ) : (
-              <>{t.auth.alreadyHaveAccount} <span className="text-primary font-medium">{t.auth.signIn}</span></>
+            {step === "register-username" && (
+              <AuthStepField
+                title="Escolha um nome de usuário"
+                subtitle="Como você quer ser identificado na comunidade"
+                placeholder="@usuario"
+                value={formData.username}
+                onChange={(username) => setFormData((p) => ({ ...p, username }))}
+                onNext={() => goToStep("register-phone")}
+                onBack={() => goToStep("register-name", -1)}
+                minLength={3}
+              />
             )}
-          </button>
-        </div>
+
+            {step === "register-phone" && (
+              <AuthStepField
+                title="Qual é o seu telefone?"
+                subtitle="Para recuperação de conta (opcional)"
+                placeholder="(11) 99999-9999"
+                value={formData.phone}
+                onChange={(phone) => setFormData((p) => ({ ...p, phone }))}
+                onNext={() => goToStep("register-password")}
+                onBack={() => goToStep("register-username", -1)}
+                type="tel"
+                required={false}
+              />
+            )}
+
+            {step === "register-password" && (
+              <AuthStepPassword
+                onSubmit={handlePasswordRegister}
+                onBack={() => goToStep("register-phone", -1)}
+                loading={loading}
+              />
+            )}
+
+            {step === "login" && (
+              <AuthStepLogin
+                email={formData.email}
+                profile={existingProfile}
+                biometricAvailable={biometricAvailable}
+                biometricEnabled={biometricEnabled && storedEmail === formData.email}
+                biometricLabel={getBiometryLabel()}
+                onBiometricAuth={handleBiometricLogin}
+                onPasswordSubmit={handlePasswordLogin}
+                onBack={() => goToStep("email", -1)}
+                loading={loading}
+              />
+            )}
+
+            {step === "permissions" && (
+              <AuthStepPermissions
+                onComplete={handlePermissionsComplete}
+                onEnableBiometric={handleEnableBiometric}
+                biometricAvailable={biometricAvailable}
+                biometricLabel={getBiometryLabel()}
+              />
+            )}
+          </motion.div>
+        </AnimatePresence>
       </div>
     </div>
   );
