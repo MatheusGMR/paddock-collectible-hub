@@ -211,16 +211,14 @@ const Auth = () => {
         <PaddockLogo variant="wordmark" size={80} />
       </div>
 
-      {/* Progress dots for registration */}
-      {isRegistering && step !== "permissions" && (
-        <div className="mb-6">
-          <AuthProgressDots currentStep={currentRegisterIndex - 1} totalSteps={4} />
-        </div>
-      )}
+      {/* Progress dots - always rendered to avoid layout shift, invisible when not registering */}
+      <div className={`mb-6 transition-opacity duration-200 ${isRegistering && step !== "permissions" ? "opacity-100" : "opacity-0 pointer-events-none"}`}>
+        <AuthProgressDots currentStep={Math.max(0, currentRegisterIndex - 1)} totalSteps={4} />
+      </div>
 
-      {/* Step content */}
-      <div className="w-full max-w-sm min-h-[320px] flex items-start">
-        <AnimatePresence mode="wait" custom={direction}>
+      {/* Step content - fixed height container for consistent layout */}
+      <div className="w-full max-w-sm h-[360px] relative overflow-hidden">
+        <AnimatePresence mode="wait" custom={direction} initial={false}>
           <motion.div
             key={step}
             custom={direction}
@@ -229,7 +227,7 @@ const Auth = () => {
             animate="center"
             exit="exit"
             transition={{ type: "tween", duration: 0.25 }}
-            className="w-full"
+            className="w-full absolute inset-0"
           >
             {step === "email" && (
               <AuthStepEmail

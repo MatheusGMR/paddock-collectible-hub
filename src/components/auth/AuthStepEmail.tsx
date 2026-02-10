@@ -18,6 +18,9 @@ export const AuthStepEmail = ({ email, onEmailChange, onContinue, loading }: Aut
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6 w-full">
+      {/* Invisible spacer to match "Voltar" button height in other steps */}
+      <div className="h-5" aria-hidden="true" />
+
       <div className="space-y-2">
         <h2 className="text-2xl font-semibold text-foreground">Qual é o seu email?</h2>
         <p className="text-sm text-muted-foreground">
