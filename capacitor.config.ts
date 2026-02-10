@@ -5,9 +5,9 @@ const config: CapacitorConfig = {
   appName: 'paddock-collectible-hub',
   webDir: 'dist',
   ios: {
-    // Fundo transparente para permitir que camera-preview funcione com toBack:true
-    // Isso força o Capacitor a configurar webView.isOpaque = false automaticamente
-    backgroundColor: '#00000000',
+    // Fundo opaco padrão para evitar tela branca/transparente
+    // A transparência para camera-preview é aplicada dinamicamente via JS apenas no Scanner
+    backgroundColor: '#0E1117',
   },
   // Nota: NÃO usar CapacitorHttp - causa incompatibilidade com Supabase SDK
   // O WKWebView moderno (iOS 14+) suporta fetch() nativamente sem problemas
