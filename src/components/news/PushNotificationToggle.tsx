@@ -4,6 +4,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { Capacitor } from "@capacitor/core";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   isPushSupported,
@@ -25,10 +26,11 @@ export const PushNotificationToggle = () => {
 
   useEffect(() => {
     const checkStatus = async () => {
-      const supported = isPushSupported();
+      // On native platforms, push is always supported via Capacitor
+      const supported = isPushSupported() || Capacitor.isNativePlatform();
       setIsSupported(supported);
       
-      if (supported) {
+      if (supported && isPushSupported()) {
         setPermission(getPushPermission());
         const subscribed = await isSubscribedToPush();
         setIsEnabled(subscribed);
