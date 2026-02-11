@@ -61,51 +61,24 @@ const Auth = () => {
     }
   }, [user, authLoading, navigate]);
 
-  // Check if email exists in profiles
-  const checkEmailExists = async (email: string): Promise<UserProfile | null> => {
-    try {
-      // Query profiles by joining with auth - we look for the email in auth metadata
-      // Since we can't query auth.users directly, we try signIn with wrong password approach
-      // Instead, we use a simple approach: check profiles table
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("username, avatar_url, user_id")
-        .limit(100);
-      
-      if (error || !data) return null;
-
-      // We need to check auth.users for email match - use a different approach
-      // Try to get user by email through auth admin (not available client-side)
-      // Fallback: just proceed with registration flow, Supabase will tell us if email exists
-      return null;
-    } catch {
-      return null;
-    }
-  };
-
   const handleEmailContinue = async () => {
     setLoading(true);
     try {
-      // Try to sign in with a dummy password to check if user exists
-      // If error is "Invalid login credentials" -> user exists
-      // If error is "Email not confirmed" -> user exists but not confirmed
-      const { error } = await supabase.auth.signInWithPassword({
-        email: formData.email,
-        password: "__check_exists__" + Math.random(),
+      const { data, error } = await supabase.functions.invoke('check-user-exists', {
+        body: { email: formData.email },
       });
 
-      if (error) {
-        const msg = error.message.toLowerCase();
-        if (msg.includes("invalid login credentials") || msg.includes("email not confirmed")) {
-          // User exists - go to login
-          // Try to fetch their profile
-          setDirection(1);
-          setStep("login");
-        } else {
-          // User doesn't exist - start registration
-          setDirection(1);
-          setStep("register-name");
+      if (data?.exists) {
+        // User exists - show login with profile info
+        if (data.profile) {
+          setExistingProfile(data.profile);
         }
+        setDirection(1);
+        setStep("login");
+      } else {
+        // New user - start registration flow
+        setDirection(1);
+        setStep("register-name");
       }
     } catch {
       // Default to registration
