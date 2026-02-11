@@ -482,6 +482,40 @@ export const ResultCarousel = ({
               )}
             </div>
 
+            {/* Collection status indicator */}
+            <div className={cn(
+              "rounded-xl p-3 flex items-center gap-3",
+              result.isDuplicate 
+                ? "bg-primary/10 border border-primary/30" 
+                : "bg-muted/50 border border-border/50"
+            )}>
+              {result.isDuplicate ? (
+                <>
+                  <CheckCircle2 className="h-5 w-5 text-primary shrink-0" />
+                  <div>
+                    <p className="text-sm font-medium text-primary">
+                      Você já tem este item na coleção
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Adicione novamente se possuir mais de uma unidade
+                    </p>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <Plus className="h-5 w-5 text-muted-foreground shrink-0" />
+                  <div>
+                    <p className="text-sm font-medium text-foreground">
+                      Item novo para sua coleção
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Este modelo ainda não está no seu acervo
+                    </p>
+                  </div>
+                </>
+              )}
+            </div>
+
             {/* Feedback buttons */}
             <ScanFeedback
               variantId={mlVariantId}
