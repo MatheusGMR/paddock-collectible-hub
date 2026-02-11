@@ -21,7 +21,6 @@ import {
   Sheet,
   SheetClose,
   SheetContent,
-  SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
 import { X } from "lucide-react";
@@ -217,7 +216,7 @@ export const SettingsSheet = ({ open, onOpenChange, onSignOut }: SettingsSheetPr
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="w-full sm:max-w-md bg-background border-l border-border p-0 overflow-y-auto pt-safe">
-        <SheetHeader className="p-6 pb-4 border-b border-border flex flex-row items-center justify-between">
+        <div className="flex items-center justify-between p-6 pb-4 border-b border-border">
           <SheetTitle className="flex items-center gap-2 text-foreground">
             <Settings className="h-5 w-5" />
             Configurações
@@ -226,7 +225,7 @@ export const SettingsSheet = ({ open, onOpenChange, onSignOut }: SettingsSheetPr
             <X className="h-5 w-5" />
             <span className="sr-only">Fechar</span>
           </SheetClose>
-        </SheetHeader>
+        </div>
 
         <div className="p-4 space-y-6">
           {/* Language Section */}
