@@ -9,7 +9,8 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { action, subscription, endpoint } = await req.json();
+    const reqBody = await req.json();
+    const { action, subscription, endpoint, token, platform } = reqBody;
     
     // Get VAPID public key
     if (action === 'getVapidKey') {
@@ -58,9 +59,9 @@ Deno.serve(async (req) => {
     const user = await userRes.json();
     const userId = user.id;
     
-    // Subscribe
+    // Subscribe (Web Push)
     if (action === 'subscribe' && subscription) {
-      console.log('Subscribing user:', userId);
+      console.log('Subscribing user (web):', userId);
       
       const upsertRes = await fetch(
         `${supabaseUrl}/rest/v1/push_subscriptions?on_conflict=endpoint`,
@@ -97,13 +98,77 @@ Deno.serve(async (req) => {
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    // Subscribe Native (APNs / FCM token)
+    if (action === 'subscribe-native' && token) {
+      console.log(`Subscribing user (native ${platform}):`, userId);
+      
+      const nativeEndpoint = `native://${platform}/${token}`;
+      
+      const upsertRes = await fetch(
+        `${supabaseUrl}/rest/v1/push_subscriptions?on_conflict=endpoint`,
+        {
+          method: 'POST',
+          headers: {
+            'apikey': supabaseKey,
+            'Authorization': `Bearer ${supabaseKey}`,
+            'Content-Type': 'application/json',
+            'Prefer': 'resolution=merge-duplicates',
+          },
+          body: JSON.stringify({
+            user_id: userId,
+            endpoint: nativeEndpoint,
+            p256dh: token, // store device token in p256dh for native
+            auth: platform, // store platform in auth for native
+            topics: ['launches', 'news'],
+            updated_at: new Date().toISOString(),
+          }),
+        }
+      );
+      
+      if (!upsertRes.ok) {
+        const error = await upsertRes.text();
+        console.error('Failed to save native subscription:', error);
+        return new Response(
+          JSON.stringify({ error: 'Failed to save native subscription' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      return new Response(
+        JSON.stringify({ success: true }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
     
-    // Unsubscribe
+    // Unsubscribe (Web)
     if (action === 'unsubscribe' && endpoint) {
-      console.log('Unsubscribing user:', userId);
+      console.log('Unsubscribing user (web):', userId);
       
       await fetch(
         `${supabaseUrl}/rest/v1/push_subscriptions?user_id=eq.${userId}&endpoint=eq.${encodeURIComponent(endpoint)}`,
+        {
+          method: 'DELETE',
+          headers: {
+            'apikey': supabaseKey,
+            'Authorization': `Bearer ${supabaseKey}`,
+          },
+        }
+      );
+      
+      return new Response(
+        JSON.stringify({ success: true }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Unsubscribe Native
+    if (action === 'unsubscribe-native') {
+      console.log('Unsubscribing user (native):', userId);
+      
+      // Delete all native subscriptions for this user
+      await fetch(
+        `${supabaseUrl}/rest/v1/push_subscriptions?user_id=eq.${userId}&endpoint=like.native://*`,
         {
           method: 'DELETE',
           headers: {
