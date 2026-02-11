@@ -160,7 +160,7 @@ export const SettingsSection = ({ onSignOut }: SettingsSectionProps) => {
   };
 
   return (
-    <div className="p-4 space-y-6 pb-24">
+    <div className="space-y-6">
       {/* Language */}
       <motion.section initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
         <div className="flex items-center gap-2 mb-3">
