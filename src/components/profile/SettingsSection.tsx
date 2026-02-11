@@ -100,6 +100,7 @@ export const SettingsSection = ({ onSignOut }: SettingsSectionProps) => {
     try {
       if (enabled) {
         const permission = await requestPushPermission();
+        console.log('[Settings] Permission result:', permission);
         if (permission !== 'granted') {
           toast({
             title: "Permissão negada",
@@ -109,7 +110,9 @@ export const SettingsSection = ({ onSignOut }: SettingsSectionProps) => {
           setPushLoading(false);
           return;
         }
+        console.log('[Settings] Calling subscribeToPush...');
         const success = await subscribeToPush(user.id);
+        console.log('[Settings] subscribeToPush result:', success);
         setPushEnabled(success);
         if (success) toast({ title: "Notificações ativadas!" });
       } else {

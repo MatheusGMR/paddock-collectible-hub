@@ -34,11 +34,24 @@ export function getPushPermission(): NotificationPermission | 'unsupported' {
 export async function requestPushPermission(): Promise<NotificationPermission> {
   if (Capacitor.isNativePlatform()) {
     try {
+      console.log('[Push Native] Requesting permissions...');
       const plugin = await getNativePlugin();
+      
+      // Check current permission status first
+      const currentStatus = await plugin.checkPermissions();
+      console.log('[Push Native] Current permission status:', JSON.stringify(currentStatus));
+      
+      // If already granted, skip the request
+      if (currentStatus.receive === 'granted') {
+        console.log('[Push Native] Already granted, skipping request');
+        return 'granted';
+      }
+      
       const result = await Promise.race([
         plugin.requestPermissions(),
         new Promise<never>((_, reject) => setTimeout(() => reject(new Error('timeout')), 5000)),
       ]);
+      console.log('[Push Native] requestPermissions result:', JSON.stringify(result));
       return result.receive === 'granted' ? 'granted' : 'denied';
     } catch (error) {
       console.error('[Push Native] requestPermissions failed:', error);
