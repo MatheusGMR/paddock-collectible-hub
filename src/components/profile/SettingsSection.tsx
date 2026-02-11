@@ -80,8 +80,10 @@ export const SettingsSection = ({ onSignOut }: SettingsSectionProps) => {
 
   useEffect(() => {
     const checkPushStatus = async () => {
+      console.log('[Settings] Checking push status. pushSupported:', pushSupported, 'isNative:', Capacitor.isNativePlatform());
       if (pushSupported) {
         const subscribed = await isSubscribedToPush();
+        console.log('[Settings] Push subscribed:', subscribed);
         setPushEnabled(subscribed);
       }
     };
@@ -89,7 +91,11 @@ export const SettingsSection = ({ onSignOut }: SettingsSectionProps) => {
   }, [pushSupported]);
 
   const handlePushToggle = async (enabled: boolean) => {
-    if (!user) return;
+    console.log('[Settings] Push toggle called:', enabled, 'user:', !!user, 'pushSupported:', pushSupported);
+    if (!user) {
+      console.log('[Settings] No user, aborting push toggle');
+      return;
+    }
     setPushLoading(true);
     try {
       if (enabled) {
