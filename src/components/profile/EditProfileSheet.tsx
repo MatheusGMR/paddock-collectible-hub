@@ -10,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useDebounce } from "@/hooks/useDebounce";
 import { AvatarCropSheet } from "./AvatarCropSheet";
+import { SettingsSection } from "./SettingsSection";
 
 export interface ProfileData {
   username: string;
@@ -25,6 +26,7 @@ interface EditProfileSheetProps {
   profile: ProfileData;
   userId: string;
   onSave: (updates: Partial<ProfileData>) => Promise<void>;
+  onSignOut: () => void;
 }
 
 export const EditProfileSheet = ({ 
@@ -32,7 +34,8 @@ export const EditProfileSheet = ({
   onOpenChange, 
   profile, 
   userId,
-  onSave 
+  onSave,
+  onSignOut,
 }: EditProfileSheetProps) => {
   const { t } = useLanguage();
   const { toast } = useToast();
@@ -470,6 +473,11 @@ export const EditProfileSheet = ({
               {formData.phone && !validatePhone(formData.phone) && (
                 <p className="text-xs text-destructive">{t.profile.invalidPhone}</p>
               )}
+            </div>
+
+            {/* Settings Section */}
+            <div className="mt-6 border-t border-border pt-6">
+              <SettingsSection onSignOut={onSignOut} />
             </div>
           </div>
         </SheetContent>

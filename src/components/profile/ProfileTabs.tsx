@@ -1,8 +1,8 @@
-import { Grid3X3, List, TrendingUp, Settings } from "lucide-react";
+import { Grid3X3, List, TrendingUp } from "lucide-react";
 
 interface ProfileTabsProps {
-  activeTab: "posts" | "collection" | "index" | "settings";
-  onTabChange: (tab: "posts" | "collection" | "index" | "settings") => void;
+  activeTab: "posts" | "collection" | "index";
+  onTabChange: (tab: "posts" | "collection" | "index") => void;
 }
 
 export const ProfileTabs = ({ activeTab, onTabChange }: ProfileTabsProps) => {
@@ -22,11 +22,6 @@ export const ProfileTabs = ({ activeTab, onTabChange }: ProfileTabsProps) => {
         icon={TrendingUp}
         isActive={activeTab === "index"}
         onClick={() => onTabChange("index")}
-      />
-      <TabButton 
-        icon={Settings}
-        isActive={activeTab === "settings"}
-        onClick={() => onTabChange("settings")}
       />
     </div>
   );

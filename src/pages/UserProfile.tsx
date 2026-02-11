@@ -29,7 +29,7 @@ import { trackInteraction } from "@/lib/analytics";
 
 const UserProfilePage = () => {
   const { userId } = useParams<{ userId: string }>();
-  const [activeTab, setActiveTab] = useState<"posts" | "collection" | "index" | "settings">("posts");
+  const [activeTab, setActiveTab] = useState<"posts" | "collection" | "index">("posts");
   const [profile, setProfile] = useState<Profile | null>(null);
   const [collection, setCollection] = useState<CollectionItemWithIndex[]>([]);
   const [stats, setStats] = useState({ followers: 0, following: 0, collection: 0 });
