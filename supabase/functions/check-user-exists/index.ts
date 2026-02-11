@@ -21,59 +21,34 @@ Deno.serve(async (req) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
-    // Use RPC to check auth.users via a database function
-    // First try using the PostgREST endpoint to query profiles + auth
-    // Most efficient: use raw SQL via the /rest/v1/rpc endpoint
-    
-    // Query using the admin users API with proper filtering
-    // GoTrue v2 supports filtering via query params
-    const encodedEmail = encodeURIComponent(email.toLowerCase());
+    // Use the database function to check if email exists
     const res = await fetch(
-      `${supabaseUrl}/auth/v1/admin/users?page=1&per_page=1&filter=${encodedEmail}`,
+      `${supabaseUrl}/rest/v1/rpc/check_email_exists`,
       {
-        method: 'GET',
+        method: 'POST',
         headers: {
           'apikey': serviceRoleKey,
           'Authorization': `Bearer ${serviceRoleKey}`,
+          'Content-Type': 'application/json',
         },
+        body: JSON.stringify({ p_email: email }),
       }
     );
 
     if (!res.ok) {
-      // Fallback: list recent users and search
-      console.log('Filter not supported, falling back to list search');
-      
-      const fallbackRes = await fetch(
-        `${supabaseUrl}/auth/v1/admin/users?page=1&per_page=500`,
-        {
-          method: 'GET',
-          headers: {
-            'apikey': serviceRoleKey,
-            'Authorization': `Bearer ${serviceRoleKey}`,
-          },
-        }
+      console.error('RPC error:', await res.text());
+      return new Response(
+        JSON.stringify({ exists: false }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
-      
-      if (!fallbackRes.ok) {
-        return new Response(
-          JSON.stringify({ exists: false }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-
-      const usersData = await fallbackRes.json();
-      const users = usersData.users || [];
-      const found = users.find((u: any) => u.email?.toLowerCase() === email.toLowerCase());
-      
-      return respondWithUser(found, supabaseUrl, serviceRoleKey, corsHeaders);
     }
 
-    const usersData = await res.json();
-    const users = usersData.users || [];
-    // Double-check exact email match (filter might be partial)
-    const found = users.find((u: any) => u.email?.toLowerCase() === email.toLowerCase());
+    const result = await res.json();
 
-    return respondWithUser(found, supabaseUrl, serviceRoleKey, corsHeaders);
+    return new Response(
+      JSON.stringify(result),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
   } catch (error) {
     console.error('Check user error:', error);
     return new Response(
@@ -82,47 +57,3 @@ Deno.serve(async (req) => {
     );
   }
 });
-
-async function respondWithUser(
-  found: any | undefined,
-  supabaseUrl: string,
-  serviceRoleKey: string,
-  headers: Record<string, string>
-) {
-  if (!found) {
-    return new Response(
-      JSON.stringify({ exists: false }),
-      { headers: { ...headers, 'Content-Type': 'application/json' } }
-    );
-  }
-
-  // Fetch profile data
-  let profile = null;
-  try {
-    const profileRes = await fetch(
-      `${supabaseUrl}/rest/v1/profiles?user_id=eq.${found.id}&select=username,avatar_url`,
-      {
-        headers: {
-          'apikey': serviceRoleKey,
-          'Authorization': `Bearer ${serviceRoleKey}`,
-        },
-      }
-    );
-
-    if (profileRes.ok) {
-      const profiles = await profileRes.json();
-      if (profiles.length > 0) {
-        profile = profiles[0];
-      }
-    }
-  } catch {
-    // Profile fetch is best-effort
-  }
-
-  const name = found.user_metadata?.name || found.user_metadata?.full_name || null;
-
-  return new Response(
-    JSON.stringify({ exists: true, profile, name }),
-    { headers: { ...headers, 'Content-Type': 'application/json' } }
-  );
-}
