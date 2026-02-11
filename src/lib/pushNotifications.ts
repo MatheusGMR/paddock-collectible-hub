@@ -33,9 +33,17 @@ export function getPushPermission(): NotificationPermission | 'unsupported' {
 /** Request notification permission */
 export async function requestPushPermission(): Promise<NotificationPermission> {
   if (Capacitor.isNativePlatform()) {
-    const plugin = await getNativePlugin();
-    const result = await plugin.requestPermissions();
-    return result.receive === 'granted' ? 'granted' : 'denied';
+    try {
+      const plugin = await getNativePlugin();
+      const result = await Promise.race([
+        plugin.requestPermissions(),
+        new Promise<never>((_, reject) => setTimeout(() => reject(new Error('timeout')), 5000)),
+      ]);
+      return result.receive === 'granted' ? 'granted' : 'denied';
+    } catch (error) {
+      console.error('[Push Native] requestPermissions failed:', error);
+      return 'denied';
+    }
   }
 
   if (!isPushSupported()) throw new Error('Push notifications not supported');
@@ -63,7 +71,11 @@ export async function isSubscribedToPush(): Promise<boolean> {
   if (Capacitor.isNativePlatform()) {
     try {
       const plugin = await getNativePlugin();
-      const perm = await plugin.checkPermissions();
+      // Add timeout to prevent hanging if native plugin isn't linked
+      const perm = await Promise.race([
+        plugin.checkPermissions(),
+        new Promise<never>((_, reject) => setTimeout(() => reject(new Error('timeout')), 3000)),
+      ]);
       return perm.receive === 'granted';
     } catch {
       return false;

@@ -32,7 +32,7 @@ import { useGuidedTips } from "@/contexts/GuidedTipsContext";
 import { useBiometricAuth } from "@/hooks/useBiometricAuth";
 import { 
   isPushSupported, 
-  getPushPermission, 
+  requestPushPermission,
   subscribeToPush, 
   unsubscribeFromPush, 
   isSubscribedToPush 
@@ -115,14 +115,36 @@ export const SettingsSheet = ({ open, onOpenChange, onSignOut }: SettingsSheetPr
     
     try {
       if (enabled) {
+        // Request permission first (especially important on native)
+        const permission = await requestPushPermission();
+        if (permission !== 'granted') {
+          toast({
+            title: "Permissão negada",
+            description: "Habilite as notificações nas configurações do dispositivo",
+            variant: "destructive",
+          });
+          setPushLoading(false);
+          return;
+        }
         const success = await subscribeToPush(user.id);
         setPushEnabled(success);
+        if (success) {
+          toast({ title: "Notificações ativadas!" });
+        }
       } else {
         const success = await unsubscribeFromPush();
-        if (success) setPushEnabled(false);
+        if (success) {
+          setPushEnabled(false);
+          toast({ title: "Notificações desativadas" });
+        }
       }
     } catch (error) {
       console.error("Push notification toggle error:", error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível alterar as notificações",
+        variant: "destructive",
+      });
     } finally {
       setPushLoading(false);
     }
