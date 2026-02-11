@@ -69,17 +69,8 @@ export async function unsubscribeFromPush(): Promise<boolean> {
 /** Check if currently subscribed */
 export async function isSubscribedToPush(): Promise<boolean> {
   if (Capacitor.isNativePlatform()) {
-    try {
-      const plugin = await getNativePlugin();
-      // Add timeout to prevent hanging if native plugin isn't linked
-      const perm = await Promise.race([
-        plugin.checkPermissions(),
-        new Promise<never>((_, reject) => setTimeout(() => reject(new Error('timeout')), 3000)),
-      ]);
-      return perm.receive === 'granted';
-    } catch {
-      return false;
-    }
+    // Use local flag – checking permissions alone doesn't mean we registered
+    return localStorage.getItem('push_native_subscribed') === 'true';
   }
 
   try {
@@ -98,20 +89,29 @@ async function subscribeNative(userId: string): Promise<boolean> {
   try {
     const plugin = await getNativePlugin();
 
+    // Remove any stale listeners first
+    await plugin.removeAllListeners();
+
     // Register to get the device token
     await plugin.register();
+    console.log('[Push Native] register() called, waiting for token...');
 
     return new Promise<boolean>((resolve) => {
-      // Listen for the token
-      plugin.addListener('registration', async (token) => {
-        console.log('[Push Native] Token:', token.value);
+      // Timeout in case listener never fires
+      const timeout = setTimeout(() => {
+        console.error('[Push Native] Token listener timed out after 10s');
+        resolve(false);
+      }, 10000);
 
-        // Save token to database via edge function
+      plugin.addListener('registration', async (token) => {
+        clearTimeout(timeout);
+        console.log('[Push Native] Token received:', token.value?.substring(0, 20) + '...');
+
         const { error } = await supabase.functions.invoke('push-subscribe', {
           body: {
             action: 'subscribe-native',
             token: token.value,
-            platform: Capacitor.getPlatform(), // 'ios' or 'android'
+            platform: Capacitor.getPlatform(),
           },
         });
 
@@ -120,12 +120,14 @@ async function subscribeNative(userId: string): Promise<boolean> {
           resolve(false);
         } else {
           console.log('[Push Native] Subscription saved');
+          localStorage.setItem('push_native_subscribed', 'true');
           resolve(true);
         }
       });
 
       plugin.addListener('registrationError', (err) => {
-        console.error('[Push Native] Registration error:', err);
+        clearTimeout(timeout);
+        console.error('[Push Native] Registration error:', JSON.stringify(err));
         resolve(false);
       });
     });
@@ -137,10 +139,10 @@ async function subscribeNative(userId: string): Promise<boolean> {
 
 async function unsubscribeNative(): Promise<boolean> {
   try {
-    // Remove from database
     await supabase.functions.invoke('push-subscribe', {
       body: { action: 'unsubscribe-native' },
     });
+    localStorage.removeItem('push_native_subscribed');
     return true;
   } catch (error) {
     console.error('[Push Native] Unsubscribe error:', error);
