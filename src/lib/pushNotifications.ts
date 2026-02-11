@@ -91,43 +91,58 @@ async function subscribeNative(userId: string): Promise<boolean> {
 
     // Remove any stale listeners first
     await plugin.removeAllListeners();
-
-    // Register to get the device token
-    await plugin.register();
-    console.log('[Push Native] register() called, waiting for token...');
+    console.log('[Push Native] Listeners cleared');
 
     return new Promise<boolean>((resolve) => {
       // Timeout in case listener never fires
       const timeout = setTimeout(() => {
-        console.error('[Push Native] Token listener timed out after 10s');
+        console.error('[Push Native] Token listener timed out after 15s');
         resolve(false);
-      }, 10000);
+      }, 15000);
 
+      // IMPORTANT: Attach listeners BEFORE calling register()
       plugin.addListener('registration', async (token) => {
         clearTimeout(timeout);
         console.log('[Push Native] Token received:', token.value?.substring(0, 20) + '...');
 
-        const { error } = await supabase.functions.invoke('push-subscribe', {
-          body: {
-            action: 'subscribe-native',
-            token: token.value,
-            platform: Capacitor.getPlatform(),
-          },
-        });
+        try {
+          const { data, error } = await supabase.functions.invoke('push-subscribe', {
+            body: {
+              action: 'subscribe-native',
+              token: token.value,
+              platform: Capacitor.getPlatform(),
+            },
+          });
 
-        if (error) {
-          console.error('[Push Native] Failed to save token:', error);
+          console.log('[Push Native] Edge function response:', JSON.stringify(data), 'error:', error);
+
+          if (error) {
+            console.error('[Push Native] Failed to save token:', error);
+            resolve(false);
+          } else {
+            console.log('[Push Native] Subscription saved successfully');
+            localStorage.setItem('push_native_subscribed', 'true');
+            resolve(true);
+          }
+        } catch (invokeError) {
+          console.error('[Push Native] Invoke error:', invokeError);
           resolve(false);
-        } else {
-          console.log('[Push Native] Subscription saved');
-          localStorage.setItem('push_native_subscribed', 'true');
-          resolve(true);
         }
       });
 
       plugin.addListener('registrationError', (err) => {
         clearTimeout(timeout);
         console.error('[Push Native] Registration error:', JSON.stringify(err));
+        resolve(false);
+      });
+
+      // Now call register() AFTER listeners are attached
+      console.log('[Push Native] Calling register()...');
+      plugin.register().then(() => {
+        console.log('[Push Native] register() resolved, waiting for token event...');
+      }).catch((regError) => {
+        clearTimeout(timeout);
+        console.error('[Push Native] register() threw:', regError);
         resolve(false);
       });
     });

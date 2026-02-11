@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from "react";
-import { subscribeToPush } from "@/lib/pushNotifications";
+import { subscribeToPush, requestPushPermission } from "@/lib/pushNotifications";
 import { useAuth } from "@/contexts/AuthContext";
 import { Capacitor } from "@capacitor/core";
 import { Camera, CameraPermissionState } from "@capacitor/camera";
@@ -145,7 +145,18 @@ export const usePermissions = () => {
     // Only request notifications if not already granted
     if (!notificationsGranted) {
       try {
-        if ("Notification" in window) {
+        if (isNative) {
+          // Use native Capacitor push permission
+          console.log("[Permissions] Requesting native push permission...");
+          const permission = await requestPushPermission();
+          notificationsGranted = permission === "granted";
+          console.log("[Permissions] Native push permission:", permission);
+          
+          if (notificationsGranted && user?.id) {
+            const subResult = await subscribeToPush(user.id);
+            console.log("[Permissions] Native push subscribe result:", subResult);
+          }
+        } else if ("Notification" in window) {
           const permission = await Notification.requestPermission();
           notificationsGranted = permission === "granted";
           
