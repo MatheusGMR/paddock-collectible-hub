@@ -190,7 +190,7 @@ const Auth = () => {
       </div>
 
       {/* Step content - fixed height container for consistent layout */}
-      <div className="w-full max-w-sm h-[360px] relative overflow-hidden">
+      <div className="w-full max-w-sm h-[360px] relative overflow-hidden px-1">
         <AnimatePresence mode="wait" custom={direction} initial={false}>
           <motion.div
             key={step}
