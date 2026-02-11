@@ -102,6 +102,16 @@ async function subscribeNative(userId: string): Promise<boolean> {
   try {
     const plugin = await getNativePlugin();
 
+    // Request permission first (register() requires it on iOS)
+    console.log('[Push Native] Requesting permission before register...');
+    const permResult = await plugin.requestPermissions();
+    console.log('[Push Native] Permission result:', JSON.stringify(permResult));
+    
+    if (permResult.receive !== 'granted') {
+      console.log('[Push Native] Permission not granted, aborting');
+      return false;
+    }
+
     // Remove any stale listeners first
     await plugin.removeAllListeners();
     console.log('[Push Native] Listeners cleared');

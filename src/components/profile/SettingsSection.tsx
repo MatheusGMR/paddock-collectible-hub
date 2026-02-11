@@ -99,22 +99,39 @@ export const SettingsSection = ({ onSignOut }: SettingsSectionProps) => {
     setPushLoading(true);
     try {
       if (enabled) {
-        const permission = await requestPushPermission();
-        console.log('[Settings] Permission result:', permission);
-        if (permission !== 'granted') {
-          toast({
-            title: "Permissão negada",
-            description: "Habilite as notificações nas configurações do dispositivo",
-            variant: "destructive",
-          });
-          setPushLoading(false);
-          return;
+        if (Capacitor.isNativePlatform()) {
+          // On native, subscribeToPush handles permission + registration in one step
+          // Avoids separate checkPermissions() call that can trigger biometric re-auth
+          console.log('[Settings] Native: calling subscribeToPush directly...');
+          const success = await subscribeToPush(user.id);
+          console.log('[Settings] subscribeToPush result:', success);
+          if (!success) {
+            toast({
+              title: "Erro",
+              description: "Não foi possível ativar as notificações. Verifique as permissões nas configurações do dispositivo.",
+              variant: "destructive",
+            });
+          } else {
+            setPushEnabled(true);
+            toast({ title: "Notificações ativadas!" });
+          }
+        } else {
+          // Web: need explicit permission request first
+          const permission = await requestPushPermission();
+          console.log('[Settings] Permission result:', permission);
+          if (permission !== 'granted') {
+            toast({
+              title: "Permissão negada",
+              description: "Habilite as notificações nas configurações do navegador",
+              variant: "destructive",
+            });
+            setPushLoading(false);
+            return;
+          }
+          const success = await subscribeToPush(user.id);
+          setPushEnabled(success);
+          if (success) toast({ title: "Notificações ativadas!" });
         }
-        console.log('[Settings] Calling subscribeToPush...');
-        const success = await subscribeToPush(user.id);
-        console.log('[Settings] subscribeToPush result:', success);
-        setPushEnabled(success);
-        if (success) toast({ title: "Notificações ativadas!" });
       } else {
         const success = await unsubscribeFromPush();
         if (success) {
