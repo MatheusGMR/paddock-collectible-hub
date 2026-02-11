@@ -19,10 +19,12 @@ import {
 import { useAdmin } from "@/hooks/useAdmin";
 import {
   Sheet,
+  SheetClose,
   SheetContent,
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import { X } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -215,11 +217,15 @@ export const SettingsSheet = ({ open, onOpenChange, onSignOut }: SettingsSheetPr
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="w-full sm:max-w-md bg-background border-l border-border p-0 overflow-y-auto pt-safe">
-        <SheetHeader className="p-6 pb-4 border-b border-border">
+        <SheetHeader className="p-6 pb-4 border-b border-border flex flex-row items-center justify-between">
           <SheetTitle className="flex items-center gap-2 text-foreground">
             <Settings className="h-5 w-5" />
             Configurações
           </SheetTitle>
+          <SheetClose className="rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
+            <X className="h-5 w-5" />
+            <span className="sr-only">Fechar</span>
+          </SheetClose>
         </SheetHeader>
 
         <div className="p-4 space-y-6">
