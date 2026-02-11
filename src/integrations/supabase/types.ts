@@ -1110,6 +1110,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      check_email_exists: { Args: { p_email: string }; Returns: Json }
       find_or_create_conversation: {
         Args: { other_user_id: string }
         Returns: string
