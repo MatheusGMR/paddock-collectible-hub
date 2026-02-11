@@ -411,10 +411,35 @@ export const ScannerView = () => {
     attachStreamToVideo();
   }, [cameraActive]);
 
+  // Free memory on native before starting camera to prevent WebView freeze
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+    
+    console.log("[Scanner] Native mount: freeing memory for camera...");
+    
+    // Purge any lazy-loaded images in the DOM to reduce memory pressure
+    const offscreenImages = document.querySelectorAll('img[loading="lazy"]');
+    offscreenImages.forEach((img) => {
+      const htmlImg = img as HTMLImageElement;
+      if (!htmlImg.closest('[data-scanner]')) {
+        htmlImg.src = '';
+        htmlImg.removeAttribute('srcset');
+      }
+    });
+    
+    // Force garbage collection hint
+    if (typeof window !== 'undefined' && 'gc' in window) {
+      try { (window as any).gc(); } catch {}
+    }
+    
+    console.log(`[Scanner] Freed ${offscreenImages.length} offscreen images`);
+  }, []);
+
   // Auto-start camera on mount - use camera-preview on iOS/Android for immersive experience
   // IMPORTANT: Empty dependency array to run only once on mount
   useEffect(() => {
     let mounted = true;
+    let watchdogTimer: NodeJS.Timeout | null = null;
     
     const initCamera = async () => {
       if (!mounted) return;
@@ -485,7 +510,25 @@ export const ScannerView = () => {
             console.log("[Scanner] Created container dynamically");
           }
           
-          const started = await cameraPreview.start();
+          // Watchdog: if camera-preview doesn't respond within 8 seconds, fall back
+          const cameraStartPromise = cameraPreview.start();
+          watchdogTimer = setTimeout(() => {
+            if (mounted && !cameraActive) {
+              console.warn("[Scanner] Camera-preview watchdog: timeout after 8s, falling back to native camera");
+              cameraPreview.stop();
+              setUseNativeFallback(true);
+              setCameraActive(false);
+              setIsInitializing(false);
+            }
+          }, 8000);
+          
+          const started = await cameraStartPromise;
+          
+          // Clear watchdog since we got a response
+          if (watchdogTimer) {
+            clearTimeout(watchdogTimer);
+            watchdogTimer = null;
+          }
           
           if (!mounted) {
             // Cleanup if unmounted
@@ -495,11 +538,6 @@ export const ScannerView = () => {
           
           if (started) {
             console.log("[Scanner] Camera-preview started successfully");
-            console.log("[Scanner] useCameraPreview will be set to true");
-            
-            // Debug: check backgrounds
-            console.log("[Scanner] body bg:", window.getComputedStyle(document.body).backgroundColor);
-            console.log("[Scanner] html bg:", window.getComputedStyle(document.documentElement).backgroundColor);
             
             setUseCameraPreview(true);
             setCameraActive(true);
@@ -513,6 +551,10 @@ export const ScannerView = () => {
           }
         } catch (error) {
           console.error("[Scanner] Camera-preview error:", error);
+          if (watchdogTimer) {
+            clearTimeout(watchdogTimer);
+            watchdogTimer = null;
+          }
           if (mounted) {
             // Fallback to native camera UI
             setUseNativeFallback(true);
@@ -596,6 +638,11 @@ export const ScannerView = () => {
     return () => {
       mounted = false;
       console.log("[Scanner] Cleanup: stopping camera");
+      
+      // Clear watchdog timer
+      if (watchdogTimer) {
+        clearTimeout(watchdogTimer);
+      }
       
       // Stop camera-preview if active
       cameraPreview.stop();
