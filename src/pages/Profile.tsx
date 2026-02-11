@@ -6,7 +6,7 @@ import { PostGrid } from "@/components/profile/PostGrid";
 import { CollectionList } from "@/components/profile/CollectionList";
 import { IndexRanking } from "@/components/index/IndexRanking";
 import { EditProfileSheet, ProfileData } from "@/components/profile/EditProfileSheet";
-import { SettingsSheet } from "@/components/profile/SettingsSheet";
+import { SettingsSection } from "@/components/profile/SettingsSection";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useScreenTips } from "@/hooks/useScreenTips";
@@ -16,13 +16,12 @@ import { Loader2 } from "lucide-react";
 const ProfilePage = () => {
   // Trigger guided tips for profile screen
   useScreenTips("profile", 600);
-  const [activeTab, setActiveTab] = useState<"posts" | "collection" | "index">("posts");
+  const [activeTab, setActiveTab] = useState<"posts" | "collection" | "index" | "settings">("posts");
   const [profile, setProfile] = useState<Profile | null>(null);
   const [collection, setCollection] = useState<CollectionItemWithIndex[]>([]);
   const [stats, setStats] = useState({ followers: 0, following: 0, collection: 0 });
   const [loading, setLoading] = useState(true);
   const [editSheetOpen, setEditSheetOpen] = useState(false);
-  const [settingsOpen, setSettingsOpen] = useState(false);
   
   const { user, signOut } = useAuth();
   const { t } = useLanguage();
@@ -142,11 +141,10 @@ const ProfilePage = () => {
       <ProfileHeader 
         user={userData} 
         onEditProfile={() => setEditSheetOpen(true)}
-        onSettings={() => setSettingsOpen(true)}
+        onSettings={() => setActiveTab("settings")}
       />
       
       <ProfileTabs activeTab={activeTab} onTabChange={setActiveTab} />
-
 
       {activeTab === "posts" ? (
         gridPosts.length > 0 ? (
@@ -174,8 +172,10 @@ const ProfilePage = () => {
             <p className="text-sm mt-1">{t.profile.useScannerToAdd}</p>
           </div>
         )
-      ) : (
+      ) : activeTab === "index" ? (
         <IndexRanking items={collection} loading={false} />
+      ) : (
+        <SettingsSection onSignOut={handleSignOut} />
       )}
 
       {/* Edit Profile Sheet */}
@@ -194,14 +194,6 @@ const ProfilePage = () => {
           onSave={handleSaveProfile}
         />
       )}
-
-
-      {/* Settings Sheet */}
-      <SettingsSheet
-        open={settingsOpen}
-        onOpenChange={setSettingsOpen}
-        onSignOut={handleSignOut}
-      />
     </div>
   );
 };

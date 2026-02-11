@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { Settings, Search, QrCode, UserPen, MessageCircle } from "lucide-react";
+import { Settings, Search, QrCode, MessageCircle, UserPen } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/contexts/AuthContext";
@@ -8,12 +8,6 @@ import { QRCodeSheet } from "@/components/social/QRCodeSheet";
 import { QRScannerSheet } from "@/components/social/QRScannerSheet";
 import { MessagesSheet } from "@/components/messages/MessagesSheet";
 import { getTotalUnreadCount, subscribeToConversationUpdates } from "@/lib/api/messages";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import paddockWordmark from "@/assets/paddock-wordmark-new.png";
 interface ProfileHeaderProps {
@@ -103,26 +97,13 @@ export const ProfileHeader = ({ user, onEditProfile, onSettings }: ProfileHeader
             >
               <QrCode className="h-5 w-5" />
             </button>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button 
-                  className="p-2 rounded-lg bg-blue-subtle text-foreground-secondary hover:text-primary hover:bg-primary/20 transition-colors"
-                  title="Configurações"
-                >
-                  <Settings className="h-5 w-5" />
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48">
-                <DropdownMenuItem onClick={onEditProfile} className="gap-2">
-                  <UserPen className="h-4 w-4" />
-                  {t.profile.editProfile}
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={onSettings} className="gap-2">
-                  <Settings className="h-4 w-4" />
-                  {t.profile.settings || "Configurações"}
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <button 
+              onClick={onSettings}
+              className="p-2 rounded-lg bg-blue-subtle text-foreground-secondary hover:text-primary hover:bg-primary/20 transition-colors"
+              title="Configurações"
+            >
+              <Settings className="h-5 w-5" />
+            </button>
           </div>
         </div>
       </header>
@@ -167,6 +148,15 @@ export const ProfileHeader = ({ user, onEditProfile, onSettings }: ProfileHeader
               <p className="text-xs text-muted-foreground">📍 {user.city}</p>
             )}
           </div>
+
+          {/* Edit Profile Button */}
+          <button
+            onClick={onEditProfile}
+            className="mt-3 w-full flex items-center justify-center gap-2 py-2 rounded-lg border border-border text-sm font-medium text-foreground hover:bg-muted/50 transition-colors"
+          >
+            <UserPen className="h-4 w-4" />
+            Editar perfil
+          </button>
 
         </div>
       </div>
