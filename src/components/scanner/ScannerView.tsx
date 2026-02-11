@@ -1005,11 +1005,20 @@ export const ScannerView = () => {
 
     if (!context) return;
 
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+    // Downscale to max 1280px for faster upload & AI processing
+    const MAX_DIM = 1280;
+    let w = video.videoWidth;
+    let h = video.videoHeight;
+    if (w > MAX_DIM || h > MAX_DIM) {
+      const scale = MAX_DIM / Math.max(w, h);
+      w = Math.round(w * scale);
+      h = Math.round(h * scale);
+    }
+    canvas.width = w;
+    canvas.height = h;
+    context.drawImage(video, 0, 0, w, h);
 
-    const imageBase64 = canvas.toDataURL("image/jpeg", 0.92);
+    const imageBase64 = canvas.toDataURL("image/jpeg", 0.85);
     
     // 1. IMMEDIATELY stop camera and show captured image (freeze the frame)
     stopCamera();

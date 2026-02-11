@@ -7,15 +7,15 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const MODEL_PRICING = { "gpt-4o": { input: 2.50, output: 10.00 } };
+const MODEL_PRICING = { "gpt-4o": { input: 2.50, output: 10.00 }, "gpt-4o-mini": { input: 0.15, output: 0.60 } };
 
 function estimateTokens(content: string, isImage = false, isVideo = false): number {
   const t = Math.ceil(content.length / 4);
   return isVideo ? t + 8000 : isImage ? t + 2500 : t;
 }
 
-function calculateCost(i: number, o: number): number {
-  const p = MODEL_PRICING["gpt-4o"];
+function calculateCost(i: number, o: number, model = "gpt-4o"): number {
+  const p = MODEL_PRICING[model as keyof typeof MODEL_PRICING] || MODEL_PRICING["gpt-4o"];
   return (i / 1e6) * p.input + (o / 1e6) * p.output;
 }
 
@@ -25,7 +25,7 @@ async function logUsage(sb: any, uid: string | null, fn: string, m: string, i: n
     await sb.from("ai_usage_logs").insert({
       user_id: uid, function_name: fn, model: m,
       input_tokens: i, output_tokens: o,
-      cost_estimate_usd: calculateCost(i, o), metadata: meta,
+      cost_estimate_usd: calculateCost(i, o, m), metadata: meta,
     });
   } catch (e) { console.error("[Log]", e); }
 }
@@ -271,7 +271,7 @@ serve(async (req) => {
       ? "Analyze video of collectible cars (max 7)."
       : "Analyze image. Determine if collectible or real vehicle.";
 
-    const PRIMARY_MODEL = "gpt-4o";
+    const PRIMARY_MODEL = "gpt-4o-mini";
     const FALLBACK_MODEL = "gpt-4o";
 
     const stripFences = (s: string) => s.replace(/```json\n?|\n?```/g, "").trim();
@@ -290,6 +290,7 @@ serve(async (req) => {
     };
 
     const fetchAndParse = async (model: string, attempt: number, reason: string) => {
+      const imageDetail = model === "gpt-4o-mini" ? "auto" : "high";
       const messages = [
         { role: "system", content: dynamicPrompt },
         {
@@ -297,11 +298,11 @@ serve(async (req) => {
           content: isVid
             ? [
                 { type: "text", text: uPrompt },
-                { type: "image_url", image_url: { url: imageUrl, detail: "high" } }
+                { type: "image_url", image_url: { url: imageUrl, detail: imageDetail } }
               ]
             : [
                 { type: "text", text: uPrompt },
-                { type: "image_url", image_url: { url: imageUrl, detail: "high" } }
+                { type: "image_url", image_url: { url: imageUrl, detail: imageDetail } }
               ],
         },
       ];
@@ -315,7 +316,7 @@ serve(async (req) => {
         body: JSON.stringify({
           model,
           messages,
-          max_tokens: 4096,
+          max_tokens: model === "gpt-4o-mini" ? 2048 : 4096,
           response_format: { type: "json_object" },
         }),
       });
