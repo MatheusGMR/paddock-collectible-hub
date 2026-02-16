@@ -101,7 +101,13 @@ Crie uma experiência SENSORIAL e NOSTÁLGICA (2-3 frases). Misture:
 - Humor sutil: "...com óculos escuros mesmo dentro de casa, porque sim"
 Seja criativo, poético e levemente humorístico. Evite clichês.
 
-priceIndex (apenas Brasil, 100pts): rarity(máx 45)-carros BR ultra raros; condition(máx 20); manufacturer(máx 15); scale(máx 10); age(máx 10).
+priceIndex (apenas Brasil, 100pts):
+Breakdown OBRIGATÓRIO com "score", "max" e "reason" para CADA critério:
+- rarity (máx 45): Avalie a disponibilidade REAL no mercado brasileiro. "reason" deve explicar com riqueza: mencione se o modelo é encontrado em lojas, feiras, OLX, Mercado Livre; compare com a disponibilidade em outros países; cite séries limitadas, exclusividades regionais, ou tiragens reduzidas. Ex: "Modelo exclusivo da série Gulf Racing 2019, praticamente inexistente no mercado brasileiro. Nos EUA é encontrado por US$15, mas no Brasil aparece raramente em feiras por R$200+."
+- condition (máx 20): Avalie o estado visual do item. "reason" deve detalhar: pintura (lascas, brilho, desbotamento), rodas (integridade, oxidação), chassi (riscos, amassados), embalagem (se visível). Ex: "Pintura original preservada com brilho intenso, sem lascas visíveis. Rodas sem oxidação e eixos girando livremente. Estado compatível com item guardado em vitrine."
+- manufacturer (máx 15): Avalie a reputação e valor da marca. "reason" deve justificar: posição da marca no mercado de colecionáveis, qualidade de acabamento, nível de detalhe, materiais utilizados. Ex: "Hot Wheels é a marca mais popular mundialmente, mas modelos básicos têm acabamento simples. Pontuação média pela ampla disponibilidade da marca."
+- scale (máx 10): Avalie a escala e seu impacto no valor. "reason" deve explicar: raridade da escala no mercado, custo de produção, demanda entre colecionadores. Ex: "Escala 1:64 é a mais comum e acessível no mercado brasileiro, dominando prateleiras de lojas e bancas."
+- age (máx 10): Avalie a idade e seu impacto. "reason" deve contextualizar: década de produção, relevância histórica, dificuldade de encontrar em bom estado. Ex: "Produzido em 2022, é um modelo recente e ainda encontrado em lojas. Baixa pontuação por idade."
 Tiers: ultra_rare(85+), super_rare(70-84), rare(50-69), uncommon(30-49), common(<30).
 
 condition: "Excelente", "Muito Bom", "Bom", "Regular", "Ruim"
