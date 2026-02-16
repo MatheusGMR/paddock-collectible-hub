@@ -265,6 +265,12 @@ export const ScannerView = () => {
   const [zoomLevel, setZoomLevel] = useState(1);
   const lastPinchDistance = useRef<number | null>(null);
   
+  // Auto-scan: trigger analysis automatically when vehicles are stably detected
+  const [autoScanStatus, setAutoScanStatus] = useState<"idle" | "counting" | "triggered">("idle");
+  const autoScanTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const autoScanTriggeredRef = useRef(false);
+  const capturePhotoRef = useRef<(() => void) | null>(null);
+  
   // Track if we're using native camera preview (embedded live preview) vs fallback (opens native UI)
   const [useNativeFallback, setUseNativeFallback] = useState(false);
   // Track if using embedded camera preview (iOS/Android)
@@ -290,6 +296,50 @@ export const ScannerView = () => {
       scannerPersistence.clearResult();
     }
   }, [scannerPersistence.hasPendingResult]);
+  
+  // Auto-scan: when COCO-SSD detects vehicles stably for ~3s, auto-trigger capture
+  useEffect(() => {
+    // Only on web, when camera active, not already scanning/captured
+    if (!detectionEnabled || autoScanTriggeredRef.current || isScanning || capturedImage) {
+      // Clear any pending timer
+      if (autoScanTimerRef.current) {
+        clearTimeout(autoScanTimerRef.current);
+        autoScanTimerRef.current = null;
+      }
+      if (!detectionEnabled) {
+        setAutoScanStatus("idle");
+      }
+      return;
+    }
+    
+    if (detectedCount > 0) {
+      if (autoScanStatus === "idle") {
+        // Start countdown
+        setAutoScanStatus("counting");
+        autoScanTimerRef.current = setTimeout(() => {
+          // Still detecting after 3s? Trigger auto-capture!
+          console.log("[Scanner] Auto-scan triggered: stable detection for 3s");
+          autoScanTriggeredRef.current = true;
+          setAutoScanStatus("triggered");
+          capturePhotoRef.current?.();
+        }, 3000);
+      }
+    } else {
+      // Lost detection, reset timer
+      if (autoScanTimerRef.current) {
+        clearTimeout(autoScanTimerRef.current);
+        autoScanTimerRef.current = null;
+      }
+      setAutoScanStatus("idle");
+    }
+    
+    return () => {
+      if (autoScanTimerRef.current) {
+        clearTimeout(autoScanTimerRef.current);
+        autoScanTimerRef.current = null;
+      }
+    };
+  }, [detectedCount, detectionEnabled, isScanning, capturedImage, autoScanStatus]);
   
   // Only trigger guided tips when camera is active and not in error state
   const { startScreenTips } = useGuidedTips();
@@ -1235,6 +1285,11 @@ export const ScannerView = () => {
     }
   }, [stopCamera, toast, t, user]);
 
+  // Keep capturePhotoRef in sync for auto-scan
+  useEffect(() => {
+    capturePhotoRef.current = capturePhoto;
+  }, [capturePhoto]);
+
   // Native camera capture function (fallback for iOS native app)
   const captureNativePhoto = useCallback(async () => {
     console.log("[Scanner] Capturing via native camera...");
@@ -1990,6 +2045,10 @@ export const ScannerView = () => {
     setRecordingDuration(0);
     setRealCarResult(null);
     setDetectedType(null);
+    // Reset auto-scan so it can trigger again
+    autoScanTriggeredRef.current = false;
+    setAutoScanStatus("idle");
+    setZoomLevel(1);
     // Clear any pending saved results
     scannerPersistence.clearResult();
     if (videoPreviewUrl) {
@@ -2337,6 +2396,7 @@ export const ScannerView = () => {
                     detectedCount={detectedCount}
                     isModelLoading={isModelLoading}
                     isModelReady={isModelReady}
+                    autoScanStatus={autoScanStatus}
                   />
                   <p className="text-[11px] text-white/50 text-center tracking-wide">
                     {t.scanner.tapToCapture}
