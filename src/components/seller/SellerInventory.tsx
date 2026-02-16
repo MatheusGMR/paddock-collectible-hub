@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Package, Plus, Search, Eye } from "lucide-react";
+import { Package, Plus, Search, Eye, Share2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -127,12 +127,13 @@ export const SellerInventory = ({ inventory, loading }: SellerInventoryProps) =>
                   <TableHead>Fonte</TableHead>
                   <TableHead>Data</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead className="w-10"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredActive.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                       Nenhum item ativo no estoque
                     </TableCell>
                   </TableRow>
@@ -164,6 +165,19 @@ export const SellerInventory = ({ inventory, loading }: SellerInventoryProps) =>
                         <Badge variant="secondary" className="bg-green-500/10 text-green-500">
                           Ativo
                         </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <button
+                          onClick={() => {
+                            const url = `${window.location.origin}/listing/${item.id}`;
+                            const text = `Confira este item na Paddock! 🏎️\n${item.title} - ${formatPrice(item.price, item.currency)}\n${url}`;
+                            window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
+                          }}
+                          className="p-1.5 rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-primary"
+                          title="Compartilhar via WhatsApp"
+                        >
+                          <Share2 className="h-4 w-4" />
+                        </button>
                       </TableCell>
                     </TableRow>
                   ))

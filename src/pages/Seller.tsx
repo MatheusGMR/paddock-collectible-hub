@@ -9,7 +9,7 @@ import { useSellerData } from "@/hooks/useSellerData";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
-import { Loader2, Store, ArrowLeft } from "lucide-react";
+import { Loader2, Store, ArrowLeft, Share2 } from "lucide-react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -87,7 +87,20 @@ const SellerPage = () => {
         <main className="flex-1 overflow-auto">
           <header className="h-14 flex items-center gap-3 border-b border-border px-6">
             <SidebarTrigger />
-            <h1 className="text-lg font-semibold text-foreground">Painel do Lojista</h1>
+            <h1 className="text-lg font-semibold text-foreground flex-1">Painel do Lojista</h1>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2"
+              onClick={() => {
+                const url = `${window.location.origin}/user/${user?.id}`;
+                const text = `Confira minha loja na Paddock! 🏎️🔥\n${url}`;
+                window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
+              }}
+            >
+              <Share2 className="h-4 w-4" />
+              Compartilhar Loja
+            </Button>
           </header>
           <div className="p-6">
             <Routes>
