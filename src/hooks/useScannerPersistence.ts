@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 const SCANNER_STORAGE_KEY = "paddock_scanner_pending_results";
-const SCANNER_EXPIRY_HOURS = 24;
+const SCANNER_EXPIRY_HOURS = 12;
 
 export interface PendingScanResult {
   capturedImage: string;
