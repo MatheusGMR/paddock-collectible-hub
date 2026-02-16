@@ -217,7 +217,14 @@ serve(async (req) => {
       if (detectedType === "real_car") return !r?.identified || !r?.car;
       const itemsLen = Array.isArray(r?.items) ? r.items.length : 0;
       const count = typeof r?.count === "number" ? r.count : itemsLen;
-      return !r?.identified || count === 0 || itemsLen === 0;
+      if (!r?.identified || count === 0 || itemsLen === 0) return true;
+      // Check if identification quality is poor (all "Desconhecido" or empty)
+      const firstItem = r.items[0];
+      const brand = firstItem?.realCar?.brand || firstItem?.car?.brand || "";
+      const model = firstItem?.realCar?.model || firstItem?.car?.model || "";
+      const unknowns = ["desconhecido", "unknown", "n/a", ""];
+      if (unknowns.includes(brand.toLowerCase()) && unknowns.includes(model.toLowerCase())) return true;
+      return false;
     };
 
     const fetchAndParse = async (model: string, attempt: number, reason: string) => {
