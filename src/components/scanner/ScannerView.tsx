@@ -2155,8 +2155,10 @@ export const ScannerView = () => {
       
       {/* Camera/Preview View */}
       <div
-        className={`relative flex-1 overflow-hidden ${useCameraPreview ? 'bg-transparent' : 'bg-black'}`}
+        className={`relative flex-1 overflow-hidden select-none ${useCameraPreview ? 'bg-transparent' : 'bg-black'}`}
+        style={{ WebkitUserSelect: 'none', WebkitTouchCallout: 'none' } as React.CSSProperties}
         onTouchStart={(e) => {
+          e.preventDefault();
           if (e.touches.length === 2) {
             const dx = e.touches[0].clientX - e.touches[1].clientX;
             const dy = e.touches[0].clientY - e.touches[1].clientY;
