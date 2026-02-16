@@ -129,14 +129,21 @@ async function subscribeNative(userId: string): Promise<boolean> {
     }
 
     return new Promise<boolean>((resolve) => {
+      let resolved = false;
+      
       // Timeout in case listener never fires
       const timeout = setTimeout(() => {
-        console.error('[Push Native] Token listener timed out after 15s');
-        resolve(false);
-      }, 15000);
+        if (!resolved) {
+          resolved = true;
+          console.error('[Push Native] Token listener timed out after 20s — ensure Push Notifications capability is enabled in Xcode and APNs key is configured');
+          resolve(false);
+        }
+      }, 20000);
 
       // IMPORTANT: Attach listeners BEFORE calling register()
       plugin.addListener('registration', async (token) => {
+        if (resolved) return;
+        resolved = true;
         clearTimeout(timeout);
         console.log('[Push Native] Token received:', token.value?.substring(0, 20) + '...');
 
@@ -166,17 +173,21 @@ async function subscribeNative(userId: string): Promise<boolean> {
       });
 
       plugin.addListener('registrationError', (err) => {
+        if (resolved) return;
+        resolved = true;
         clearTimeout(timeout);
         console.error('[Push Native] Registration error:', JSON.stringify(err));
         resolve(false);
       });
 
       // On iOS, register() implicitly requests permission + registers for APNs
-      // Calling requestPermissions() separately can hang on some iOS versions
+      // Do NOT call requestPermissions() separately — it can interfere
       console.log('[Push Native] Calling register() (handles permission + APNs)...');
       plugin.register().then(() => {
         console.log('[Push Native] register() resolved, waiting for token event...');
       }).catch((regError: Error) => {
+        if (resolved) return;
+        resolved = true;
         clearTimeout(timeout);
         console.error('[Push Native] register() threw:', regError);
         resolve(false);
