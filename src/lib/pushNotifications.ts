@@ -89,7 +89,7 @@ export async function isSubscribedToPush(): Promise<boolean> {
   try {
     if (!isPushSupported()) return false;
     const registration = await navigator.serviceWorker.ready;
-    const subscription = await registration.pushManager.getSubscription();
+    const subscription = await (registration as any).pushManager.getSubscription();
     return !!subscription;
   } catch {
     return false;
@@ -218,7 +218,7 @@ async function subscribeWeb(userId: string): Promise<boolean> {
     await navigator.serviceWorker.ready;
 
     const applicationServerKey = urlBase64ToUint8Array(vapidData.publicKey);
-    const subscription = await registration.pushManager.subscribe({
+    const subscription = await (registration as any).pushManager.subscribe({
       userVisibleOnly: true,
       applicationServerKey: applicationServerKey.buffer as ArrayBuffer,
     });
@@ -251,7 +251,7 @@ async function subscribeWeb(userId: string): Promise<boolean> {
 async function unsubscribeWeb(): Promise<boolean> {
   try {
     const registration = await navigator.serviceWorker.ready;
-    const subscription = await registration.pushManager.getSubscription();
+    const subscription = await (registration as any).pushManager.getSubscription();
 
     if (subscription) {
       await supabase.functions.invoke('push-subscribe', {
