@@ -185,8 +185,20 @@ export default function ListingDetails() {
             size="icon"
             onClick={() => {
               const url = `${window.location.origin}/listing/${listing.id}`;
-              const text = `Confira este item na Paddock! 🏎️\n${listing.title} - ${formatPrice(listing.price, listing.currency)}\n${url}`;
-              window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
+              const rarityLabel = item?.rarity_tier ? ` \u2022 ${item.rarity_tier.charAt(0).toUpperCase() + item.rarity_tier.slice(1)}` : "";
+              const sellerLabel = sellerProfile ? `\n\ud83c\udfea Vendido por *@${sellerProfile.username}*` : "";
+              const lines = [
+                `\ud83c\udfce\ufe0f *${listing.title}*${rarityLabel}`,
+                `\ud83d\udcb0 *${formatPrice(listing.price, listing.currency)}*`,
+                ``,
+                item?.real_car_brand ? `\ud83d\ude97 ${item.real_car_brand} ${item.real_car_model}${item.real_car_year ? ` (${item.real_car_year})` : ""}` : null,
+                item?.collectible_manufacturer ? `\ud83c\udfed ${item.collectible_manufacturer}${item.collectible_scale ? ` \u2022 Escala ${item.collectible_scale}` : ""}` : null,
+                sellerLabel,
+                ``,
+                `Compre agora com seguran\u00e7a na Paddock:`,
+                `\ud83d\udc49 ${url}`,
+              ].filter(Boolean).join("\n");
+              window.open(`https://wa.me/?text=${encodeURIComponent(lines)}`, "_blank");
             }}
             title="Compartilhar via WhatsApp"
           >

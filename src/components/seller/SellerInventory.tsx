@@ -170,7 +170,15 @@ export const SellerInventory = ({ inventory, loading }: SellerInventoryProps) =>
                         <button
                           onClick={() => {
                             const url = `${window.location.origin}/listing/${item.id}`;
-                            const text = `Confira este item na Paddock! 🏎️\n${item.title} - ${formatPrice(item.price, item.currency)}\n${url}`;
+                            const text = [
+                              `🏎️ *${item.title}*`,
+                              `💰 *${formatPrice(item.price, item.currency)}*`,
+                              ``,
+                              `Miniatura disponível na Paddock!`,
+                              `Compre com segurança via Apple Pay, Google Pay ou cartão.`,
+                              ``,
+                              `👉 ${url}`,
+                            ].join("\n");
                             window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
                           }}
                           className="p-1.5 rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-primary"
