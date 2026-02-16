@@ -28,18 +28,17 @@ export function DetectionIndicator({
   }
 
   // Web: COCO-SSD based indicator
-  if (isModelLoading) {
+  // Don't show loading state - just show normal hint until model is ready
+  if (!isModelReady) {
     return (
-      <div className="flex items-center gap-2 bg-black/40 backdrop-blur-sm rounded-full px-3 py-1.5 animate-fade-in">
-        <Crosshair className="h-3.5 w-3.5 text-white/50 animate-pulse-glow" />
-        <span className="text-[11px] text-white/50">
-          Preparando detecção...
+      <div className="flex items-center gap-2 bg-black/40 backdrop-blur-sm rounded-full px-3 py-1.5">
+        <ScanLine className="h-3.5 w-3.5 text-white/40 animate-pulse" />
+        <span className="text-[11px] text-white/40">
+          Aponte para um carrinho
         </span>
       </div>
     );
   }
-
-  if (!isModelReady) return null;
 
   const hasDetection = detectedCount > 0;
 
