@@ -1,6 +1,12 @@
 import { supabase } from '@/integrations/supabase/client';
 import { Capacitor } from '@capacitor/core';
 
+// ─── Types ───────────────────────────────────────────────────────
+export interface PushSubscribeResult {
+  success: boolean;
+  reason?: 'iframe_context' | 'sw_failed' | 'vapid_missing' | 'permission_denied' | 'token_timeout' | 'edge_function_error' | 'not_supported';
+}
+
 // ─── Native (Capacitor) helpers ──────────────────────────────────
 let nativePlugin: typeof import('@capacitor/push-notifications').PushNotifications | null = null;
 
@@ -33,7 +39,6 @@ export function isPushSupported(): boolean {
 /** Current permission status */
 export function getPushPermission(): NotificationPermission | 'unsupported' {
   if (Capacitor.isNativePlatform()) {
-    // On native we can't synchronously know – return 'default' and let the async check handle it
     return 'default';
   }
   if (!isPushSupported()) return 'unsupported';
@@ -47,11 +52,9 @@ export async function requestPushPermission(): Promise<NotificationPermission> {
       console.log('[Push Native] Requesting permissions...');
       const plugin = await getNativePlugin();
       
-      // Check current permission status first
       const currentStatus = await plugin.checkPermissions();
       console.log('[Push Native] Current permission status:', JSON.stringify(currentStatus));
       
-      // If already granted, skip the request
       if (currentStatus.receive === 'granted') {
         console.log('[Push Native] Already granted, skipping request');
         return 'granted';
@@ -69,12 +72,18 @@ export async function requestPushPermission(): Promise<NotificationPermission> {
     }
   }
 
-  if (!isPushSupported()) throw new Error('Push notifications not supported');
-  return Notification.requestPermission();
+  if (!isPushSupported()) return 'denied';
+  
+  try {
+    return await Notification.requestPermission();
+  } catch (error) {
+    console.error('[Push Web] requestPermission failed (possibly iframe context):', error);
+    return 'denied';
+  }
 }
 
-/** Subscribe to push notifications */
-export async function subscribeToPush(userId: string): Promise<boolean> {
+/** Subscribe to push notifications — returns typed result with reason */
+export async function subscribeToPush(userId: string): Promise<PushSubscribeResult> {
   if (Capacitor.isNativePlatform()) {
     return subscribeNative(userId);
   }
@@ -92,7 +101,6 @@ export async function unsubscribeFromPush(): Promise<boolean> {
 /** Check if currently subscribed */
 export async function isSubscribedToPush(): Promise<boolean> {
   if (Capacitor.isNativePlatform()) {
-    // Use local flag – checking permissions alone doesn't mean we registered
     return localStorage.getItem('push_native_subscribed') === 'true';
   }
 
@@ -108,7 +116,7 @@ export async function isSubscribedToPush(): Promise<boolean> {
 
 // ─── Native implementation ───────────────────────────────────────
 
-async function subscribeNative(userId: string): Promise<boolean> {
+async function subscribeNative(userId: string): Promise<PushSubscribeResult> {
   try {
     console.log('[Push Native] Starting subscribeNative...');
     let plugin;
@@ -117,7 +125,7 @@ async function subscribeNative(userId: string): Promise<boolean> {
       console.log('[Push Native] Plugin loaded OK');
     } catch (importError) {
       console.error('[Push Native] Failed to load plugin:', importError);
-      return false;
+      return { success: false, reason: 'not_supported' };
     }
 
     // Remove any stale listeners first
@@ -128,19 +136,17 @@ async function subscribeNative(userId: string): Promise<boolean> {
       console.warn('[Push Native] removeAllListeners error (non-fatal):', clearErr);
     }
 
-    return new Promise<boolean>((resolve) => {
+    return new Promise<PushSubscribeResult>((resolve) => {
       let resolved = false;
       
-      // Timeout in case listener never fires
       const timeout = setTimeout(() => {
         if (!resolved) {
           resolved = true;
-          console.error('[Push Native] Token listener timed out after 20s — ensure Push Notifications capability is enabled in Xcode and APNs key is configured');
-          resolve(false);
+          console.error('[Push Native] Token listener timed out after 20s');
+          resolve({ success: false, reason: 'token_timeout' });
         }
       }, 20000);
 
-      // IMPORTANT: Attach listeners BEFORE calling register()
       plugin.addListener('registration', async (token) => {
         if (resolved) return;
         resolved = true;
@@ -160,15 +166,15 @@ async function subscribeNative(userId: string): Promise<boolean> {
 
           if (error) {
             console.error('[Push Native] Failed to save token:', error);
-            resolve(false);
+            resolve({ success: false, reason: 'edge_function_error' });
           } else {
             console.log('[Push Native] Subscription saved successfully');
             localStorage.setItem('push_native_subscribed', 'true');
-            resolve(true);
+            resolve({ success: true });
           }
         } catch (invokeError) {
           console.error('[Push Native] Invoke error:', invokeError);
-          resolve(false);
+          resolve({ success: false, reason: 'edge_function_error' });
         }
       });
 
@@ -177,11 +183,9 @@ async function subscribeNative(userId: string): Promise<boolean> {
         resolved = true;
         clearTimeout(timeout);
         console.error('[Push Native] Registration error:', JSON.stringify(err));
-        resolve(false);
+        resolve({ success: false, reason: 'permission_denied' });
       });
 
-      // On iOS, register() implicitly requests permission + registers for APNs
-      // Do NOT call requestPermissions() separately — it can interfere
       console.log('[Push Native] Calling register() (handles permission + APNs)...');
       plugin.register().then(() => {
         console.log('[Push Native] register() resolved, waiting for token event...');
@@ -190,12 +194,12 @@ async function subscribeNative(userId: string): Promise<boolean> {
         resolved = true;
         clearTimeout(timeout);
         console.error('[Push Native] register() threw:', regError);
-        resolve(false);
+        resolve({ success: false, reason: 'permission_denied' });
       });
     });
   } catch (error) {
     console.error('[Push Native] Subscribe error:', error);
-    return false;
+    return { success: false, reason: 'not_supported' };
   }
 }
 
@@ -214,41 +218,78 @@ async function unsubscribeNative(): Promise<boolean> {
 
 // ─── Web (Service Worker) implementation ─────────────────────────
 
-async function registerServiceWorker(): Promise<ServiceWorkerRegistration | null> {
-  if (!('serviceWorker' in navigator)) return null;
+async function subscribeWeb(userId: string): Promise<PushSubscribeResult> {
   try {
-    const registration = await navigator.serviceWorker.register('/sw.js');
-    return registration;
-  } catch (error) {
-    console.error('Service Worker registration failed:', error);
-    return null;
-  }
-}
+    // 1. Check iframe context
+    const isIframe = window.self !== window.top;
+    if (isIframe) {
+      console.warn('[Push Web] Running inside iframe — Service Workers are blocked in cross-origin iframes');
+      return { success: false, reason: 'iframe_context' };
+    }
 
-async function subscribeWeb(userId: string): Promise<boolean> {
-  try {
+    // 2. Check basic support
+    if (!isPushSupported()) {
+      console.warn('[Push Web] Push API not supported in this browser');
+      return { success: false, reason: 'not_supported' };
+    }
+
+    // 3. Request permission (unified — no need to call separately)
+    console.log('[Push Web] Requesting notification permission...');
+    try {
+      const permission = await Notification.requestPermission();
+      console.log('[Push Web] Permission result:', permission);
+      if (permission !== 'granted') {
+        return { success: false, reason: 'permission_denied' };
+      }
+    } catch (permError) {
+      console.error('[Push Web] Permission request failed:', permError);
+      return { success: false, reason: 'permission_denied' };
+    }
+
+    // 4. Get VAPID key from Edge Function
+    console.log('[Push Web] Fetching VAPID key...');
     const { data: vapidData, error: vapidError } = await supabase.functions.invoke('push-subscribe', {
       body: { action: 'getVapidKey' },
     });
 
     if (vapidError || !vapidData?.publicKey) {
-      console.error('Failed to get VAPID key:', vapidError);
-      return false;
+      console.error('[Push Web] Failed to get VAPID key:', vapidError, vapidData);
+      return { success: false, reason: 'vapid_missing' };
+    }
+    console.log('[Push Web] VAPID key received');
+
+    // 5. Register Service Worker
+    console.log('[Push Web] Registering Service Worker...');
+    if (!('serviceWorker' in navigator)) {
+      console.error('[Push Web] navigator.serviceWorker not available');
+      return { success: false, reason: 'sw_failed' };
     }
 
-    const registration = await registerServiceWorker();
-    if (!registration) return false;
+    let registration: ServiceWorkerRegistration;
+    try {
+      registration = await navigator.serviceWorker.register('/sw.js');
+      console.log('[Push Web] SW registered, scope:', registration.scope);
+    } catch (swError) {
+      console.error('[Push Web] SW registration failed:', swError);
+      return { success: false, reason: 'sw_failed' };
+    }
 
     await navigator.serviceWorker.ready;
+    console.log('[Push Web] SW ready');
 
+    // 6. Subscribe to PushManager
+    console.log('[Push Web] Subscribing to PushManager...');
     const applicationServerKey = urlBase64ToUint8Array(vapidData.publicKey);
     const subscription = await (registration as any).pushManager.subscribe({
       userVisibleOnly: true,
       applicationServerKey: applicationServerKey.buffer as ArrayBuffer,
     });
+    console.log('[Push Web] PushManager subscription created');
 
     const subscriptionJson = subscription.toJSON();
 
+    // 7. Save subscription to Edge Function
+    console.log('[Push Web] Saving subscription to backend...');
     const { error } = await supabase.functions.invoke('push-subscribe', {
       body: {
         action: 'subscribe',
@@ -261,14 +302,15 @@ async function subscribeWeb(userId: string): Promise<boolean> {
     });
 
     if (error) {
-      console.error('Failed to save subscription:', error);
-      return false;
+      console.error('[Push Web] Failed to save subscription:', error);
+      return { success: false, reason: 'edge_function_error' };
     }
 
-    return true;
+    console.log('[Push Web] ✅ Subscription complete!');
+    return { success: true };
   } catch (error) {
-    console.error('Push subscription error:', error);
-    return false;
+    console.error('[Push Web] Unexpected error:', error);
+    return { success: false, reason: 'sw_failed' };
   }
 }
 
