@@ -179,7 +179,9 @@ export const getCollectionWithIndex = async (userId: string): Promise<Collection
         index_breakdown,
         music_suggestion,
         music_selection_reason,
-        real_car_photos
+        real_car_photos,
+        estimated_value_min,
+        estimated_value_max
       )
     `)
     .eq("user_id", userId)
@@ -209,7 +211,9 @@ export const getCollectionWithIndex = async (userId: string): Promise<Collection
       index_breakdown: parseIndexBreakdown(item.item.index_breakdown),
       music_suggestion: item.item.music_suggestion,
       music_selection_reason: item.item.music_selection_reason,
-      real_car_photos: item.item.real_car_photos as string[] | null
+      real_car_photos: item.item.real_car_photos as string[] | null,
+      estimated_value_min: (item.item as any).estimated_value_min,
+      estimated_value_max: (item.item as any).estimated_value_max,
     } : null
   }));
 };
@@ -324,7 +328,7 @@ export const getTopIndexItems = async (userId: string, limit: number = 10): Prom
 
 export const addToCollection = async (
   userId: string,
-  itemData: Omit<Item, "id" | "created_at">,
+  itemData: Omit<Item, "id" | "created_at"> & { estimated_value_min?: number | null; estimated_value_max?: number | null },
   imageUrl?: string
 ): Promise<CollectionItem> => {
   // First create the item
@@ -348,7 +352,9 @@ export const addToCollection = async (
       music_suggestion: itemData.music_suggestion,
       music_selection_reason: itemData.music_selection_reason,
       real_car_photos: itemData.real_car_photos as unknown as Json,
-    })
+      estimated_value_min: itemData.estimated_value_min || null,
+      estimated_value_max: itemData.estimated_value_max || null,
+    } as any)
     .select()
     .single();
 
@@ -586,4 +592,58 @@ export const deleteFromCollection = async (collectionItemId: string): Promise<vo
     .eq("id", collectionItemId);
 
   if (error) throw error;
+};
+
+// =====================================================
+// PRICE ESTIMATES
+// =====================================================
+
+export interface PriceEstimateInput {
+  item_id: string | null;
+  user_id: string;
+  source: 'ai' | 'user_guess' | 'user_paid';
+  price_min_brl?: number | null;
+  price_max_brl?: number | null;
+  price_brl?: number | null;
+  notes?: string | null;
+}
+
+export const savePriceEstimate = async (input: PriceEstimateInput): Promise<void> => {
+  const { error } = await supabase
+    .from("price_estimates" as any)
+    .insert({
+      item_id: input.item_id,
+      user_id: input.user_id,
+      source: input.source,
+      price_min_brl: input.price_min_brl || null,
+      price_max_brl: input.price_max_brl || null,
+      price_brl: input.price_brl || null,
+      notes: input.notes || null,
+      currency: 'BRL',
+    });
+
+  if (error) throw error;
+};
+
+export const getCollectionTotalValue = async (userId: string): Promise<{ min: number; max: number }> => {
+  const { data, error } = await supabase
+    .from("user_collection")
+    .select(`
+      item:items!inner(
+        estimated_value_min,
+        estimated_value_max
+      )
+    `)
+    .eq("user_id", userId);
+
+  if (error) throw error;
+
+  let min = 0;
+  let max = 0;
+  (data || []).forEach((row: any) => {
+    if (row.item?.estimated_value_min) min += Number(row.item.estimated_value_min);
+    if (row.item?.estimated_value_max) max += Number(row.item.estimated_value_max);
+  });
+
+  return { min, max };
 };

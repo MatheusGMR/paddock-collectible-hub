@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { X, Car, Package, History, ChevronDown, ChevronUp, Trash2, Loader2, ImageOff } from "lucide-react";
+import { X, Car, Package, History, ChevronDown, ChevronUp, Trash2, Loader2, ImageOff, TrendingUp } from "lucide-react";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerClose } from "@/components/ui/drawer";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { IndexBadge } from "@/components/index/IndexBadge";
 import { IndexBreakdown } from "@/components/index/IndexBreakdown";
-import { PriceIndexBreakdown, getRarityTier } from "@/lib/priceIndex";
+import { PriceIndexBreakdown, getRarityTier, formatBRL } from "@/lib/priceIndex";
 import { MusicPlayer } from "@/components/scanner/MusicPlayer";
 import { RealCarPhotoCarousel } from "@/components/collection/RealCarPhotoCarousel";
 import { cn } from "@/lib/utils";
@@ -42,6 +42,8 @@ export interface CollectibleDetailItem {
     music_suggestion?: string | null;
     music_selection_reason?: string | null;
     real_car_photos?: string[] | null;
+    estimated_value_min?: number | null;
+    estimated_value_max?: number | null;
   } | null;
 }
 
@@ -188,6 +190,19 @@ export const CollectibleDetailCard = ({ item, open, onOpenChange, onDelete }: Co
                     tier={tier}
                     onClick={() => setBreakdownOpen(true)}
                   />
+                </div>
+              )}
+
+              {/* Market Value */}
+              {data.estimated_value_min != null && data.estimated_value_max != null && data.estimated_value_min > 0 && (
+                <div className="rounded-xl border border-border/50 bg-card/80 p-4 space-y-1">
+                  <div className="flex items-center gap-2 mb-2">
+                    <TrendingUp className="h-4 w-4 text-primary" />
+                    <span className="text-sm font-semibold text-foreground">Valor de Mercado</span>
+                  </div>
+                  <p className="text-xl font-bold text-foreground text-center">
+                    {formatBRL(data.estimated_value_min)} – {formatBRL(data.estimated_value_max)}
+                  </p>
                 </div>
               )}
               

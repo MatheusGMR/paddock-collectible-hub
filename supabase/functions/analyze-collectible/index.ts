@@ -70,6 +70,12 @@ Breakdown com "score", "max", "reason" para CADA:
 - age (máx 10): idade e impacto
 Tiers: ultra_rare(85+), super_rare(70-84), rare(50-69), uncommon(30-49), common(<30).
 
+marketValue (OBRIGATÓRIO para colecionáveis):
+Estime o valor de mercado em Reais (BRL) considerando preços típicos em OLX, Mercado Livre, Shopee, feiras de colecionadores, grupos de Facebook/WhatsApp, e estado de conservação/raridade.
+Formato: marketValue: {"min": N, "max": N, "currency": "BRL", "source": "descrição das fontes consultadas", "confidence": "high"|"medium"|"low"}
+- min/max: faixa de preço em Reais inteiros
+- source: ex: "Baseado em OLX, Mercado Livre e feiras"
+- confidence: alta se dados abundantes, média se estimativa razoável, baixa se poucos dados
 condition: "Excelente"|"Muito Bom"|"Bom"|"Regular"|"Ruim"
 origin: "Brasil"|"EUA"|"China"|"Japão"|"Tailândia"|etc.
 
@@ -81,7 +87,7 @@ Apenas JSON, sem markdown.
 
 FORMATO OBRIGATÓRIO DE RESPOSTA (use EXATAMENTE estas chaves):
 Para colecionáveis:
-{"identified":true, "detectedType":"collectible", "count":N, "items":[{boundingBox, realCar, collectible, priceIndex, musicSuggestion, musicSelectionReason, musicListeningTip}]}
+{"identified":true, "detectedType":"collectible", "count":N, "items":[{boundingBox, realCar, collectible, priceIndex, marketValue, musicSuggestion, musicSelectionReason, musicListeningTip}]}
 
 Para carros reais:
 {"identified":true, "detectedType":"real_car", "car":{"brand":"...","model":"...","year":"...","variant":"...","bodyStyle":"...","color":"..."}, "searchTerms":["..."], "confidence":"high"|"medium"|"low"}

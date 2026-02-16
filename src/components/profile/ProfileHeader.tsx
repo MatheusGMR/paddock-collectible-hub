@@ -8,6 +8,8 @@ import { QRCodeSheet } from "@/components/social/QRCodeSheet";
 import { QRScannerSheet } from "@/components/social/QRScannerSheet";
 import { MessagesSheet } from "@/components/messages/MessagesSheet";
 import { getTotalUnreadCount, subscribeToConversationUpdates } from "@/lib/api/messages";
+import { getCollectionTotalValue } from "@/lib/database";
+import { formatBRL } from "@/lib/priceIndex";
 import { cn } from "@/lib/utils";
 import paddockWordmark from "@/assets/paddock-wordmark-new.png";
 interface ProfileHeaderProps {
@@ -34,6 +36,7 @@ export const ProfileHeader = ({ user, onEditProfile, onSettings }: ProfileHeader
   const [qrScannerOpen, setQrScannerOpen] = useState(false);
   const [messagesOpen, setMessagesOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [collectionValue, setCollectionValue] = useState<{ min: number; max: number } | null>(null);
 
   const loadUnreadCount = useCallback(async () => {
     if (!authUser) return;
@@ -52,6 +55,14 @@ export const ProfileHeader = ({ user, onEditProfile, onSettings }: ProfileHeader
 
     return unsubscribe;
   }, [authUser, loadUnreadCount]);
+
+  // Load collection total value
+  useEffect(() => {
+    if (!authUser) return;
+    getCollectionTotalValue(authUser.id)
+      .then(setCollectionValue)
+      .catch(() => {});
+  }, [authUser, user.collection]);
 
   const handleMessagesOpen = (open: boolean) => {
     setMessagesOpen(open);
@@ -146,6 +157,11 @@ export const ProfileHeader = ({ user, onEditProfile, onSettings }: ProfileHeader
             </p>
             {user.city && (
               <p className="text-xs text-muted-foreground">📍 {user.city}</p>
+            )}
+            {collectionValue && collectionValue.max > 0 && (
+              <p className="text-xs font-medium text-primary mt-1">
+                💰 Coleção estimada: {formatBRL(collectionValue.min)} – {formatBRL(collectionValue.max)}
+              </p>
             )}
           </div>
 
