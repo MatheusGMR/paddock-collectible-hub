@@ -905,6 +905,7 @@ export type Database = {
           city: string | null
           created_at: string
           id: string
+          is_seller: boolean
           phone: string | null
           show_collection_value: boolean
           updated_at: string
@@ -917,6 +918,7 @@ export type Database = {
           city?: string | null
           created_at?: string
           id?: string
+          is_seller?: boolean
           phone?: string | null
           show_collection_value?: boolean
           updated_at?: string
@@ -929,6 +931,7 @@ export type Database = {
           city?: string | null
           created_at?: string
           id?: string
+          is_seller?: boolean
           phone?: string | null
           show_collection_value?: boolean
           updated_at?: string
@@ -1097,6 +1100,78 @@ export type Database = {
           id?: string
           metadata?: Json | null
           user_id?: string | null
+        }
+        Relationships: []
+      }
+      seller_details: {
+        Row: {
+          address_city: string | null
+          address_complement: string | null
+          address_country: string | null
+          address_neighborhood: string | null
+          address_number: string | null
+          address_state: string | null
+          address_street: string | null
+          address_zip: string | null
+          bank_account: string | null
+          bank_account_type: string | null
+          bank_agency: string | null
+          bank_name: string | null
+          business_name: string | null
+          created_at: string
+          document_number: string | null
+          id: string
+          phone: string | null
+          pix_key: string | null
+          stripe_account_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          address_city?: string | null
+          address_complement?: string | null
+          address_country?: string | null
+          address_neighborhood?: string | null
+          address_number?: string | null
+          address_state?: string | null
+          address_street?: string | null
+          address_zip?: string | null
+          bank_account?: string | null
+          bank_account_type?: string | null
+          bank_agency?: string | null
+          bank_name?: string | null
+          business_name?: string | null
+          created_at?: string
+          document_number?: string | null
+          id?: string
+          phone?: string | null
+          pix_key?: string | null
+          stripe_account_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          address_city?: string | null
+          address_complement?: string | null
+          address_country?: string | null
+          address_neighborhood?: string | null
+          address_number?: string | null
+          address_state?: string | null
+          address_street?: string | null
+          address_zip?: string | null
+          bank_account?: string | null
+          bank_account_type?: string | null
+          bank_agency?: string | null
+          bank_name?: string | null
+          business_name?: string | null
+          created_at?: string
+          document_number?: string | null
+          id?: string
+          phone?: string | null
+          pix_key?: string | null
+          stripe_account_id?: string | null
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -1294,6 +1369,8 @@ export type Database = {
           visual_cues: string
         }[]
       }
+      get_seller_customers: { Args: { p_seller_id: string }; Returns: Json }
+      get_seller_inventory: { Args: { p_seller_id: string }; Returns: Json }
       get_seller_receivables: { Args: { p_seller_id: string }; Returns: Json }
       has_role: {
         Args: {
