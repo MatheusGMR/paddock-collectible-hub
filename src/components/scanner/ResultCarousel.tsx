@@ -307,6 +307,12 @@ export const ResultCarousel = ({
 
   const handleTouchEnd = (e: React.TouchEvent) => {
     const deltaY = e.changedTouches[0].clientY - dragStartY.current;
+    // Only respond to intentional swipes (>50px), ignore taps
+    if (Math.abs(deltaY) < 30) {
+      // Tap on handle: toggle expand/collapse
+      setIsExpanded(prev => !prev);
+      return;
+    }
     if (deltaY > 50) setIsExpanded(false);  // Swipe down = collapse
     if (deltaY < -50) setIsExpanded(true);  // Swipe up = expand
   };
