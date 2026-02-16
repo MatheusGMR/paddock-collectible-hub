@@ -93,8 +93,19 @@ const SellerPage = () => {
               size="sm"
               className="gap-2"
               onClick={() => {
+                const storeName = sellerDetails?.business_name || "minha loja";
                 const url = `${window.location.origin}/user/${user?.id}`;
-                const text = `Confira minha loja na Paddock! 🏎️🔥\n${url}`;
+                const text = [
+                  `🏁 *${storeName}* na Paddock`,
+                  ``,
+                  `Miniaturas exclusivas, peças raras e colecionáveis selecionados a dedo.`,
+                  ``,
+                  `🔍 Veja o catálogo completo:`,
+                  url,
+                  ``,
+                  `📦 Envio para todo o Brasil`,
+                  `💳 Pagamento seguro via Apple Pay, Google Pay e cartão`,
+                ].join("\n");
                 window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
               }}
             >
