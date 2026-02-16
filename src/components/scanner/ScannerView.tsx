@@ -846,7 +846,7 @@ export const ScannerView = () => {
         
         // Analyze the image
         const { data, error } = await supabase.functions.invoke("analyze-collectible", {
-          body: { imageBase64: result.base64Image },
+          body: { imageBase64: result.base64Image, skipML: true },
         });
         
         if (error) {
@@ -1058,7 +1058,7 @@ export const ScannerView = () => {
 
       // Analyze the captured image
       const { data, error } = await supabase.functions.invoke("analyze-collectible", {
-        body: { imageBase64 },
+        body: { imageBase64, skipML: true },
       });
 
       if (error) throw error;
@@ -1167,8 +1167,8 @@ export const ScannerView = () => {
 
     if (!context) return;
 
-    // Downscale to max 1280px for faster upload & AI processing
-    const MAX_DIM = 1280;
+    // Downscale to max 800px for faster upload & AI processing
+    const MAX_DIM = 800;
     let w = video.videoWidth;
     let h = video.videoHeight;
     if (w > MAX_DIM || h > MAX_DIM) {
@@ -1180,7 +1180,7 @@ export const ScannerView = () => {
     canvas.height = h;
     context.drawImage(video, 0, 0, w, h);
 
-    const imageBase64 = canvas.toDataURL("image/jpeg", 0.85);
+    const imageBase64 = canvas.toDataURL("image/jpeg", 0.70);
     
     // 1. IMMEDIATELY stop camera and show captured image (freeze the frame)
     stopCamera();
@@ -1195,7 +1195,7 @@ export const ScannerView = () => {
     try {
       // Single unified call - AI auto-detects if it's a toy or real car
       const { data, error } = await supabase.functions.invoke("analyze-collectible", {
-        body: { imageBase64 },
+        body: { imageBase64, skipML: true },
       });
 
       if (error) throw error;
@@ -1334,7 +1334,7 @@ export const ScannerView = () => {
 
       // Analyze the captured image
       const { data, error } = await supabase.functions.invoke("analyze-collectible", {
-        body: { imageBase64 },
+        body: { imageBase64, skipML: true },
       });
 
       if (error) throw error;
@@ -1443,7 +1443,7 @@ export const ScannerView = () => {
       trackEvent("scan_initiated", { source: "native_gallery" });
 
       const { data, error } = await supabase.functions.invoke("analyze-collectible", {
-        body: { imageBase64 },
+        body: { imageBase64, skipML: true },
       });
 
       if (error) throw error;
@@ -1523,7 +1523,7 @@ export const ScannerView = () => {
       console.log("[Scanner] Sending video for analysis...");
       
       const { data, error } = await supabase.functions.invoke("analyze-collectible", {
-        body: { imageBase64: videoBase64 },
+        body: { imageBase64: videoBase64, skipML: true },
       });
 
       if (error) throw error;
@@ -1685,7 +1685,7 @@ export const ScannerView = () => {
 
         try {
           const { data, error } = await supabase.functions.invoke("analyze-collectible", {
-            body: { imageBase64 },
+            body: { imageBase64, skipML: true },
           });
 
           if (error) throw error;
