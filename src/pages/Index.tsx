@@ -99,7 +99,7 @@ const Index = () => {
     };
   }, [curiosity]);
 
-  // Build unified feed: interleave 1 news every 3 posts
+  // Build unified feed: interleave 1 news every 3 posts (or after fewer if not enough posts)
   const unifiedFeed: FeedItem[] = useMemo(() => {
     const items: FeedItem[] = [];
     let newsIndex = 0;
@@ -109,9 +109,16 @@ const Index = () => {
     const hash = curiosity?.id?.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) || 0;
     const actualCuriosityPos = curiosityPosition > 0 ? (hash % curiosityPosition) + 1 : -1;
 
-    // If no posts but has curiosity
-    if (posts.length === 0 && curiosityAsPost) {
-      items.push({ type: "post", data: curiosityAsPost });
+    // If no posts, show news directly
+    if (posts.length === 0) {
+      if (curiosityAsPost) {
+        items.push({ type: "post", data: curiosityAsPost });
+      }
+      // Show available news articles
+      newsArticles.forEach(article => {
+        items.push({ type: "news", data: article });
+      });
+      return items;
     }
 
     for (let i = 0; i < posts.length; i++) {
@@ -122,11 +129,20 @@ const Index = () => {
         items.push({ type: "post", data: curiosityAsPost });
       }
 
-      // Insert news every 3 posts
-      if ((i + 1) % 3 === 0 && newsIndex < newsArticles.length) {
+      // Insert news every 3 posts, but also after posts 1-2 if we have few posts
+      const shouldInsertNews = (i + 1) % 3 === 0 || (posts.length < 3 && i === posts.length - 1);
+      if (shouldInsertNews && newsIndex < newsArticles.length) {
         items.push({ type: "news", data: newsArticles[newsIndex] });
         newsIndex++;
       }
+    }
+
+    // If there are remaining news articles, append them spaced out
+    while (newsIndex < newsArticles.length) {
+      items.push({ type: "news", data: newsArticles[newsIndex] });
+      newsIndex++;
+      // Stop after a reasonable amount so feed doesn't become all news
+      if (newsIndex >= Math.max(5, Math.ceil(posts.length / 2))) break;
     }
 
     return items;
