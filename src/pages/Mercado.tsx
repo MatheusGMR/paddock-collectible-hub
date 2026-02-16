@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Search, SlidersHorizontal, ShoppingBag } from "lucide-react";
+import { CartSheet } from "@/components/mercado/CartSheet";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
@@ -146,9 +147,12 @@ const Mercado = () => {
       {/* Header */}
       <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-lg border-b border-border pt-safe">
         <div className="px-4 py-3">
-          <div className="flex items-center gap-2 mb-3">
-            <ShoppingBag className="h-5 w-5 text-primary" />
-            <h1 className="text-lg font-bold text-foreground">{t.mercado.title}</h1>
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <ShoppingBag className="h-5 w-5 text-primary" />
+              <h1 className="text-lg font-bold text-foreground">{t.mercado.title}</h1>
+            </div>
+            <CartSheet />
           </div>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
