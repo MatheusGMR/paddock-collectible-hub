@@ -1,14 +1,15 @@
 import { useCallback, useMemo, useRef } from "react";
 import { Capacitor } from "@capacitor/core";
-import { CameraPreview, CameraPreviewOptions, CameraPreviewPictureOptions } from "@capacitor-community/camera-preview";
+import { CameraPreview, CameraPreviewOptions, CameraPreviewPictureOptions } from "@capgo/camera-preview";
 
 export interface NativeCameraPreviewResult {
   base64Image: string;
 }
 
 /**
- * Hook for using embedded camera preview on iOS/Android via @capacitor-community/camera-preview
+ * Hook for using embedded camera preview on iOS/Android via @capgo/camera-preview
  * This provides a live camera feed rendered behind the WebView for an immersive experience
+ * Includes setFocus support for tap-to-focus
  */
 export const useNativeCameraPreview = () => {
   const isNative = Capacitor.isNativePlatform();
@@ -28,19 +29,15 @@ export const useNativeCameraPreview = () => {
     try {
       console.log("[CameraPreview] Starting camera preview...");
       
-      // On iOS, let the plugin use UIScreen.main.bounds for fullscreen
-      // Passing explicit dimensions can cause issues with frame calculation
       const options: CameraPreviewOptions = {
         position: "rear",
-        toBack: true, // Render behind the WebView - CRITICAL
+        toBack: true,
         parent: "camera-preview-container",
         className: "camera-preview",
-        enableZoom: true,
         disableAudio: true,
         storeToFile: false,
         enableHighResolution: true,
-        // Note: Omitting width/height/x/y lets iOS use UIScreen.main.bounds
-      };
+      } as any;
       
       await CameraPreview.start(options);
       isStartedRef.current = true;
@@ -120,15 +117,32 @@ export const useNativeCameraPreview = () => {
     }
   }, [isNative]);
 
-  // Return stable object reference using useMemo
+  /**
+   * Set focus point on the camera (tap-to-focus)
+   * @param x normalized x coordinate (0-1) relative to preview bounds
+   * @param y normalized y coordinate (0-1) relative to preview bounds
+   */
+  const setFocus = useCallback(async (x: number, y: number): Promise<void> => {
+    if (!isNative || !isStartedRef.current) return;
+
+    try {
+      console.log(`[CameraPreview] Setting focus at (${x.toFixed(2)}, ${y.toFixed(2)})`);
+      await CameraPreview.setFocus({ x, y });
+      console.log("[CameraPreview] Focus set successfully");
+    } catch (error) {
+      console.error("[CameraPreview] Error setting focus:", error);
+    }
+  }, [isNative]);
+
   return useMemo(() => ({
     isNative,
     start,
     stop,
     capture,
     flip,
+    setFocus,
     get isStarted() {
       return isStartedRef.current;
     },
-  }), [isNative, start, stop, capture, flip]);
+  }), [isNative, start, stop, capture, flip, setFocus]);
 };

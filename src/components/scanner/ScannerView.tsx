@@ -2231,14 +2231,20 @@ export const ScannerView = () => {
               if (focusTimeoutRef.current) clearTimeout(focusTimeoutRef.current);
               focusTimeoutRef.current = setTimeout(() => setFocusPoint(null), 1500);
               
+              const normX = x / rect.width;
+              const normY = y / rect.height;
+              
+              // Native: use camera-preview setFocus
+              if (Capacitor.isNativePlatform() && useCameraPreview) {
+                cameraPreview.setFocus(normX, normY);
+              }
+              
               // Web: try to apply focus constraints
               if (!Capacitor.isNativePlatform() && streamRef.current) {
                 const track = streamRef.current.getVideoTracks()[0];
                 if (track) {
                   const capabilities = track.getCapabilities?.() as any;
                   if (capabilities?.focusMode?.includes?.('manual') || capabilities?.focusMode?.includes?.('single-shot')) {
-                    const normX = x / rect.width;
-                    const normY = y / rect.height;
                     track.applyConstraints({
                       advanced: [{ 
                         focusMode: 'manual' as any,
