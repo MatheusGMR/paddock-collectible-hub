@@ -378,6 +378,9 @@ export default function ListingDetails() {
           variant="outline"
           className="w-full"
         />
+        <p className="text-[11px] text-muted-foreground text-center leading-tight">
+          Taxa por venda: R$ 1,99 + 4,99% sobre o valor do item.
+        </p>
       </div>
     </div>
   );
