@@ -170,7 +170,7 @@ serve(async (req) => {
 
     const isVid = imageBase64.startsWith("data:video/");
 
-    // Sanitize image data
+    // Sanitize and validate image data
     let imageUrl: string;
     if (imageBase64.startsWith("data:image/") || imageBase64.startsWith("data:video/")) {
       imageUrl = imageBase64;
@@ -180,6 +180,15 @@ serve(async (req) => {
     } else {
       imageUrl = `data:image/jpeg;base64,${imageBase64}`;
     }
+
+    // Validate base64 image is not corrupted/empty
+    const commaIdx = imageUrl.indexOf(",");
+    const base64Content = commaIdx >= 0 ? imageUrl.substring(commaIdx + 1) : "";
+    if (base64Content.length < 100) {
+      console.error("[Image] Base64 content too short:", base64Content.length, "chars. First 50:", imageUrl.substring(0, 50));
+      return new Response(JSON.stringify({ error: "Image data is too small or corrupted. Please try capturing again." }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+    console.log(`[Image] Format OK. Base64 length: ${base64Content.length}, prefix: ${imageUrl.substring(0, 30)}`);
 
     const uPrompt = isVid
       ? "Analyze video of collectible cars (max 7)."
@@ -225,6 +234,16 @@ serve(async (req) => {
       if (!res.ok) {
         const errorText = await res.text();
         console.error(`[OpenAI] Error ${res.status}:`, errorText);
+        
+        // Check for image_parse_error specifically
+        try {
+          const errJson = JSON.parse(errorText);
+          if (errJson?.error?.code === "image_parse_error") {
+            console.error(`[OpenAI] Image parse error. Image URL prefix: ${imageUrl.substring(0, 40)}, base64 length: ${base64Content.length}`);
+            return { ok: false as const, httpResponse: new Response(JSON.stringify({ error: "A imagem não pôde ser processada. Tente capturar novamente com melhor iluminação." }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }) };
+          }
+        } catch { /* not JSON */ }
+        
         if (res.status === 429) {
           return { ok: false as const, httpResponse: new Response(JSON.stringify({ error: "Rate limit. Try again." }), { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }) };
         }
