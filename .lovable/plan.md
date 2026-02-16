@@ -1,64 +1,123 @@
 
 
-# Perfil do Vendedor Clicavel no Anuncio
+# Carrinho de Compras no Mercado
 
-## Objetivo
-Tornar o card do vendedor na pagina de detalhes do anuncio (`ListingDetails`) mais rico e interativo, permitindo que o comprador veja informacoes relevantes do vendedor e navegue ate o perfil completo.
+## Resumo
+Implementar um sistema de carrinho de compras dentro do Mercado, permitindo que o usuario adicione multiplos anuncios ao carrinho e finalize a compra com um pagamento unico consolidado via Stripe.
 
-## O que muda
+## Fase 1: Carrinho (esta etapa)
 
-### 1. Enriquecer o card do vendedor (ListingDetails.tsx)
+### 1. Tabela `cart_items` no banco de dados
 
-O card do vendedor atual mostra apenas avatar, username e cidade. Sera expandido para incluir:
+Nova tabela para persistir o carrinho do usuario entre sessoes:
 
-- **Quantidade de itens na colecao** do vendedor (busca da tabela `user_collection`)
-- **Quantidade de seguidores** (busca da tabela `follows`)
-- **Indice medio de raridade** da colecao (calculado a partir dos itens)
-- **Botao "Ver Perfil"** que navega para `/user/:userId`
-- **Card inteiro clicavel** como alternativa ao botao
+```text
+cart_items
+-----------
+id          UUID (PK)
+user_id     TEXT (NOT NULL)
+listing_id  UUID (FK -> listings.id, NOT NULL)
+quantity    INT (default 1)
+created_at  TIMESTAMPTZ (default now())
 
-### 2. Buscar dados adicionais do vendedor
+UNIQUE(user_id, listing_id)
+RLS: usuarios so veem/editam seus proprios itens
+```
 
-No `useEffect` de `ListingDetails.tsx`, alem de buscar `username, avatar_url, city`, tambem buscar:
-- Contagem de itens na colecao (`getCollectionCount`)
-- Contagem de seguidores (`getFollowCounts`)
-- Indice medio de raridade (media dos `price_index` dos itens na colecao)
+### 2. Icone do carrinho no header do Mercado
 
-Essas funcoes ja existem em `src/lib/database.ts` (`getFollowCounts`, `getCollectionCount`).
+- Adicionar icone `ShoppingCart` no canto superior direito do header de `Mercado.tsx`
+- Badge com contador de itens no carrinho (numero vermelho)
+- Ao clicar, abre um Sheet (drawer) lateral com os itens do carrinho
 
-### 3. Navegacao para o perfil
+### 3. Botao "Adicionar ao Carrinho" nos listings
 
-Ao clicar no card do vendedor ou no botao "Ver Perfil", navegar para `/user/:userId` que ja existe e mostra o perfil completo com colecao, posts e opcao de seguir/enviar mensagem.
+- No `MarketplaceCard` e no `ListingDetails`, adicionar botao "Adicionar ao Carrinho" ao lado do botao de compra direta
+- Feedback visual (toast) ao adicionar
+- Prevenir duplicatas (UNIQUE constraint)
+
+### 4. Sheet do Carrinho (`CartSheet.tsx`)
+
+Novo componente drawer que mostra:
+- Lista de itens no carrinho com imagem, titulo, preco
+- Botao de remover item individual
+- Subtotal calculado
+- Botao "Finalizar Compra" que inicia o checkout consolidado
+
+### 5. Checkout Consolidado (Edge Function)
+
+Atualizar `create-payment` (ou criar `create-cart-payment`) para aceitar multiplos listing_ids:
+- Recebe array de listing_ids do carrinho
+- Cria uma unica sessao Stripe Checkout com multiplos `line_items`
+- Cada item vira um line_item separado na fatura
+- Apos sucesso, limpa o carrinho do usuario
+
+### 6. Pos-compra
+
+- Pagina de sucesso ja existente sera reaproveitada
+- Limpar os itens do carrinho apos pagamento confirmado
+- Atualizar status dos listings para "sold"
 
 ---
 
 ## Detalhes Tecnicos
 
-### Arquivo: `src/pages/ListingDetails.tsx`
+### Migracao SQL
+```text
+CREATE TABLE cart_items (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id TEXT NOT NULL,
+  listing_id UUID NOT NULL REFERENCES listings(id) ON DELETE CASCADE,
+  quantity INT NOT NULL DEFAULT 1,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  UNIQUE(user_id, listing_id)
+);
 
-**Dados adicionais no state:**
-```typescript
-const [sellerStats, setSellerStats] = useState<{
-  collection: number;
-  followers: number;
-  averageIndex: number | null;
-} | null>(null);
+ALTER TABLE cart_items ENABLE ROW LEVEL SECURITY;
+
+-- Usuarios so acessam seu proprio carrinho
+CREATE POLICY "Users manage own cart"
+  ON cart_items FOR ALL
+  USING (user_id = auth.uid()::text)
+  WITH CHECK (user_id = auth.uid()::text);
 ```
 
-**Busca no useEffect** (apos buscar o profile do vendedor):
-- Chamar `getCollectionCount(data.user_id)` e `getFollowCounts(data.user_id)`
-- Query para media do price_index dos itens da colecao do vendedor
+### Arquivos novos
+- `src/components/mercado/CartSheet.tsx` - Drawer do carrinho com lista de itens
+- `src/components/mercado/AddToCartButton.tsx` - Botao reutilizavel de adicionar ao carrinho
+- `src/hooks/useCart.ts` - Hook para gerenciar estado do carrinho (add, remove, count, total)
+- `supabase/functions/create-cart-payment/index.ts` - Edge function para checkout consolidado
 
-**Card do vendedor redesenhado:**
-- Card clicavel com `onClick={() => navigate(`/user/${listing.user_id}`)}`
-- Layout: avatar + username/cidade na esquerda, stats (itens, seguidores, indice) na direita
-- Seta indicando navegacao (ChevronRight)
-- Badge visual se o vendedor tiver indice alto ou muitos itens
+### Arquivos modificados
+- `src/pages/Mercado.tsx` - Adicionar icone do carrinho no header
+- `src/pages/ListingDetails.tsx` - Adicionar botao "Adicionar ao Carrinho" ao lado do "Comprar Agora"
+- `src/components/checkout/BuyButton.tsx` - Manter como opcao de compra direta
 
-### Imports adicionais
-- `getFollowCounts`, `getCollectionCount` de `@/lib/database`
-- `ChevronRight` de `lucide-react`
+### Hook `useCart`
+```text
+useCart() retorna:
+- items: CartItem[] (com dados do listing join)
+- count: number
+- total: number
+- isLoading: boolean
+- addItem(listingId)
+- removeItem(listingId)
+- clearCart()
+- checkout() -> abre Stripe
+```
 
-### Nenhuma alteracao de banco de dados necessaria
-Todas as tabelas e policies ja existem e permitem leitura publica dos dados necessarios.
+### Edge Function `create-cart-payment`
+- Recebe: { listing_ids: string[] }
+- Busca todos os listings no banco
+- Cria sessao Stripe com multiplos line_items (um por listing)
+- Retorna URL do checkout
+- Metadata inclui todos os listing_ids para rastreamento
+
+---
+
+## Fase 2 (proxima etapa - nao implementada agora)
+- Perfil de loja com dashboard web
+- Upload de estoque via Excel/CSV/imagem
+- Painel financeiro com vendas e recebiveis
+- Stripe Connect para distribuicao automatica aos vendedores
 
