@@ -299,11 +299,11 @@ export const ScannerView = () => {
         setAnalysisResults(validResults);
         setDetectedType(savedType);
         setIsInitializing(false);
+        // Keep persistence intact — only clear when user explicitly acts (add/skip/reset)
       } else {
         console.log("[Scanner] Discarding invalid pending results");
+        scannerPersistence.clearResult();
       }
-      // Always clear after checking
-      scannerPersistence.clearResult();
     }
   }, [scannerPersistence.hasPendingResult]);
   
