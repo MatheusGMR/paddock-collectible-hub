@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Fingerprint, Camera, Bell, Loader2, CheckCircle2 } from "lucide-react";
 import { Capacitor } from "@capacitor/core";
 import { useAuth } from "@/contexts/AuthContext";
-import { isPushSupported, subscribeToPush, requestPushPermission } from "@/lib/pushNotifications";
+import { isPushSupported, subscribeToPush } from "@/lib/pushNotifications";
 
 interface AuthStepPermissionsProps {
   onComplete: () => void;
@@ -54,13 +54,10 @@ export const AuthStepPermissions = ({
       }
 
       // 3. Push notifications
-      if (pushSupported) {
+      if (pushSupported && user?.id) {
         try {
-          const permission = await requestPushPermission();
-          if (permission === "granted" && user?.id) {
-            await subscribeToPush(user.id);
-          }
-          setPushDone(permission === "granted");
+          const result = await subscribeToPush(user.id);
+          setPushDone(result.success);
         } catch {
           // Not supported or denied
         }
@@ -101,11 +98,10 @@ export const AuthStepPermissions = ({
   const handlePush = async () => {
     setLoading(true);
     try {
-      const permission = await requestPushPermission();
-      if (permission === "granted" && user?.id) {
-        await subscribeToPush(user.id);
+      if (user?.id) {
+        const result = await subscribeToPush(user.id);
+        setPushDone(result.success);
       }
-      setPushDone(permission === "granted");
     } catch {
       // denied
     } finally {

@@ -9,11 +9,42 @@ import { useAuth } from "@/contexts/AuthContext";
 import {
   isPushSupported,
   getPushPermission,
-  requestPushPermission,
   subscribeToPush,
   unsubscribeFromPush,
   isSubscribedToPush,
+  type PushSubscribeResult,
 } from "@/lib/pushNotifications";
+
+const reasonMessages: Record<string, { title: string; description: string }> = {
+  iframe_context: {
+    title: "Ambiente restrito",
+    description: "Abra o app diretamente no navegador para ativar notificações",
+  },
+  sw_failed: {
+    title: "Erro no serviço",
+    description: "Erro ao registrar serviço de notificações. Tente recarregar a página",
+  },
+  vapid_missing: {
+    title: "Configuração incompleta",
+    description: "Configuração do servidor incompleta. Contate o suporte",
+  },
+  permission_denied: {
+    title: "Permissão negada",
+    description: "Habilite as notificações nas configurações do navegador/dispositivo",
+  },
+  token_timeout: {
+    title: "Timeout",
+    description: "Não foi possível registrar o dispositivo. Verifique sua conexão",
+  },
+  edge_function_error: {
+    title: "Erro no servidor",
+    description: "Erro ao salvar inscrição. Tente novamente",
+  },
+  not_supported: {
+    title: "Não suportado",
+    description: "Notificações push não são suportadas neste ambiente",
+  },
+};
 
 export const PushNotificationToggle = () => {
   const [isSupported, setIsSupported] = useState(false);
@@ -26,7 +57,6 @@ export const PushNotificationToggle = () => {
 
   useEffect(() => {
     const checkStatus = async () => {
-      // On native platforms, push is always supported via Capacitor
       const supported = isPushSupported() || Capacitor.isNativePlatform();
       setIsSupported(supported);
       
@@ -56,40 +86,25 @@ export const PushNotificationToggle = () => {
     
     try {
       if (checked) {
-        // Request permission if needed
-        if (permission !== 'granted') {
-          const newPermission = await requestPushPermission();
-          setPermission(newPermission);
-          
-          if (newPermission !== 'granted') {
-            toast({
-              title: t.news?.push?.permissionDenied || "Permissão negada",
-              description: t.news?.push?.permissionDeniedDesc || "Habilite as notificações nas configurações do navegador",
-              variant: "destructive",
-            });
-            setIsLoading(false);
-            return;
-          }
-        }
+        // Unified: subscribeToPush now handles permission internally
+        const result: PushSubscribeResult = await subscribeToPush(user.id);
         
-        // Subscribe
-        const success = await subscribeToPush(user.id);
-        
-        if (success) {
+        if (result.success) {
           setIsEnabled(true);
+          setPermission('granted');
           toast({
             title: t.news?.push?.enabled || "Notificações ativadas!",
             description: t.news?.push?.enabledDesc || "Você receberá alertas de novos lançamentos",
           });
         } else {
+          const msg = result.reason ? reasonMessages[result.reason] : null;
           toast({
-            title: t.news?.push?.error || "Erro",
-            description: t.news?.push?.errorDesc || "Não foi possível ativar as notificações",
+            title: msg?.title || t.news?.push?.error || "Erro",
+            description: msg?.description || t.news?.push?.errorDesc || "Não foi possível ativar as notificações",
             variant: "destructive",
           });
         }
       } else {
-        // Unsubscribe
         const success = await unsubscribeFromPush();
         
         if (success) {

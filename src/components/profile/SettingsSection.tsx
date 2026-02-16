@@ -24,10 +24,10 @@ import { useGuidedTips } from "@/contexts/GuidedTipsContext";
 import { useBiometricAuth } from "@/hooks/useBiometricAuth";
 import { 
   isPushSupported, 
-  requestPushPermission,
   subscribeToPush, 
   unsubscribeFromPush, 
-  isSubscribedToPush 
+  isSubscribedToPush,
+  type PushSubscribeResult,
 } from "@/lib/pushNotifications";
 import { useToast } from "@/hooks/use-toast";
 import { Capacitor } from "@capacitor/core";
@@ -99,44 +99,33 @@ export const SettingsSection = ({ onSignOut }: SettingsSectionProps) => {
     setPushLoading(true);
     try {
       if (enabled) {
-        if (Capacitor.isNativePlatform()) {
-          // On native, subscribeToPush handles permission + registration in one step
-          // Avoids separate checkPermissions() call that can trigger biometric re-auth
-          console.log('[Settings] Native: calling subscribeToPush directly...');
-          const success = await Promise.race([
-            subscribeToPush(user.id),
-            new Promise<boolean>((resolve) => setTimeout(() => {
-              console.error('[Settings] subscribeToPush timed out after 20s');
-              resolve(false);
-            }, 20000)),
-          ]);
-          console.log('[Settings] subscribeToPush result:', success);
-          if (!success) {
-            toast({
-              title: "Erro",
-              description: "Não foi possível ativar as notificações. Verifique as permissões nas configurações do dispositivo.",
-              variant: "destructive",
-            });
-          } else {
-            setPushEnabled(true);
-            toast({ title: "Notificações ativadas!" });
-          }
+        console.log('[Settings] Calling subscribeToPush...');
+        const result = await Promise.race([
+          subscribeToPush(user.id),
+          new Promise<PushSubscribeResult>((resolve) => setTimeout(() => {
+            console.error('[Settings] subscribeToPush timed out after 25s');
+            resolve({ success: false, reason: 'token_timeout' as const });
+          }, 25000)),
+        ]);
+        console.log('[Settings] subscribeToPush result:', result);
+        if (result.success) {
+          setPushEnabled(true);
+          toast({ title: "Notificações ativadas!" });
         } else {
-          // Web: need explicit permission request first
-          const permission = await requestPushPermission();
-          console.log('[Settings] Permission result:', permission);
-          if (permission !== 'granted') {
-            toast({
-              title: "Permissão negada",
-              description: "Habilite as notificações nas configurações do navegador",
-              variant: "destructive",
-            });
-            setPushLoading(false);
-            return;
-          }
-          const success = await subscribeToPush(user.id);
-          setPushEnabled(success);
-          if (success) toast({ title: "Notificações ativadas!" });
+          const reasonMessages: Record<string, string> = {
+            iframe_context: "Abra o app diretamente no navegador para ativar notificações",
+            sw_failed: "Erro ao registrar serviço de notificações. Tente recarregar a página",
+            vapid_missing: "Configuração do servidor incompleta. Contate o suporte",
+            permission_denied: "Permissão negada. Habilite nas configurações do dispositivo",
+            token_timeout: "Não foi possível registrar o dispositivo. Verifique sua conexão",
+            edge_function_error: "Erro ao salvar inscrição. Tente novamente",
+            not_supported: "Notificações push não são suportadas neste ambiente",
+          };
+          toast({
+            title: "Erro",
+            description: (result.reason && reasonMessages[result.reason]) || "Não foi possível ativar as notificações",
+            variant: "destructive",
+          });
         }
       } else {
         const success = await unsubscribeFromPush();
