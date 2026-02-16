@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Shield, MapPin, Calendar, Star, TrendingUp, ChevronRight, Package, Users } from "lucide-react";
+import { ArrowLeft, Shield, MapPin, Calendar, Star, TrendingUp, ChevronRight, Package, Users, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
@@ -177,9 +177,21 @@ export default function ListingDetails() {
           <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
             <ArrowLeft className="h-5 w-5" />
           </Button>
-          <span className="font-medium text-foreground line-clamp-1">
+          <span className="font-medium text-foreground line-clamp-1 flex-1">
             {listing.title}
           </span>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => {
+              const url = `${window.location.origin}/listing/${listing.id}`;
+              const text = `Confira este item na Paddock! 🏎️\n${listing.title} - ${formatPrice(listing.price, listing.currency)}\n${url}`;
+              window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
+            }}
+            title="Compartilhar via WhatsApp"
+          >
+            <Share2 className="h-5 w-5" />
+          </Button>
         </div>
       </div>
 
