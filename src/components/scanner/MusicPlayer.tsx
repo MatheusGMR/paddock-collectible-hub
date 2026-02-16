@@ -27,12 +27,17 @@ const parseMusicSuggestion = (suggestion: string) => {
   return { title: suggestion, artist: "", year: null };
 };
 
-// Get Spotify search URL
-const getSpotifySearchUrl = (title: string, artist: string) => {
+// Get Spotify search URL (web fallback)
+const getSpotifyWebUrl = (title: string, artist: string) => {
   const query = encodeURIComponent(`${title} ${artist}`.trim());
   return `https://open.spotify.com/search/${query}`;
 };
 
+// Get Spotify app URI for deep-linking directly into the app
+const getSpotifyAppUri = (title: string, artist: string) => {
+  const query = encodeURIComponent(`${title} ${artist}`.trim());
+  return `spotify:search:${query}`;
+};
 
 export const MusicPlayer = ({ 
   suggestion, 
@@ -43,28 +48,39 @@ export const MusicPlayer = ({
   const [isOpening, setIsOpening] = useState(false);
 
   const handlePlayClick = async () => {
-    const spotifyUrl = getSpotifySearchUrl(title, artist);
+    if (isOpening) return;
     
-    // Check if running on native platform (iOS/Android)
+    const webUrl = getSpotifyWebUrl(title, artist);
+    
     if (Capacitor.isNativePlatform()) {
       setIsOpening(true);
       try {
-        // Open Spotify in in-app browser (WebView)
-        await Browser.open({ 
-          url: spotifyUrl,
-          presentationStyle: 'popover',
-          toolbarColor: '#1DB954',
-        });
+        // Try to open Spotify app directly via URI scheme
+        // This opens the Spotify app's search, allowing immediate playback
+        const appUri = getSpotifyAppUri(title, artist);
+        console.log('[MusicPlayer] Trying Spotify app URI:', appUri);
+        
+        // Use a hidden iframe/link to test if the app is installed
+        // If the app handles the URI, it opens. If not, we fall back.
+        const opened = await tryOpenSpotifyApp(appUri);
+        
+        if (!opened) {
+          console.log('[MusicPlayer] Spotify app not available, opening in-app browser');
+          await Browser.open({ 
+            url: webUrl,
+            presentationStyle: 'popover',
+            toolbarColor: '#1DB954',
+          });
+        }
       } catch (error) {
-        console.error('Error opening in-app browser:', error);
-        // Fallback to external browser
-        window.open(spotifyUrl, "_blank", "noopener,noreferrer");
+        console.error('[MusicPlayer] Error:', error);
+        window.open(webUrl, "_blank", "noopener,noreferrer");
       } finally {
-        setIsOpening(false);
+        setTimeout(() => setIsOpening(false), 1000);
       }
     } else {
-      // Web fallback - open in new tab
-      window.open(spotifyUrl, "_blank", "noopener,noreferrer");
+      // Web: open Spotify web player in new tab
+      window.open(webUrl, "_blank", "noopener,noreferrer");
     }
   };
 
@@ -80,7 +96,7 @@ export const MusicPlayer = ({
           </div>
           <div className="flex-1">
             <p className="text-xs font-semibold text-primary">Trilha Sonora</p>
-            <p className="text-[10px] text-muted-foreground">Toque para ouvir</p>
+            <p className="text-[10px] text-muted-foreground">Toque para ouvir no Spotify</p>
           </div>
         </div>
 
@@ -102,7 +118,7 @@ export const MusicPlayer = ({
             )}
           </div>
 
-          {/* Play button - opens Spotify in WebView */}
+          {/* Play button */}
           <Button
             variant="ghost"
             size="icon"
@@ -169,3 +185,54 @@ export const MusicPlayer = ({
     </div>
   );
 };
+
+/**
+ * Attempt to open the Spotify app via URI scheme.
+ * On iOS, uses window.location to trigger the URI scheme.
+ * Returns true if the app likely opened (no visibility change timeout).
+ */
+async function tryOpenSpotifyApp(uri: string): Promise<boolean> {
+  return new Promise((resolve) => {
+    const start = Date.now();
+    let resolved = false;
+
+    // If the app opens, the webview loses focus / goes to background
+    const onBlur = () => {
+      if (!resolved) {
+        resolved = true;
+        cleanup();
+        resolve(true);
+      }
+    };
+
+    const cleanup = () => {
+      window.removeEventListener('blur', onBlur);
+      document.removeEventListener('visibilitychange', onVisChange);
+    };
+
+    const onVisChange = () => {
+      if (document.hidden && !resolved) {
+        resolved = true;
+        cleanup();
+        resolve(true);
+      }
+    };
+
+    window.addEventListener('blur', onBlur);
+    document.addEventListener('visibilitychange', onVisChange);
+
+    // Try to open the URI scheme
+    window.location.href = uri;
+
+    // If nothing happens after 1.5s, the app isn't installed
+    setTimeout(() => {
+      if (!resolved) {
+        resolved = true;
+        cleanup();
+        // Check if enough time passed without app switch
+        const elapsed = Date.now() - start;
+        resolve(elapsed > 2000); // If >2s passed, app probably opened slowly
+      }
+    }, 1500);
+  });
+}
