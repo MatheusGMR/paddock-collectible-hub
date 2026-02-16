@@ -244,8 +244,8 @@ export default function PaymentSuccess() {
             </div>
           )}
 
-          {/* Purchased item cards with reveal animation */}
-          <div className="space-y-4 max-w-md mx-auto">
+          {/* Purchased item cards with 3D flip reveal */}
+          <div className="space-y-6 max-w-md mx-auto">
             {purchasedItems.map((item, index) => (
               <PurchasedItemCard
                 key={item.id}
