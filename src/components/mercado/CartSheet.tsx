@@ -92,6 +92,10 @@ export const CartSheet = () => {
                 </span>
               </div>
 
+              <p className="text-[11px] text-muted-foreground text-center leading-tight">
+                Taxa por venda: R$ 1,99 + 4,99% sobre o valor do item.
+              </p>
+
               <Button
                 onClick={checkout}
                 disabled={isCheckingOut}
