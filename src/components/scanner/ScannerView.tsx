@@ -283,16 +283,26 @@ export const ScannerView = () => {
   const [postItemTitle, setPostItemTitle] = useState<string | undefined>();
   const [postCollectionItemId, setPostCollectionItemId] = useState<string | undefined>();
   
-  // Restore pending results from localStorage on mount
+  // Restore pending results from localStorage on mount — only if valid
   useEffect(() => {
     if (scannerPersistence.hasPendingResult && scannerPersistence.pendingResult) {
       const { capturedImage: savedImage, analysisResults: savedResults, detectedType: savedType } = scannerPersistence.pendingResult;
-      console.log("[Scanner] Restoring pending results from previous session");
-      setCapturedImage(savedImage);
-      setAnalysisResults(savedResults as AnalysisResult[]);
-      setDetectedType(savedType);
-      setIsInitializing(false);
-      // Clear the pending result after restoring
+      
+      // Validate: only restore if there are actual identified items
+      const validResults = (savedResults as AnalysisResult[]).filter(
+        item => item.realCar?.brand && item.realCar.brand !== 'Desconhecido'
+      );
+      
+      if (validResults.length > 0) {
+        console.log("[Scanner] Restoring pending results from previous session");
+        setCapturedImage(savedImage);
+        setAnalysisResults(validResults);
+        setDetectedType(savedType);
+        setIsInitializing(false);
+      } else {
+        console.log("[Scanner] Discarding invalid pending results");
+      }
+      // Always clear after checking
       scannerPersistence.clearResult();
     }
   }, [scannerPersistence.hasPendingResult]);
@@ -459,21 +469,25 @@ export const ScannerView = () => {
 
     // Cleanup: restore original backgrounds
     return () => {
-      console.log("[Scanner] Restoring original backgrounds");
+      console.log("[Scanner] Restoring original backgrounds after camera preview");
       
-      // Force restore to solid backgrounds to prevent black screen
+      // Force restore to solid, non-transparent backgrounds
+      const bgColor = "hsl(220, 22%, 7%)"; // --background from design system
+      html.style.backgroundColor = bgColor;
+      body.style.backgroundColor = bgColor;
+      if (root) {
+        root.style.backgroundColor = bgColor;
+      }
+      
+      // Remove any !important overrides
       html.style.removeProperty("background-color");
       body.style.removeProperty("background-color");
-      if (root) {
-        root.style.removeProperty("background-color");
-      }
+      if (root) root.style.removeProperty("background-color");
       
-      // Apply original or fallback to ensure no transparency remains
-      html.style.backgroundColor = originalHtmlBg || "";
-      body.style.backgroundColor = originalBodyBg || "";
-      if (root) {
-        root.style.backgroundColor = originalRootBg || "";
-      }
+      // Re-apply as normal (non-important) so CSS takes over
+      html.style.backgroundColor = "";
+      body.style.backgroundColor = "";
+      if (root) root.style.backgroundColor = "";
       
       // Force a repaint to ensure backgrounds are applied on iOS WebView
       requestAnimationFrame(() => {
@@ -753,13 +767,28 @@ export const ScannerView = () => {
         clearInterval(recordingTimerRef.current);
       }
       
-      // CRITICAL: Force restore backgrounds on unmount to prevent black screen
+      // CRITICAL: Force restore backgrounds on unmount to prevent transparent/invisible screen
       const html = document.documentElement;
       const body = document.body;
       const root = document.getElementById("root");
+      
+      // Remove any !important transparency overrides first
       html.style.removeProperty("background-color");
       body.style.removeProperty("background-color");
       if (root) root.style.removeProperty("background-color");
+      
+      // Clear inline styles so CSS variables take effect again
+      html.style.backgroundColor = "";
+      body.style.backgroundColor = "";
+      if (root) root.style.backgroundColor = "";
+      
+      // Force repaint
+      requestAnimationFrame(() => {
+        html.style.opacity = "0.999";
+        requestAnimationFrame(() => {
+          html.style.opacity = "";
+        });
+      });
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Empty deps - run only once on mount
@@ -2075,19 +2104,28 @@ export const ScannerView = () => {
   }, [startCamera, videoPreviewUrl, cameraPreview, scannerPersistence]);
 
   const handleClose = useCallback(() => {
-    // Save results if we have any pending items to add
+    // Only save results if we have SUCCESSFULLY identified items pending to add
+    // Failed/empty scans should NOT be persisted
     const remainingItems = analysisResults.filter((_, i) => !addedIndices.has(i) && !skippedIndices.has(i));
-    if (remainingItems.length > 0 && capturedImage && detectedType) {
+    const hasValidResults = remainingItems.length > 0 && 
+      capturedImage && 
+      detectedType &&
+      remainingItems.some(item => item.realCar?.brand && item.realCar.brand !== 'Desconhecido');
+    
+    if (hasValidResults) {
       scannerPersistence.saveResult({
-        capturedImage,
+        capturedImage: capturedImage!,
         analysisResults: remainingItems,
-        detectedType,
+        detectedType: detectedType!,
         timestamp: Date.now(),
       });
       toast({
         title: "Resultados salvos",
         description: "Você pode continuar adicionando carros quando voltar.",
       });
+    } else {
+      // Discard any previously saved failed results
+      scannerPersistence.clearResult();
     }
     stopCamera();
     navigate("/");
