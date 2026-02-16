@@ -1,110 +1,104 @@
 
 
-# Correcao das Notificacoes Push
+# Correcao do Scanner - Analise de Imagem
 
-## Diagnostico
+## Diagnostico (baseado nos logs do terminal)
 
-Apos analisar toda a cadeia de push notifications, identifiquei os seguintes problemas:
+### O que os logs revelam
 
-### Problema principal: A Edge Function nunca e invocada
+Os logs mostram que o scanner **captura a imagem corretamente** (base64 length ~330K), mas falha em dois pontos distintos:
 
-O fluxo falha **antes** de chegar na Edge Function. Existem dois cenarios possiveis:
+**Problema 1 - Resposta da IA sem formato esperado (scans 1 e 2)**
+- A IA retorna JSON valido mas sem as chaves obrigatorias que o app espera (`identified`, `items`, `count`)
+- O prompt atual descreve os campos de cada item mas nunca especifica a estrutura JSON de resposta
+- O `shouldRetry` dispara para ambos os modelos (primario e fallback), e o resultado fica como "nao identificado"
+- Evidencia: ambos os scans receberam respostas da IA (841-2228 chars) mas o app tratou como erro
 
-**Cenario A - Web (Preview/Browser):**
-O preview do Lovable roda dentro de um iframe cross-origin. Service Workers e a Push API **nao funcionam** em iframes cross-origin por restricoes de seguranca do navegador. Isso faz com que `subscribeWeb()` falhe silenciosamente ao tentar registrar o Service Worker (`/sw.js`), retornando `false`, e o toast de erro aparece.
+**Problema 2 - Truncamento de imagem por memoria do iOS (scan 3+)**
+- Apos multiplos scans, o WebView do iOS entra em pressao de memoria
+- Os logs mostram "Decoding incomplete with error code -1" repetidamente
+- O base64 da imagem e truncado de ~330K para apenas 380 caracteres antes de chegar no servidor
+- Evidencia no log: `base64 length: 380` na Edge Function vs `base64 length: 330179` no cliente
 
-**Cenario B - iOS Nativo (Capacitor):**
-No fluxo nativo, `subscribeNative()` registra listeners e chama `plugin.register()`. Se o APNs nao estiver configurado corretamente no Xcode (Push Notification Capability + APNs Key), o evento `registration` nunca dispara e o timeout de 20s resolve com `false`.
-
-### Problemas secundarios encontrados
-
-1. **`PushNotificationToggle`**: Na linha 60, o `handleToggle` chama `requestPushPermission()` separadamente e depois `subscribeToPush()`. No nativo, isso causa uma chamada dupla ao sistema de permissoes, pois `subscribeToPush` -> `subscribeNative` -> `register()` ja pede permissao internamente.
-
-2. **Toast generico**: A mensagem de erro "Nao foi possivel ativar as notificacoes" nao indica a causa real (falta de VAPID key, SW falhou, timeout nativo, etc), dificultando o debug.
-
-3. **Service Worker no Preview**: O `sw.js` e registrado em `/sw.js` mas no contexto do preview iframe isso falha sem log claro.
-
-4. **Sem fallback de diagnostico**: Nenhum console.log no fluxo web antes da chamada a Edge Function para identificar onde para.
+**Erros do terminal que NAO sao problemas:**
+- `UIScene lifecycle` - aviso informativo do iOS, sem impacto
+- `Unable to simultaneously satisfy constraints` - conflito de layout interno do UIKit (botoes de navegacao), nao afeta a WebView
+- `FigXPCUtilities signalled err=-17281` - erros da camera ao iniciar/parar, ja recuperados automaticamente
+- `RTIInputSystemClient` - erros de sessao de teclado, sem impacto
 
 ---
 
-## Plano de Correcao
+## Solucao
 
-### 1. Adicionar logs detalhados no fluxo web (`subscribeWeb`)
+### 1. Adicionar estrutura JSON explicita ao prompt (Edge Function)
 
-Adicionar `console.log` em cada etapa de `subscribeWeb()` em `src/lib/pushNotifications.ts` para identificar exatamente onde o fluxo quebra:
-- Antes de chamar a Edge Function para VAPID key
-- Antes/depois do registro do Service Worker
-- Antes/depois da inscricao no PushManager
+No `BASE_PROMPT`, adicionar um bloco claro com o formato de resposta esperado:
 
-### 2. Tratar erro de SW em contexto iframe
+```text
+FORMATO OBRIGATORIO DE RESPOSTA:
+Para colecionaveis:
+{"identified":true, "detectedType":"collectible", "count":N, "items":[...]}
 
-Antes de tentar registrar o Service Worker, verificar se estamos em um iframe e se o `navigator.serviceWorker` esta realmente disponivel e funcional. Se nao estiver, mostrar uma mensagem adequada ao usuario.
+Para carros reais:
+{"identified":true, "detectedType":"real_car", "car":{...}, "searchTerms":[], "confidence":"high"}
 
-Em `src/lib/pushNotifications.ts`:
-- Adicionar verificacao `window.self !== window.top` para detectar iframe
-- Retornar um erro claro em vez de falhar silenciosamente
+NUNCA use chaves diferentes de "items" para a lista.
+```
 
-### 3. Unificar o fluxo de permissao + inscricao no `PushNotificationToggle`
+Isso elimina a ambiguidade que faz a IA usar chaves como `vehicles`, `carros` ou `results`.
 
-Em `src/components/news/PushNotificationToggle.tsx`:
-- No `handleToggle`, quando `checked=true`, chamar **apenas** `subscribeToPush(user.id)` diretamente
-- Mover a logica de permissao para dentro de `subscribeToPush` (ja esta la para nativo, fazer o mesmo para web)
-- Eliminar a chamada separada a `requestPushPermission()` que duplica a solicitacao
+### 2. Mudar resolucao da imagem para "auto" no modelo primario
 
-### 4. Melhorar as mensagens de erro com diagnostico
+Alterar `detail: "low"` para `detail: "auto"` no gpt-4o-mini. O `detail: "low"` limita a imagem a 512x512, insuficiente para miniaturas pequenas. O custo extra e minimo.
 
-Em `src/lib/pushNotifications.ts`:
-- Fazer `subscribeToPush` retornar um objeto `{ success: boolean; reason?: string }` em vez de apenas `boolean`
-- Razoes possiveis: `'iframe_context'`, `'sw_failed'`, `'vapid_missing'`, `'permission_denied'`, `'token_timeout'`, `'edge_function_error'`
+### 3. Normalizar resposta no servidor (Edge Function)
 
-Em `src/components/news/PushNotificationToggle.tsx`:
-- Usar a `reason` retornada para exibir uma mensagem de toast especifica e util ao usuario
+Antes de retornar o resultado, adicionar normalizacao server-side que:
+- Verifica chaves alternativas (`vehicles`, `carros`, `results`, `data`) e mapeia para `items`
+- Garante que `identified`, `count`, `items` e `detectedType` sempre existam
+- Isso funciona como segunda camada alem da normalizacao do frontend
 
-### 5. Garantir que `requestPushPermission` trata o fluxo web
+### 4. Corrigir logica de fallback
 
-Em `src/lib/pushNotifications.ts`, funcao `requestPushPermission()`:
-- Adicionar try/catch ao redor de `Notification.requestPermission()` para capturar erros em contextos restritos (iframe, browsers antigos)
-- Retornar `'denied'` em vez de lancar excecao
+Quando ambos os modelos falham `shouldRetry`, usar o resultado do **fallback** (gpt-4o, maior qualidade) em vez do primario.
 
-### 6. Ajustar `AuthStepPermissions` para evitar chamada dupla
+### 5. Liberar memoria entre scans (Frontend)
 
-Em `src/components/auth/AuthStepPermissions.tsx`:
-- No auto-activate de push, chamar apenas `subscribeToPush(user.id)` que ja cuida da permissao internamente
-- Remover a chamada separada a `requestPushPermission()` antes de `subscribeToPush()`
+No `ScannerView.tsx`, ao iniciar um novo scan:
+- Limpar `capturedImage` (libera a string base64 anterior da memoria)
+- Limpar `analysisResults`
+- Isso reduz a pressao de memoria no WebView do iOS
 
 ---
 
 ## Detalhes Tecnicos
 
-### Arquivos modificados
-
 | Arquivo | Mudanca |
 |---------|---------|
-| `src/lib/pushNotifications.ts` | Retorno tipado com `reason`, logs no fluxo web, deteccao de iframe, permissao integrada no `subscribeWeb` |
-| `src/components/news/PushNotificationToggle.tsx` | Consumir `reason` para toasts especificos, remover chamada duplicada de permissao |
-| `src/components/auth/AuthStepPermissions.tsx` | Simplificar para chamar apenas `subscribeToPush` |
-| `src/components/profile/SettingsSection.tsx` | Consumir novo retorno tipado |
-| `src/components/profile/SettingsSheet.tsx` | Consumir novo retorno tipado |
+| `supabase/functions/analyze-collectible/index.ts` | Adicionar schema JSON ao prompt, mudar detail para auto, corrigir fallback, normalizar resposta |
+| `src/components/scanner/ScannerView.tsx` | Liberar memoria (capturedImage/results) antes de novo scan |
 
-### Novo tipo de retorno
+### Mudancas especificas na Edge Function
 
-```typescript
-interface PushSubscribeResult {
-  success: boolean;
-  reason?: 'iframe_context' | 'sw_failed' | 'vapid_missing' | 'permission_denied' | 'token_timeout' | 'edge_function_error' | 'not_supported';
+**No `BASE_PROMPT`:** Adicionar bloco com formato JSON obrigatorio incluindo chaves exatas esperadas.
+
+**Na funcao `fetchAndParse`:** Mudar `const imageDetail = isFallback ? "auto" : "low"` para `const imageDetail = "auto"`.
+
+**Na logica de retry (linhas 288-297):** Quando ambos falham shouldRetry, preferir o fallback:
+```text
+} else {
+  // Both failed - prefer fallback (gpt-4o, higher quality)
+  result = fallback.parsed;
 }
 ```
 
-### Mapa de mensagens por reason
+**Antes do retorno:** Adicionar normalizacao de chaves alternativas para `items`.
 
-| reason | Mensagem para o usuario |
-|--------|------------------------|
-| `iframe_context` | "Abra o app diretamente no navegador para ativar notificacoes" |
-| `sw_failed` | "Erro ao registrar servico de notificacoes. Tente recarregar a pagina" |
-| `vapid_missing` | "Configuracao do servidor incompleta. Contate o suporte" |
-| `permission_denied` | "Permissao negada. Habilite nas configuracoes do navegador/dispositivo" |
-| `token_timeout` | "Nao foi possivel registrar o dispositivo. Verifique sua conexao" |
-| `edge_function_error` | "Erro ao salvar inscricao. Tente novamente" |
-| `not_supported` | "Notificacoes push nao sao suportadas neste ambiente" |
+### Mudancas no Frontend
+
+**Antes de cada captura:** Adicionar limpeza de estado para liberar memoria:
+```text
+setCapturedImage(null);
+setAnalysisResults([]);
+```
 
