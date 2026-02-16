@@ -77,7 +77,19 @@ origin: "Brasil"|"EUA"|"China"|"Japão"|"Tailândia"|etc.
 SE CARRO_REAL: {identified:true, detectedType:"real_car", car:{brand,model,year,variant,bodyStyle,color}, searchTerms[], confidence}.
 
 VERIFICAÇÃO: identified=true se QUALQUER veículo visível. NUNCA array items vazio se viu um carro.
-Apenas JSON, sem markdown.`;
+Apenas JSON, sem markdown.
+
+FORMATO OBRIGATÓRIO DE RESPOSTA (use EXATAMENTE estas chaves):
+Para colecionáveis:
+{"identified":true, "detectedType":"collectible", "count":N, "items":[{boundingBox, realCar, collectible, priceIndex, musicSuggestion, musicSelectionReason, musicListeningTip}]}
+
+Para carros reais:
+{"identified":true, "detectedType":"real_car", "car":{"brand":"...","model":"...","year":"...","variant":"...","bodyStyle":"...","color":"..."}, "searchTerms":["..."], "confidence":"high"|"medium"|"low"}
+
+Se NENHUM veículo reconhecível:
+{"identified":false, "detectedType":"collectible", "count":0, "items":[]}
+
+NUNCA use chaves diferentes de "items" para a lista. NUNCA use "vehicles", "carros", "results", "data".`;
 
 // Detailed prompt additions for fallback (richer examples)
 const FALLBACK_PROMPT_EXTRA = `
@@ -210,7 +222,7 @@ serve(async (req) => {
 
     const fetchAndParse = async (model: string, attempt: number, reason: string) => {
       const isFallback = model === FALLBACK_MODEL;
-      const imageDetail = isFallback ? "auto" : "low";
+      const imageDetail = "auto";
       const maxTokens = isFallback ? 3072 : 2048;
       const systemPrompt = isFallback ? dynamicPrompt + FALLBACK_PROMPT_EXTRA : dynamicPrompt;
 
@@ -291,7 +303,8 @@ serve(async (req) => {
         const fallback = await fetchAndParse(FALLBACK_MODEL, 2, "not_identified");
         if (!fallback.ok) {
           if ("httpResponse" in fallback) return fallback.httpResponse;
-        } else if (!shouldRetry(fallback.parsed)) {
+        } else {
+          // Always prefer fallback result (gpt-4o, higher quality) when primary failed shouldRetry
           result = fallback.parsed;
         }
       }
@@ -305,8 +318,34 @@ serve(async (req) => {
       recordABResult(sb, variant.variant_id, firstItemId, uid, responseTime, PRIMARY_MODEL);
     }
 
+    // Server-side normalization: ensure standard keys exist
+    // deno-lint-ignore no-explicit-any
+    const r = result as any;
+    
+    // Map alternative keys to standard "items"
+    if (!Array.isArray(r.items)) {
+      const altKeys = ["vehicles", "carros", "results", "data", "collectibles", "miniatures"];
+      for (const key of altKeys) {
+        if (Array.isArray(r[key])) {
+          r.items = r[key];
+          delete r[key];
+          break;
+        }
+      }
+    }
+    
+    // Ensure required fields
+    if (r.items && Array.isArray(r.items)) {
+      r.count = r.count || r.items.length;
+      r.identified = r.identified !== false && r.items.length > 0;
+      r.detectedType = r.detectedType || "collectible";
+    } else if (r.car && typeof r.car === "object") {
+      r.identified = r.identified !== false;
+      r.detectedType = "real_car";
+    }
+
     const responseWithMeta = {
-      ...(result as object),
+      ...(r as object),
       _ml_metadata: {
         variant_name: variant?.variant_name || "none",
         patterns_applied: patterns.length,

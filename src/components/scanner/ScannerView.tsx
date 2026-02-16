@@ -1028,6 +1028,16 @@ export const ScannerView = () => {
   const captureCameraPreviewPhoto = useCallback(async () => {
     console.log("[Scanner] Capturing via camera-preview...");
     
+    // FREE MEMORY: Clear previous scan data before new capture (prevents iOS WebView memory pressure)
+    setCapturedImage(null);
+    setAnalysisResults([]);
+    setRealCarResult(null);
+    setDetectedType(null);
+    setImageQualityError(null);
+    setAddedIndices(new Set());
+    setSkippedIndices(new Set());
+    setWarningMessage(null);
+    
     // Trigger flash effect
     setShowFlash(true);
     setTimeout(() => setShowFlash(false), 150);
@@ -1163,6 +1173,16 @@ export const ScannerView = () => {
 
   const capturePhoto = useCallback(async () => {
     if (!videoRef.current || !canvasRef.current) return;
+
+    // FREE MEMORY: Clear previous scan data before new capture (prevents iOS WebView memory pressure)
+    setCapturedImage(null);
+    setAnalysisResults([]);
+    setRealCarResult(null);
+    setDetectedType(null);
+    setImageQualityError(null);
+    setAddedIndices(new Set());
+    setSkippedIndices(new Set());
+    setWarningMessage(null);
 
     // Trigger flash effect
     setShowFlash(true);
