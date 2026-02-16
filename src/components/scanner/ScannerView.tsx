@@ -268,6 +268,8 @@ export const ScannerView = () => {
   // Tap-to-focus state
   const [focusPoint, setFocusPoint] = useState<{ x: number; y: number } | null>(null);
   const focusTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const touchStartPos = useRef<{ x: number; y: number; time: number } | null>(null);
+  const touchMoved = useRef(false);
   
   const capturePhotoRef = useRef<(() => void) | null>(null);
   
@@ -2159,13 +2161,19 @@ export const ScannerView = () => {
         style={{ WebkitUserSelect: 'none', WebkitTouchCallout: 'none' } as React.CSSProperties}
         onTouchStart={(e) => {
           e.preventDefault();
+          touchMoved.current = false;
+          if (e.touches.length === 1) {
+            touchStartPos.current = { x: e.touches[0].clientX, y: e.touches[0].clientY, time: Date.now() };
+          }
           if (e.touches.length === 2) {
+            touchStartPos.current = null;
             const dx = e.touches[0].clientX - e.touches[1].clientX;
             const dy = e.touches[0].clientY - e.touches[1].clientY;
             lastPinchDistance.current = Math.hypot(dx, dy);
           }
         }}
         onTouchMove={(e) => {
+          touchMoved.current = true;
           if (e.touches.length === 2 && lastPinchDistance.current !== null) {
             const dx = e.touches[0].clientX - e.touches[1].clientX;
             const dy = e.touches[0].clientY - e.touches[1].clientY;
@@ -2179,40 +2187,48 @@ export const ScannerView = () => {
           // Pinch end
           if (lastPinchDistance.current !== null) {
             lastPinchDistance.current = null;
+            touchStartPos.current = null;
             return;
           }
-          // Tap-to-focus: single touch that didn't move (not pinch)
-          if (e.changedTouches.length === 1 && cameraActive && !capturedImage && !isScanning) {
-            const touch = e.changedTouches[0];
-            const rect = e.currentTarget.getBoundingClientRect();
-            const x = touch.clientX - rect.left;
-            const y = touch.clientY - rect.top;
-            
-            // Show focus indicator
-            setFocusPoint({ x, y });
-            if (focusTimeoutRef.current) clearTimeout(focusTimeoutRef.current);
-            focusTimeoutRef.current = setTimeout(() => setFocusPoint(null), 1500);
-            
-            // Web: try to apply focus constraints
-            if (!Capacitor.isNativePlatform() && streamRef.current) {
-              const track = streamRef.current.getVideoTracks()[0];
-              if (track) {
-                const capabilities = track.getCapabilities?.() as any;
-                if (capabilities?.focusMode?.includes?.('manual') || capabilities?.focusMode?.includes?.('single-shot')) {
-                  const normX = (touch.clientX - rect.left) / rect.width;
-                  const normY = (touch.clientY - rect.top) / rect.height;
-                  track.applyConstraints({
-                    advanced: [{ 
-                      focusMode: 'manual' as any,
-                      pointsOfInterest: [{ x: normX, y: normY }] as any,
-                    }],
-                  } as any).catch(() => {
-                    // Silently fail if not supported
-                  });
+          // Tap-to-focus: single quick tap that didn't move
+          if (
+            !touchMoved.current &&
+            touchStartPos.current &&
+            e.changedTouches.length === 1 &&
+            cameraActive && !capturedImage && !isScanning
+          ) {
+            const elapsed = Date.now() - touchStartPos.current.time;
+            if (elapsed < 500) {
+              const touch = e.changedTouches[0];
+              const rect = e.currentTarget.getBoundingClientRect();
+              const x = touch.clientX - rect.left;
+              const y = touch.clientY - rect.top;
+              
+              // Show focus indicator
+              setFocusPoint({ x, y });
+              if (focusTimeoutRef.current) clearTimeout(focusTimeoutRef.current);
+              focusTimeoutRef.current = setTimeout(() => setFocusPoint(null), 1500);
+              
+              // Web: try to apply focus constraints
+              if (!Capacitor.isNativePlatform() && streamRef.current) {
+                const track = streamRef.current.getVideoTracks()[0];
+                if (track) {
+                  const capabilities = track.getCapabilities?.() as any;
+                  if (capabilities?.focusMode?.includes?.('manual') || capabilities?.focusMode?.includes?.('single-shot')) {
+                    const normX = x / rect.width;
+                    const normY = y / rect.height;
+                    track.applyConstraints({
+                      advanced: [{ 
+                        focusMode: 'manual' as any,
+                        pointsOfInterest: [{ x: normX, y: normY }] as any,
+                      }],
+                    } as any).catch(() => {});
+                  }
                 }
               }
             }
           }
+          touchStartPos.current = null;
         }}
       >
         {/* Video element for web camera - ALWAYS rendered, visibility controlled by CSS */}
