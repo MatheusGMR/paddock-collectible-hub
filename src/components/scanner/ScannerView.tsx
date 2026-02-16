@@ -2227,7 +2227,7 @@ export const ScannerView = () => {
         )}
 
         {/* Paddock watermark - positioned below notch */}
-        {(cameraActive || useNativeFallback || useCameraPreview) && !isScanning && !capturedImage && (
+        {(cameraActive || useNativeFallback || useCameraPreview || isInitializing) && !isScanning && !capturedImage && (
           <div className="absolute left-1/2 -translate-x-1/2 z-10 pointer-events-none" style={{ top: "calc(env(safe-area-inset-top, 0px) + 1rem)" }}>
             <PaddockLogo 
               variant="wordmark" 
@@ -2249,7 +2249,7 @@ export const ScannerView = () => {
         {/* Auto-detect hint - no manual toggle needed */}
 
         {/* Minimal corner guides - subtle like Instagram/TikTok - positioned below notch */}
-        {(cameraActive || useCameraPreview) && !isScanning && !capturedImage && (
+        {(cameraActive || useCameraPreview || isInitializing) && !isScanning && !capturedImage && (
           <div className="absolute inset-0 pointer-events-none">
             {/* Top left corner */}
             <div className="absolute left-6 w-10 h-10" style={{ top: "calc(env(safe-area-inset-top, 0px) + 4rem)" }}>
@@ -2325,15 +2325,7 @@ export const ScannerView = () => {
         /* Floating controls overlay - no bottom panel */
         <div className="absolute bottom-0 left-0 right-0 pb-8 safe-bottom">
           <div className="flex flex-col items-center gap-3">
-            {isInitializing && !Capacitor.isNativePlatform() ? (
-              /* Only show loading spinner on web - native camera opens automatically */
-              <>
-                <Loader2 className="h-8 w-8 text-white animate-spin" />
-                <p className="text-sm text-white/70 text-center">
-                  {t.scanner.openingCamera}
-                </p>
-              </>
-            ) : cameraError ? (
+            {cameraError ? (
               <div className="bg-black/60 backdrop-blur-md rounded-2xl p-5 mx-6 max-w-sm">
                 <div className="flex flex-col items-center gap-3">
                   <div className="w-12 h-12 rounded-full bg-destructive/20 flex items-center justify-center">
@@ -2401,7 +2393,7 @@ export const ScannerView = () => {
                   />
                 </div>
               </div>
-            ) : cameraActive && (
+            ) : (cameraActive || (isInitializing && !Capacitor.isNativePlatform())) && (
               <div className="relative w-full flex items-center justify-center">
                 {/* Gallery button - bottom left - opens batch upload */}
                 <button
@@ -2413,16 +2405,18 @@ export const ScannerView = () => {
                 </button>
                 
                 <div className="flex flex-col items-center gap-3">
-                  <DetectionIndicator
-                    detectedCount={detectedCount}
-                    isModelLoading={isModelLoading}
-                    isModelReady={isModelReady}
-                  />
+                  {cameraActive && (
+                    <DetectionIndicator
+                      detectedCount={detectedCount}
+                      isModelLoading={isModelLoading}
+                      isModelReady={isModelReady}
+                    />
+                  )}
                   <p className="text-[11px] text-white/50 text-center tracking-wide">
                     {t.scanner.tapToCapture}
                   </p>
                   <CaptureButton
-                    disabled={isScanning}
+                    disabled={isScanning || isInitializing}
                     onClick={capturePhoto}
                   />
                 </div>
