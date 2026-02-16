@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { IndexBreakdown } from "@/components/index/IndexBreakdown";
-import { IndexBadge } from "@/components/index/IndexBadge";
+import { ScoreHero } from "@/components/scanner/ScoreHero";
 import { PriceIndex } from "@/lib/priceIndex";
 import { cn } from "@/lib/utils";
 import { MusicPlayer } from "./MusicPlayer";
@@ -318,12 +318,26 @@ export const ResultCarousel = ({
     if (deltaY < -50) setIsExpanded(true);  // Swipe up = expand
   };
 
+  // Get tier-based card styling
+  const currentTier = result.priceIndex?.tier || "common";
+  const getTierCardGradient = (tier: string) => {
+    switch (tier) {
+      case "ultra_rare": return "from-amber-500/15 via-card to-card border-amber-500/20";
+      case "super_rare": return "from-purple-500/15 via-card to-card border-purple-500/20";
+      case "rare": return "from-blue-500/15 via-card to-card border-blue-500/20";
+      case "uncommon": return "from-green-500/15 via-card to-card border-green-500/20";
+      default: return "from-muted via-card to-card border-border/30";
+    }
+  };
+
   return (
     <>
-      {/* Fixed card with CSS animation - no vaul dependency */}
+      {/* Fixed card with CSS animation - rarity-tinted background */}
       <div 
         className={cn(
-          "fixed inset-x-0 bottom-0 z-50 flex flex-col rounded-t-[28px] bg-card",
+          "fixed inset-x-0 bottom-0 z-50 flex flex-col rounded-t-[28px]",
+          "bg-gradient-to-b border-t",
+          getTierCardGradient(currentTier),
           "transition-[max-height] duration-300 ease-out overflow-hidden",
           "animate-slide-up-card shadow-[0_-8px_30px_rgba(0,0,0,0.3)]",
           isExpanded ? "max-h-[85vh]" : "max-h-[20vh]"
@@ -331,7 +345,7 @@ export const ResultCarousel = ({
       >
         {/* Drag handle with car title */}
         <div 
-          className="sticky top-0 z-20 bg-card pt-3 pb-2 cursor-grab active:cursor-grabbing"
+          className="sticky top-0 z-20 pt-3 pb-2 cursor-grab active:cursor-grabbing"
           onTouchStart={handleTouchStart}
           onTouchEnd={handleTouchEnd}
         >
@@ -411,15 +425,13 @@ export const ResultCarousel = ({
               </div>
             )}
 
-            {/* Price Index Badge - same as profile */}
+            {/* Price Index Badge - opens breakdown with full details */}
             {result.priceIndex && (
-              <div className="flex justify-center">
-                <IndexBadge
-                  score={result.priceIndex.score}
-                  tier={result.priceIndex.tier}
-                  onClick={() => openBreakdown(result)}
-                />
-              </div>
+              <ScoreHero
+                score={result.priceIndex.score}
+                tier={result.priceIndex.tier}
+                onClick={() => openBreakdown(result)}
+              />
             )}
 
             {/* Collapsible Sections - all closed by default */}
@@ -526,7 +538,7 @@ export const ResultCarousel = ({
         </div>
 
         {/* Fixed bottom section - action buttons + pagination + safe area */}
-        <div className="bg-card border-t border-border/30 px-4 pt-3 pb-1 flex-shrink-0">
+        <div className="border-t border-border/30 px-4 pt-3 pb-1 flex-shrink-0">
           {/* Action buttons */}
           <div className="flex flex-col gap-2">
             {result.isDuplicate ? (
