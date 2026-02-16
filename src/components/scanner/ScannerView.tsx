@@ -1903,6 +1903,9 @@ export const ScannerView = () => {
   }, [isScanning, cameraActive, capturePhoto]);
 
   const handleAddToCollection = async (index: number) => {
+    // Prevent duplicate adds
+    if (addedIndices.has(index)) return;
+    
     if (!user) {
       toast({
         title: t.scanner.signInRequired,
@@ -1988,6 +1991,9 @@ export const ScannerView = () => {
 
   // "Add & Post" handler: adds to collection then opens post dialog
   const handleAddAndPost = async (index: number) => {
+    // Prevent duplicate adds
+    if (addedIndices.has(index)) return;
+    
     if (!user) {
       toast({
         title: t.scanner.signInRequired,

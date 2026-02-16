@@ -202,6 +202,7 @@ export const ResultCarousel = ({
   const { t } = useLanguage();
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [addingIndex, setAddingIndex] = useState<number | null>(null);
+  const [postingIndex, setPostingIndex] = useState<number | null>(null);
   const [justAddedIndex, setJustAddedIndex] = useState<number | null>(null);
   const [breakdownOpen, setBreakdownOpen] = useState(false);
   const [breakdownResult, setBreakdownResult] = useState<AnalysisResult | null>(null);
@@ -230,6 +231,7 @@ export const ResultCarousel = ({
   }, [resultWithOriginalIndices.length]);
 
   const handleAdd = async (originalIndex: number) => {
+    if (addingIndex !== null || postingIndex !== null) return; // prevent double-click
     setAddingIndex(originalIndex);
     try {
       await onAddToCollection(originalIndex);
@@ -238,13 +240,29 @@ export const ResultCarousel = ({
       // After animation, reset
       setTimeout(() => {
         setJustAddedIndex(null);
-        // Keep selectedIndex in bounds after item is removed
         if (selectedIndex >= resultWithOriginalIndices.length - 1) {
           setSelectedIndex(Math.max(0, selectedIndex - 1));
         }
       }, 400);
     } finally {
       setAddingIndex(null);
+    }
+  };
+
+  const handlePost = async (originalIndex: number) => {
+    if (addingIndex !== null || postingIndex !== null) return; // prevent double-click
+    setPostingIndex(originalIndex);
+    try {
+      await onAddAndPost(originalIndex);
+      setJustAddedIndex(originalIndex);
+      setTimeout(() => {
+        setJustAddedIndex(null);
+        if (selectedIndex >= resultWithOriginalIndices.length - 1) {
+          setSelectedIndex(Math.max(0, selectedIndex - 1));
+        }
+      }, 400);
+    } finally {
+      setPostingIndex(null);
     }
   };
 
@@ -588,7 +606,7 @@ export const ResultCarousel = ({
                 </Button>
                 <Button
                   onClick={() => handleAdd(originalIndex)}
-                  disabled={addingIndex === originalIndex}
+                    disabled={addingIndex !== null || postingIndex !== null}
                   className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90"
                 >
                   {addingIndex === originalIndex ? (
@@ -606,7 +624,7 @@ export const ResultCarousel = ({
                 <div className="flex gap-3">
                   <Button
                     onClick={() => handleAdd(originalIndex)}
-                    disabled={addingIndex === originalIndex}
+                    disabled={addingIndex !== null || postingIndex !== null}
                     className="flex-1 border-border text-foreground hover:bg-muted"
                     variant="outline"
                   >
@@ -630,11 +648,15 @@ export const ResultCarousel = ({
                   )}
                 </div>
                 <Button
-                  onClick={() => onAddAndPost(originalIndex)}
-                  disabled={addingIndex === originalIndex}
+                  onClick={() => handlePost(originalIndex)}
+                  disabled={addingIndex !== null || postingIndex !== null}
                   className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
                 >
-                  <Send className="h-4 w-4 mr-2" />
+                  {postingIndex === originalIndex ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Send className="h-4 w-4 mr-2" />
+                  )}
                   Adicionar e Anunciar
                 </Button>
               </>
