@@ -307,7 +307,7 @@ export const ScannerView = () => {
     }
   }, [scannerPersistence.hasPendingResult]);
   
-  // Auto-scan: when COCO-SSD detects vehicles stably for ~3s, auto-trigger capture
+  // Auto-scan: when COCO-SSD detects vehicles stably for ~3s, auto-trigger capture (WEB)
   useEffect(() => {
     // Only on web, when camera active, not already scanning/captured
     if (!detectionEnabled || autoScanTriggeredRef.current || isScanning || capturedImage) {
@@ -350,6 +350,28 @@ export const ScannerView = () => {
       }
     };
   }, [detectedCount, detectionEnabled, isScanning, capturedImage, autoScanStatus]);
+  
+  // Auto-scan for NATIVE: auto-capture 4s after camera-preview starts (no COCO-SSD available)
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return; // web uses COCO-SSD path above
+    if (!useCameraPreview || !cameraActive) return;
+    if (autoScanTriggeredRef.current || isScanning || capturedImage) return;
+    
+    console.log("[Scanner] Native auto-scan: starting 4s timer...");
+    setAutoScanStatus("counting");
+    
+    const timer = setTimeout(() => {
+      if (autoScanTriggeredRef.current) return;
+      console.log("[Scanner] Native auto-scan triggered after 4s");
+      autoScanTriggeredRef.current = true;
+      setAutoScanStatus("triggered");
+      capturePhotoRef.current?.();
+    }, 4000);
+    
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [useCameraPreview, cameraActive, isScanning, capturedImage]);
   
   // Only trigger guided tips when camera is active and not in error state
   const { startScreenTips } = useGuidedTips();

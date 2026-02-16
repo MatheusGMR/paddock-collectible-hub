@@ -1,6 +1,7 @@
-import { Car, Crosshair, Loader2 } from "lucide-react";
+import { Car, Crosshair, Loader2, ScanLine } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
+import { Capacitor } from "@capacitor/core";
 
 interface DetectionIndicatorProps {
   detectedCount: number;
@@ -15,6 +16,59 @@ export function DetectionIndicator({
   isModelReady,
   autoScanStatus = "idle",
 }: DetectionIndicatorProps) {
+  const isNative = Capacitor.isNativePlatform();
+
+  // On native: show auto-scan status (no COCO-SSD)
+  if (isNative) {
+    if (autoScanStatus === "counting") {
+      return (
+        <div className="flex flex-col items-center gap-1.5">
+          <motion.div
+            initial={{ opacity: 0, y: -4 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex items-center gap-1.5 bg-primary/20 backdrop-blur-sm rounded-full px-3 py-1.5"
+          >
+            <ScanLine className="h-3.5 w-3.5 text-primary animate-pulse" />
+            <span className="text-[11px] text-primary font-medium">
+              Analisando automaticamente...
+            </span>
+            <div className="w-10 h-1 bg-white/10 rounded-full overflow-hidden ml-1">
+              <motion.div
+                className="h-full bg-primary rounded-full"
+                initial={{ width: "0%" }}
+                animate={{ width: "100%" }}
+                transition={{ duration: 4, ease: "linear" }}
+              />
+            </div>
+          </motion.div>
+        </div>
+      );
+    }
+    if (autoScanStatus === "triggered") {
+      return (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="flex items-center gap-1.5 bg-emerald-500/30 backdrop-blur-sm rounded-full px-3 py-1"
+        >
+          <span className="text-[10px] text-emerald-300 font-medium">
+            ✓ Capturando...
+          </span>
+        </motion.div>
+      );
+    }
+    // idle on native: show subtle scanning indicator
+    return (
+      <div className="flex items-center gap-2 bg-black/40 backdrop-blur-sm rounded-full px-3 py-1.5">
+        <ScanLine className="h-3.5 w-3.5 text-white/40 animate-pulse" />
+        <span className="text-[11px] text-white/40">
+          Aponte para um carrinho
+        </span>
+      </div>
+    );
+  }
+
+  // Web: original COCO-SSD based indicator
   if (isModelLoading) {
     return (
       <div className="flex items-center gap-2 bg-black/40 backdrop-blur-sm rounded-full px-3 py-1.5 animate-fade-in">
