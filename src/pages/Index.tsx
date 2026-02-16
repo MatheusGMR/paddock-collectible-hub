@@ -1,17 +1,25 @@
 import { useEffect, useRef, useCallback, useMemo } from "react";
 import { FeedHeader } from "@/components/feed/FeedHeader";
 import { PostCard } from "@/components/feed/PostCard";
+import { FeedNewsCard } from "@/components/feed/FeedNewsCard";
 import { PullToRefreshIndicator } from "@/components/feed/PullToRefreshIndicator";
 import { ChallengeProgressBar } from "@/components/challenge/ChallengeProgressBar";
 import { useFeedPosts, FeedPost } from "@/hooks/useFeedPosts";
 import { useFeaturedCuriosity } from "@/hooks/useFeaturedCuriosity";
+import { useNewsFeed } from "@/hooks/useNewsFeed";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { useScreenTips } from "@/hooks/useScreenTips";
 import { Loader2, Inbox } from "lucide-react";
+import { NewsArticle } from "@/lib/api/news";
+
+type FeedItem =
+  | { type: "post"; data: FeedPost }
+  | { type: "news"; data: NewsArticle };
 
 const Index = () => {
   const { posts, loading, loadingMore, error, hasMore, loadMore, refetch } = useFeedPosts();
   const { curiosity, loading: curiosityLoading, refresh: refreshCuriosity } = useFeaturedCuriosity();
+  const { articles: newsArticles, loading: newsLoading } = useNewsFeed();
   const observerRef = useRef<IntersectionObserver | null>(null);
   const loadMoreTriggerRef = useRef<HTMLDivElement | null>(null);
   
@@ -25,20 +33,17 @@ const Index = () => {
     threshold: 80,
   });
   
-  // Trigger guided tips for feed screen
   useScreenTips("feed", 800);
 
-  // Setup infinite scroll observer - stable callback refs to avoid re-creating observer
+  // Stable refs for observer
   const hasMoreRef = useRef(hasMore);
   const loadingMoreRef = useRef(loadingMore);
   const loadMoreRef = useRef(loadMore);
   
-  // Keep refs in sync without triggering observer recreation
   useEffect(() => { hasMoreRef.current = hasMore; }, [hasMore]);
   useEffect(() => { loadingMoreRef.current = loadingMore; }, [loadingMore]);
   useEffect(() => { loadMoreRef.current = loadMore; }, [loadMore]);
 
-  // Create observer only once on mount
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
@@ -48,13 +53,10 @@ const Index = () => {
       },
       { threshold: 0.1, rootMargin: "100px" }
     );
-
     observerRef.current = observer;
-
     return () => observer.disconnect();
   }, []);
 
-  // Observe/unobserve the trigger element
   useEffect(() => {
     const observer = observerRef.current;
     const trigger = loadMoreTriggerRef.current;
@@ -62,16 +64,15 @@ const Index = () => {
       observer.observe(trigger);
       return () => observer.unobserve(trigger);
     }
-  }, [posts.length]); // Re-observe when posts change (trigger element may remount)
+  }, [posts.length]);
 
-  // Transform curiosity into a post format (read-only, no interactions)
+  // Transform curiosity into a post format
   const curiosityAsPost: FeedPost | null = useMemo(() => {
     if (!curiosity) return null;
-    
     return {
       id: `curiosity-${curiosity.id}`,
       user: {
-        id: undefined, // No direct profile link for "Coleções de Destaque"
+        id: undefined,
         username: "Coleções de Destaque",
         avatar: "https://api.dicebear.com/7.x/shapes/svg?seed=destaque&backgroundColor=f59e0b",
       },
@@ -98,25 +99,48 @@ const Index = () => {
     };
   }, [curiosity]);
 
-  // Calculate position for curiosity (between 1 and min(5, posts.length))
-  const curiosityPosition = useMemo(() => {
-    if (!curiosityAsPost || posts.length === 0) return -1;
-    const maxPosition = Math.min(5, posts.length);
-    const hash = curiosity?.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) || 0;
-    return (hash % maxPosition) + 1;
-  }, [curiosityAsPost, posts.length, curiosity?.id]);
+  // Build unified feed: interleave 1 news every 3 posts
+  const unifiedFeed: FeedItem[] = useMemo(() => {
+    const items: FeedItem[] = [];
+    let newsIndex = 0;
+    const curiosityPosition = curiosityAsPost && posts.length > 0
+      ? Math.min(5, posts.length)
+      : -1;
+    const hash = curiosity?.id?.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) || 0;
+    const actualCuriosityPos = curiosityPosition > 0 ? (hash % curiosityPosition) + 1 : -1;
+
+    // If no posts but has curiosity
+    if (posts.length === 0 && curiosityAsPost) {
+      items.push({ type: "post", data: curiosityAsPost });
+    }
+
+    for (let i = 0; i < posts.length; i++) {
+      items.push({ type: "post", data: posts[i] });
+
+      // Insert curiosity at calculated position
+      if (i + 1 === actualCuriosityPos && curiosityAsPost) {
+        items.push({ type: "post", data: curiosityAsPost });
+      }
+
+      // Insert news every 3 posts
+      if ((i + 1) % 3 === 0 && newsIndex < newsArticles.length) {
+        items.push({ type: "news", data: newsArticles[newsIndex] });
+        newsIndex++;
+      }
+    }
+
+    return items;
+  }, [posts, newsArticles, curiosityAsPost, curiosity?.id]);
 
   return (
     <div ref={containerRef} className="min-h-screen">
       <FeedHeader />
       
-      {/* Pull to refresh indicator */}
       <PullToRefreshIndicator 
         pullDistance={pullDistance} 
         isRefreshing={isRefreshing} 
       />
       
-      {/* Challenge progress bar */}
       <ChallengeProgressBar />
       
       {loading && !isRefreshing ? (
@@ -127,7 +151,7 @@ const Index = () => {
         <div className="flex flex-col items-center justify-center py-20 px-4 text-center">
           <p className="text-muted-foreground">{error}</p>
         </div>
-      ) : posts.length === 0 && !curiosityAsPost ? (
+      ) : posts.length === 0 && !curiosityAsPost && newsArticles.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 px-4 text-center">
           <Inbox className="h-12 w-12 text-muted-foreground/50 mb-4" />
           <p className="text-lg font-medium text-foreground mb-2">
@@ -139,17 +163,12 @@ const Index = () => {
         </div>
       ) : (
         <div className="divide-y divide-border">
-          {/* If no posts but has curiosity, show curiosity as first post */}
-          {posts.length === 0 && curiosityAsPost && (
-            <PostCard post={curiosityAsPost} />
-          )}
-          
-          {posts.map((post, index) => (
-            <div key={post.id}>
-              <PostCard post={post} />
-              {/* Insert curiosity as post at calculated position */}
-              {index + 1 === curiosityPosition && curiosityAsPost && (
-                <PostCard post={curiosityAsPost} />
+          {unifiedFeed.map((item, index) => (
+            <div key={item.type === "post" ? item.data.id : `news-${(item.data as NewsArticle).id}-${index}`}>
+              {item.type === "post" ? (
+                <PostCard post={item.data as FeedPost} />
+              ) : (
+                <FeedNewsCard article={item.data as NewsArticle} />
               )}
             </div>
           ))}
