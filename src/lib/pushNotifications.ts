@@ -100,12 +100,29 @@ export async function isSubscribedToPush(): Promise<boolean> {
 
 async function subscribeNative(userId: string): Promise<boolean> {
   try {
-    const plugin = await getNativePlugin();
+    console.log('[Push Native] Starting subscribeNative...');
+    let plugin;
+    try {
+      plugin = await getNativePlugin();
+      console.log('[Push Native] Plugin loaded successfully');
+    } catch (importError) {
+      console.error('[Push Native] Failed to load plugin:', importError);
+      return false;
+    }
 
     // Request permission first (register() requires it on iOS)
     console.log('[Push Native] Requesting permission before register...');
-    const permResult = await plugin.requestPermissions();
-    console.log('[Push Native] Permission result:', JSON.stringify(permResult));
+    let permResult;
+    try {
+      permResult = await Promise.race([
+        plugin.requestPermissions(),
+        new Promise<never>((_, reject) => setTimeout(() => reject(new Error('permission_timeout')), 10000)),
+      ]);
+      console.log('[Push Native] Permission result:', JSON.stringify(permResult));
+    } catch (permError) {
+      console.error('[Push Native] requestPermissions failed or timed out:', permError);
+      return false;
+    }
     
     if (permResult.receive !== 'granted') {
       console.log('[Push Native] Permission not granted, aborting');
@@ -163,7 +180,7 @@ async function subscribeNative(userId: string): Promise<boolean> {
       console.log('[Push Native] Calling register()...');
       plugin.register().then(() => {
         console.log('[Push Native] register() resolved, waiting for token event...');
-      }).catch((regError) => {
+      }).catch((regError: Error) => {
         clearTimeout(timeout);
         console.error('[Push Native] register() threw:', regError);
         resolve(false);
