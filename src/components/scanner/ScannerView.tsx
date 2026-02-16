@@ -161,29 +161,35 @@ function normalizeMultiCarAnalysisResponse(raw: MultiCarAnalysisResponse): Multi
 
   const rawItems: any[] = Array.isArray(r.items) ? r.items : [];
   
-  // Ensure each item has the required realCar structure
+  // Permissive normalization: accept ANY non-null item and apply safe defaults.
+  // The previous strict filter was dropping valid AI responses.
   const items: AnalysisResult[] = rawItems
-    .filter(item => item && (item.realCar || item.real_car || item.brand))
+    .filter(item => item != null && typeof item === 'object')
     .map(item => {
-      // Handle different response shapes from the AI
-      const realCar = item.realCar || item.real_car || {};
+      // Handle many possible response shapes from the AI
+      const realCar = item.realCar || item.real_car || item.car || {};
       const collectible = item.collectible || {};
+      
+      // Try to extract brand/model from multiple possible locations
+      const brand = realCar.brand || item.brand || item.real_car_brand || 'Desconhecido';
+      const model = realCar.model || item.model || item.real_car_model || 'Desconhecido';
+      
       return {
         ...item,
         realCar: {
-          brand: realCar.brand || realCar.real_car_brand || 'Desconhecido',
-          model: realCar.model || realCar.real_car_model || 'Desconhecido',
-          year: realCar.year || realCar.real_car_year || '',
-          historicalFact: realCar.historicalFact || realCar.historical_fact || '',
+          brand,
+          model,
+          year: realCar.year || item.year || '',
+          historicalFact: realCar.historicalFact || realCar.historical_fact || item.historicalFact || '',
         },
         collectible: {
-          manufacturer: collectible.manufacturer || '',
-          scale: collectible.scale || '',
-          estimatedYear: collectible.estimatedYear || collectible.estimated_year || '',
+          manufacturer: collectible.manufacturer || item.manufacturer || '',
+          scale: collectible.scale || item.scale || '',
+          estimatedYear: collectible.estimatedYear || collectible.estimated_year || collectible.year || '',
           origin: collectible.origin || '',
           series: collectible.series || '',
           condition: collectible.condition || '',
-          color: collectible.color || '',
+          color: collectible.color || item.color || '',
           notes: collectible.notes || '',
         },
       };
@@ -1123,6 +1129,11 @@ export const ScannerView = () => {
       });
 
       if (error) throw error;
+
+      // Debug: log raw AI response before normalization
+      console.log("[Scanner] Raw AI response:", JSON.stringify(data).substring(0, 1000));
+      console.log("[Scanner] Raw items count:", Array.isArray(data?.items) ? data.items.length : 'no items array');
+      console.log("[Scanner] Raw identified:", data?.identified);
 
       const response = normalizeMultiCarAnalysisResponse(data as MultiCarAnalysisResponse);
       const responseType = response.detectedType || "collectible";

@@ -348,6 +348,11 @@ serve(async (req) => {
 
       const data = await res.json();
       const content = data.choices?.[0]?.message?.content;
+      console.log(`[AI] Model=${model} Attempt=${attempt} Response length=${content?.length || 0}`);
+      if (content) {
+        // Log first 500 chars to help debug identification issues
+        console.log(`[AI] Response preview: ${content.substring(0, 500)}`);
+      }
       if (!content) return { ok: false as const, error: new Error("No AI response") };
 
       const usage = data.usage || {};
