@@ -186,6 +186,7 @@ const ProfilePage = () => {
             avatar_url: profile.avatar_url,
             city: profile.city,
             phone: profile.phone,
+            show_collection_value: profile.show_collection_value ?? true,
           }}
           userId={user.id}
           onSave={handleSaveProfile}

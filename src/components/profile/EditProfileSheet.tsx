@@ -4,7 +4,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Camera, Loader2, Check, X, AlertCircle } from "lucide-react";
+import { Camera, Loader2, Check, X, AlertCircle, Eye, EyeOff } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -18,6 +19,7 @@ export interface ProfileData {
   avatar_url: string | null;
   city: string | null;
   phone: string | null;
+  show_collection_value?: boolean;
 }
 
 interface EditProfileSheetProps {
@@ -47,6 +49,7 @@ export const EditProfileSheet = ({
     avatar_url: profile.avatar_url,
     city: profile.city || "",
     phone: profile.phone || "",
+    show_collection_value: profile.show_collection_value ?? true,
   });
   const [isUploading, setIsUploading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -114,6 +117,7 @@ export const EditProfileSheet = ({
       avatar_url: profile.avatar_url,
       city: profile.city || "",
       phone: profile.phone || "",
+      show_collection_value: profile.show_collection_value ?? true,
     });
     setLastSaved(null);
     setUsernameError(null);
@@ -190,7 +194,8 @@ export const EditProfileSheet = ({
         debouncedFormData.bio !== (profile.bio || "") ||
         debouncedFormData.avatar_url !== profile.avatar_url ||
         debouncedFormData.city !== (profile.city || "") ||
-        debouncedFormData.phone !== (profile.phone || "");
+        debouncedFormData.phone !== (profile.phone || "") ||
+        debouncedFormData.show_collection_value !== (profile.show_collection_value ?? true);
 
       // Skip if same as last save
       if (lastSaved && 
@@ -198,7 +203,8 @@ export const EditProfileSheet = ({
           debouncedFormData.bio === lastSaved.bio &&
           debouncedFormData.avatar_url === lastSaved.avatar_url &&
           debouncedFormData.city === lastSaved.city &&
-          debouncedFormData.phone === lastSaved.phone) {
+          debouncedFormData.phone === lastSaved.phone &&
+          debouncedFormData.show_collection_value === lastSaved.show_collection_value) {
         return;
       }
 
@@ -212,6 +218,7 @@ export const EditProfileSheet = ({
           avatar_url: debouncedFormData.avatar_url,
           city: debouncedFormData.city?.trim() || null,
           phone: debouncedFormData.phone?.trim() || null,
+          show_collection_value: debouncedFormData.show_collection_value,
         });
         setLastSaved(debouncedFormData);
         setShowSavedIndicator(true);
@@ -473,6 +480,32 @@ export const EditProfileSheet = ({
               {formData.phone && !validatePhone(formData.phone) && (
                 <p className="text-xs text-destructive">{t.profile.invalidPhone}</p>
               )}
+            </div>
+
+            {/* Collection Value Visibility */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  {formData.show_collection_value ? (
+                    <Eye className="h-4 w-4 text-muted-foreground" />
+                  ) : (
+                    <EyeOff className="h-4 w-4 text-muted-foreground" />
+                  )}
+                  <div>
+                    <Label className="text-sm font-medium">Valor da coleção visível</Label>
+                    <p className="text-xs text-muted-foreground">
+                      Permitir que visitantes vejam o valor estimado da sua coleção
+                    </p>
+                  </div>
+                </div>
+                <Switch
+                  checked={formData.show_collection_value ?? true}
+                  onCheckedChange={(checked) => {
+                    setFormData(prev => ({ ...prev, show_collection_value: checked }));
+                    setIsTyping(false);
+                  }}
+                />
+              </div>
             </div>
 
             {/* Settings Section */}

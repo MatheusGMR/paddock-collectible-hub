@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
-import { Settings, Search, QrCode, MessageCircle } from "lucide-react";
+import { Settings, Search, QrCode, MessageCircle, Info } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/contexts/AuthContext";
@@ -159,9 +160,12 @@ export const ProfileHeader = ({ user, onEditProfile, onSettings }: ProfileHeader
               <p className="text-xs text-muted-foreground">📍 {user.city}</p>
             )}
             {collectionValue && collectionValue.max > 0 && (
-              <p className="text-xs font-medium text-primary mt-1">
-                💰 Coleção estimada: {formatBRL(collectionValue.min)} – {formatBRL(collectionValue.max)}
-              </p>
+              <div className="flex items-center gap-1.5 mt-1">
+                <p className="text-xs font-medium text-primary">
+                  💰 Coleção estimada: {formatBRL(collectionValue.min)} – {formatBRL(collectionValue.max)}
+                </p>
+                <CollectionValueInfoButton />
+              </div>
             )}
           </div>
 
@@ -196,6 +200,39 @@ export const ProfileHeader = ({ user, onEditProfile, onSettings }: ProfileHeader
         onOpenChange={handleMessagesOpen}
       />
     </>
+  );
+};
+
+const CollectionValueInfoButton = () => {
+  const [showTooltip, setShowTooltip] = useState(false);
+
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setShowTooltip(!showTooltip)}
+        className="p-0.5 text-muted-foreground hover:text-primary transition-colors"
+      >
+        <Info className="h-3.5 w-3.5" />
+      </button>
+      <AnimatePresence>
+        {showTooltip && (
+          <>
+            <div className="fixed inset-0 z-50" onClick={() => setShowTooltip(false)} />
+            <motion.div
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 4 }}
+              className="absolute left-0 bottom-full mb-2 z-50 w-56 rounded-lg border border-border bg-popover p-3 text-xs text-popover-foreground shadow-md"
+            >
+              <p className="font-medium mb-1">Visibilidade do valor</p>
+              <p className="text-muted-foreground leading-relaxed">
+                Você pode ocultar o valor estimado da coleção para visitantes do seu perfil nas configurações de edição de perfil.
+              </p>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+    </div>
   );
 };
 
