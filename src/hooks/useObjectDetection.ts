@@ -1,13 +1,24 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 
+export interface DetectionBox {
+  x: number; // percentage 0-100
+  y: number;
+  width: number;
+  height: number;
+  score: number;
+  label: string;
+}
+
 interface DetectionResult {
   detectedCount: number;
+  detections: DetectionBox[];
   isModelLoading: boolean;
   isModelReady: boolean;
 }
 
 /**
  * Hook that uses COCO-SSD to detect car-like objects in a video feed.
+ * Returns bounding boxes as percentages for overlay rendering.
  * Runs entirely on-device (no API calls). Only works with web getUserMedia.
  */
 export function useObjectDetection(
@@ -15,6 +26,7 @@ export function useObjectDetection(
   enabled: boolean
 ): DetectionResult {
   const [detectedCount, setDetectedCount] = useState(0);
+  const [detections, setDetections] = useState<DetectionBox[]>([]);
   const [isModelLoading, setIsModelLoading] = useState(false);
   const [isModelReady, setIsModelReady] = useState(false);
   const modelRef = useRef<any>(null);
@@ -45,12 +57,12 @@ export function useObjectDetection(
 
   useEffect(() => {
     if (!enabled) {
-      // Cleanup interval when disabled
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
         intervalRef.current = null;
       }
       setDetectedCount(0);
+      setDetections([]);
       return;
     }
 
@@ -61,7 +73,6 @@ export function useObjectDetection(
   useEffect(() => {
     if (!enabled || !isModelReady || !modelRef.current) return;
 
-    // Create offscreen canvas once
     if (!canvasRef.current) {
       canvasRef.current = document.createElement("canvas");
     }
@@ -91,15 +102,25 @@ export function useObjectDetection(
           (p: any) => carClasses.has(p.class) && p.score > 0.5
         );
         
+        // Convert to percentage-based bounding boxes
+        const boxes: DetectionBox[] = cars.map((p: any) => ({
+          x: (p.bbox[0] / w) * 100,
+          y: (p.bbox[1] / h) * 100,
+          width: (p.bbox[2] / w) * 100,
+          height: (p.bbox[3] / h) * 100,
+          score: p.score,
+          label: p.class,
+        }));
+        
+        setDetections(boxes);
         setDetectedCount(cars.length);
       } catch {
         // Silently ignore detection errors
       }
     };
 
-    // Run immediately then every 1.5s
     detect();
-    intervalRef.current = setInterval(detect, 1500);
+    intervalRef.current = setInterval(detect, 1000); // slightly faster for smoother UX
 
     return () => {
       if (intervalRef.current) {
@@ -120,5 +141,5 @@ export function useObjectDetection(
     };
   }, []);
 
-  return { detectedCount, isModelLoading, isModelReady };
+  return { detectedCount, detections, isModelLoading, isModelReady };
 }

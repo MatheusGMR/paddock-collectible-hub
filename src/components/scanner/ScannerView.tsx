@@ -27,6 +27,7 @@ import { useNativeCameraPreview } from "@/hooks/useNativeCameraPreview";
 import { useScannerPersistence } from "@/hooks/useScannerPersistence";
 import { useObjectDetection } from "@/hooks/useObjectDetection";
 import { DetectionIndicator } from "@/components/scanner/DetectionIndicator";
+import { DetectionOverlay } from "@/components/scanner/DetectionOverlay";
 import { Capacitor } from "@capacitor/core";
 import { Camera as CapacitorCamera } from "@capacitor/camera";
 
@@ -258,7 +259,11 @@ export const ScannerView = () => {
   
   // Object detection for web camera mode (not native)
   const detectionEnabled = cameraActive && !capturedImage && !isScanning && !Capacitor.isNativePlatform();
-  const { detectedCount, isModelLoading, isModelReady } = useObjectDetection(videoRef, detectionEnabled);
+  const { detectedCount, detections, isModelLoading, isModelReady } = useObjectDetection(videoRef, detectionEnabled);
+  
+  // Pinch-to-zoom state
+  const [zoomLevel, setZoomLevel] = useState(1);
+  const lastPinchDistance = useRef<number | null>(null);
   
   // Track if we're using native camera preview (embedded live preview) vs fallback (opens native UI)
   const [useNativeFallback, setUseNativeFallback] = useState(false);
@@ -2065,17 +2070,43 @@ export const ScannerView = () => {
       )}
       
       {/* Camera/Preview View */}
-      <div className={`relative flex-1 overflow-hidden ${useCameraPreview ? 'bg-transparent' : 'bg-black'}`}>
+      <div
+        className={`relative flex-1 overflow-hidden ${useCameraPreview ? 'bg-transparent' : 'bg-black'}`}
+        onTouchStart={(e) => {
+          if (e.touches.length === 2) {
+            const dx = e.touches[0].clientX - e.touches[1].clientX;
+            const dy = e.touches[0].clientY - e.touches[1].clientY;
+            lastPinchDistance.current = Math.hypot(dx, dy);
+          }
+        }}
+        onTouchMove={(e) => {
+          if (e.touches.length === 2 && lastPinchDistance.current !== null) {
+            const dx = e.touches[0].clientX - e.touches[1].clientX;
+            const dy = e.touches[0].clientY - e.touches[1].clientY;
+            const dist = Math.hypot(dx, dy);
+            const scale = dist / lastPinchDistance.current;
+            setZoomLevel(prev => Math.min(5, Math.max(1, prev * scale)));
+            lastPinchDistance.current = dist;
+          }
+        }}
+        onTouchEnd={() => { lastPinchDistance.current = null; }}
+      >
         {/* Video element for web camera - ALWAYS rendered, visibility controlled by CSS */}
         <video
           ref={videoRef}
           autoPlay
           playsInline
           muted
+          style={{ transform: `scale(${zoomLevel})`, transformOrigin: 'center center' }}
           className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-200 ${
             cameraActive && !useCameraPreview && !capturedImage && !videoPreviewUrl ? 'opacity-100' : 'opacity-0 pointer-events-none'
           }`}
         />
+
+        {/* Real-time detection overlay - bounding boxes on detected vehicles */}
+        {cameraActive && !useCameraPreview && !capturedImage && !isScanning && (
+          <DetectionOverlay detections={detections} isModelReady={isModelReady} />
+        )}
 
         {capturedImage && !videoPreviewUrl && (
           <img
@@ -2123,6 +2154,15 @@ export const ScannerView = () => {
               size={30} 
               className="opacity-30"
             />
+          </div>
+        )}
+
+        {/* Zoom level indicator */}
+        {(cameraActive || useCameraPreview) && !isScanning && !capturedImage && zoomLevel > 1.05 && (
+          <div className="absolute left-1/2 -translate-x-1/2 z-10 pointer-events-none" style={{ top: "calc(env(safe-area-inset-top, 0px) + 3.5rem)" }}>
+            <div className="bg-black/50 backdrop-blur-sm rounded-full px-3 py-1">
+              <span className="text-[11px] text-white/80 font-medium">{zoomLevel.toFixed(1)}x</span>
+            </div>
           </div>
         )}
 
