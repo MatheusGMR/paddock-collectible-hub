@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { SellerReceivablesSheet } from "@/components/profile/SellerReceivablesSheet";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { 
@@ -14,7 +15,8 @@ import {
   Shield,
   HelpCircle,
   RotateCcw,
-  Fingerprint
+  Fingerprint,
+  DollarSign
 } from "lucide-react";
 import { useAdmin } from "@/hooks/useAdmin";
 import {
@@ -393,6 +395,23 @@ export const SettingsSheet = ({ open, onOpenChange, onSignOut }: SettingsSheetPr
                 </div>
                 <ChevronRight className="h-5 w-5 text-muted-foreground" />
               </button>
+            </div>
+          </motion.section>
+
+          {/* Seller Receivables Section */}
+          <motion.section
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.27 }}
+          >
+            <div className="flex items-center gap-2 mb-3">
+              <DollarSign className="h-4 w-4 text-primary" />
+              <h3 className="text-sm font-semibold text-foreground uppercase tracking-wide">
+                Recebíveis
+              </h3>
+            </div>
+            <div className="bg-card rounded-xl border border-border overflow-hidden p-4">
+              <SellerReceivablesSheet />
             </div>
           </motion.section>
 
