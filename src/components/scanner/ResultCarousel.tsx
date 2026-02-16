@@ -74,11 +74,11 @@ const HighlightedImage = ({ originalImage, croppedImage, boundingBox, carName, c
     return (
       <div className="space-y-2">
         {/* Original image with bounding box indicator */}
-        <div className="relative w-full aspect-[4/3] rounded-2xl overflow-hidden bg-black">
+      <div className="relative w-full aspect-[4/3] rounded-2xl overflow-hidden bg-muted">
           <img
             src={originalImage}
             alt="Foto original"
-            className="w-full h-full object-contain"
+            className="w-full h-full object-cover"
           />
           {/* Bounding box overlay */}
           <div
@@ -111,11 +111,11 @@ const HighlightedImage = ({ originalImage, croppedImage, boundingBox, carName, c
         </div>
         {/* Cropped image below - smaller */}
         {croppedImage && (
-          <div className="relative w-full aspect-square rounded-2xl overflow-hidden bg-black">
+          <div className="relative w-full aspect-square rounded-2xl overflow-hidden bg-muted">
             <img
               src={croppedImage}
               alt={carName}
-              className="w-full h-full object-contain"
+              className="w-full h-full object-cover"
             />
             <div className="absolute top-3 left-3 flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/60 backdrop-blur-sm">
               <Car className="h-3.5 w-3.5 text-primary" />
@@ -131,11 +131,11 @@ const HighlightedImage = ({ originalImage, croppedImage, boundingBox, carName, c
   const displayImage = croppedImage || originalImage;
   
   return (
-    <div className="relative w-full aspect-square rounded-2xl overflow-hidden bg-gradient-to-b from-muted to-muted/50">
+    <div className="relative w-full aspect-[4/3] rounded-2xl overflow-hidden bg-muted">
       <img
         src={displayImage}
         alt={carName}
-        className="w-full h-full object-contain bg-black"
+        className="w-full h-full object-cover"
       />
       <div className="absolute top-3 left-3 flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/60 backdrop-blur-sm">
         <Car className="h-3.5 w-3.5 text-primary" />
