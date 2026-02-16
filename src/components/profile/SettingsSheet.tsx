@@ -16,7 +16,8 @@ import {
   HelpCircle,
   RotateCcw,
   Fingerprint,
-  DollarSign
+  DollarSign,
+  Store
 } from "lucide-react";
 import { useAdmin } from "@/hooks/useAdmin";
 import {
@@ -454,6 +455,28 @@ export const SettingsSheet = ({ open, onOpenChange, onSignOut }: SettingsSheetPr
                     <p className="text-foreground font-medium">Assinatura</p>
                     <p className={`text-xs ${subscriptionStatus.color}`}>
                       {subscriptionStatus.label}
+                    </p>
+                  </div>
+                </div>
+                <ChevronRight className="h-5 w-5 text-muted-foreground" />
+              </button>
+
+               {/* Seller Panel */}
+              <button 
+                onClick={() => {
+                  onOpenChange(false);
+                  navigate("/seller");
+                }}
+                className="w-full flex items-center justify-between p-4 hover:bg-muted/50 transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                    <Store className="h-5 w-5 text-primary" />
+                  </div>
+                  <div className="text-left">
+                    <p className="text-foreground font-medium">Painel do Lojista</p>
+                    <p className="text-xs text-muted-foreground">
+                      Estoque, vendas e financeiro
                     </p>
                   </div>
                 </div>
