@@ -265,7 +265,22 @@ serve(async (req) => {
     const dynamicPrompt = buildDynamicPrompt(BASE_PROMPT, variant, patterns, corrections);
 
     const isVid = imageBase64.startsWith("data:video/");
-    const imageUrl = imageBase64.startsWith("data:") ? imageBase64 : `data:image/jpeg;base64,${imageBase64}`;
+    
+    // Sanitize image data: ensure valid MIME type for OpenAI
+    let imageUrl: string;
+    if (imageBase64.startsWith("data:image/")) {
+      imageUrl = imageBase64;
+    } else if (imageBase64.startsWith("data:video/")) {
+      imageUrl = imageBase64;
+    } else if (imageBase64.startsWith("data:")) {
+      // Has a data: prefix but not a valid image MIME — fix it
+      const base64Part = imageBase64.split(",")[1] || imageBase64;
+      imageUrl = `data:image/jpeg;base64,${base64Part}`;
+      console.log("[AI] Fixed invalid MIME type in data URI");
+    } else {
+      // Raw base64 without any prefix
+      imageUrl = `data:image/jpeg;base64,${imageBase64}`;
+    }
 
     const uPrompt = isVid
       ? "Analyze video of collectible cars (max 7)."
