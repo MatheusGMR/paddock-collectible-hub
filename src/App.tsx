@@ -62,6 +62,7 @@ const AnalyticsTracker = () => {
 
 // Component that handles subscription flow
 const SubscriptionFlow = ({ children }: { children: React.ReactNode }) => {
+  const location = useLocation();
   const { user, loading: authLoading } = useAuth();
   const { status, isNewUser, isLoading: subLoading, startTrial, createCheckout, checkSubscription } = useSubscription();
   const { markOnboardingComplete } = useGuidedTips();
@@ -226,6 +227,12 @@ const SubscriptionFlow = ({ children }: { children: React.ReactNode }) => {
     // Show embedded checkout instead of redirecting
     setShowEmbeddedCheckout(true);
   }, []);
+
+  // Bypass subscription flow for admin and auth routes
+  const bypassRoutes = ["/admin", "/auth", "/privacy", "/payment-success", "/payment-canceled", "/subscription-success"];
+  if (bypassRoutes.some(r => location.pathname.startsWith(r))) {
+    return <>{children}</>;
+  }
 
   // If not logged in, show app normally (will redirect to auth)
   if (!user) {
