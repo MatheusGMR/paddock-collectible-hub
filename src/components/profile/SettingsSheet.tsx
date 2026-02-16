@@ -116,21 +116,45 @@ export const SettingsSheet = ({ open, onOpenChange, onSignOut }: SettingsSheetPr
     
     try {
       if (enabled) {
-        // Request permission first (especially important on native)
-        const permission = await requestPushPermission();
-        if (permission !== 'granted') {
-          toast({
-            title: "Permissão negada",
-            description: "Habilite as notificações nas configurações do dispositivo",
-            variant: "destructive",
-          });
-          setPushLoading(false);
-          return;
+        // On native iOS, skip separate requestPermissions — register() handles it implicitly.
+        // Calling requestPermissions() separately can interfere with APNs registration.
+        if (!Capacitor.isNativePlatform()) {
+          const permission = await requestPushPermission();
+          if (permission !== 'granted') {
+            toast({
+              title: "Permissão negada",
+              description: "Habilite as notificações nas configurações do dispositivo",
+              variant: "destructive",
+            });
+            setPushLoading(false);
+            return;
+          }
         }
-        const success = await subscribeToPush(user.id);
+        
+        console.log('[Settings] Calling subscribeToPush...');
+        
+        // Wrap in a timeout to prevent infinite hang
+        const success = await Promise.race([
+          subscribeToPush(user.id),
+          new Promise<boolean>((resolve) => {
+            setTimeout(() => {
+              console.error('[Settings] subscribeToPush timed out after 25s');
+              resolve(false);
+            }, 25000);
+          }),
+        ]);
+        
+        console.log('[Settings] subscribeToPush result:', success);
         setPushEnabled(success);
+        
         if (success) {
           toast({ title: "Notificações ativadas!" });
+        } else {
+          toast({
+            title: "Não foi possível ativar",
+            description: "Verifique se as notificações estão habilitadas em Ajustes > Paddock > Notificações",
+            variant: "destructive",
+          });
         }
       } else {
         const success = await unsubscribeFromPush();
