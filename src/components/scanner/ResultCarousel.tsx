@@ -74,8 +74,8 @@ const HighlightedImage = ({ originalImage, croppedImage, boundingBox, carName, c
     return (
       <div className="space-y-2">
         {/* Original image with bounding box indicator */}
-        <div className="relative w-full rounded-2xl overflow-hidden bg-muted p-2">
-          <div className="relative w-full aspect-[4/3] rounded-xl overflow-hidden bg-muted">
+        <div className="relative w-full rounded-2xl overflow-hidden">
+          <div className="relative w-full aspect-[4/3] rounded-2xl overflow-hidden">
             <img
               src={originalImage}
               alt="Foto original"
@@ -108,8 +108,8 @@ const HighlightedImage = ({ originalImage, croppedImage, boundingBox, carName, c
           </div>
         </div>
         {croppedImage && (
-          <div className="relative w-full rounded-2xl overflow-hidden bg-muted p-2">
-            <div className="relative w-full aspect-square rounded-xl overflow-hidden bg-muted">
+          <div className="relative w-full rounded-2xl overflow-hidden">
+            <div className="relative w-full aspect-square rounded-2xl overflow-hidden">
               <img
                 src={croppedImage}
                 alt={carName}
@@ -130,8 +130,8 @@ const HighlightedImage = ({ originalImage, croppedImage, boundingBox, carName, c
   const displayImage = originalImage || croppedImage;
   
   return (
-    <div className="relative w-full rounded-2xl overflow-hidden bg-muted p-2">
-      <div className="relative w-full aspect-[4/3] rounded-xl overflow-hidden bg-muted">
+    <div className="relative w-full rounded-2xl overflow-hidden">
+      <div className="relative w-full aspect-[4/3] rounded-2xl overflow-hidden">
         <img
           src={displayImage}
           alt={carName}
@@ -346,32 +346,37 @@ export const ResultCarousel = ({
     isDraggingRef.current = false;
   };
 
-  // Get tier-based card styling - solid backgrounds for readability
+  // Get tier-based card styling - liquid glass with subtle rarity tint
   const currentTier = result.priceIndex?.tier || "common";
-  const getTierCardGradient = (tier: string) => {
+  const getTierAccent = (tier: string) => {
     switch (tier) {
-      case "ultra_rare": return "from-amber-950 via-card to-card border-amber-500/40";
-      case "super_rare": return "from-purple-950 via-card to-card border-purple-500/40";
-      case "rare": return "from-blue-950 via-card to-card border-blue-500/40";
-      case "uncommon": return "from-green-950 via-card to-card border-green-500/40";
-      default: return "from-card via-card to-card border-border/30";
+      case "ultra_rare": return { border: "border-amber-400/30", glow: "shadow-[0_-8px_40px_rgba(245,158,11,0.15)]", tint: "rgba(245,158,11,0.06)" };
+      case "super_rare": return { border: "border-purple-400/30", glow: "shadow-[0_-8px_40px_rgba(168,85,247,0.15)]", tint: "rgba(168,85,247,0.06)" };
+      case "rare": return { border: "border-blue-400/30", glow: "shadow-[0_-8px_40px_rgba(59,130,246,0.15)]", tint: "rgba(59,130,246,0.06)" };
+      case "uncommon": return { border: "border-green-400/30", glow: "shadow-[0_-8px_40px_rgba(16,185,129,0.15)]", tint: "rgba(16,185,129,0.06)" };
+      default: return { border: "border-white/10", glow: "shadow-[0_-8px_30px_rgba(0,0,0,0.3)]", tint: "rgba(255,255,255,0.02)" };
     }
   };
+  const tierAccent = getTierAccent(currentTier);
 
   return (
     <>
-      {/* Fixed card with CSS animation - rarity-tinted background */}
+      {/* Fixed card with liquid glass effect */}
       <div 
         className={cn(
           "fixed inset-x-0 bottom-0 z-50 flex flex-col rounded-t-[28px]",
-          "bg-gradient-to-b border-t",
-          getTierCardGradient(currentTier),
+          "border-t backdrop-blur-xl backdrop-saturate-150",
+          tierAccent.border, tierAccent.glow,
           "overflow-hidden",
-          "animate-slide-up-card shadow-[0_-8px_30px_rgba(0,0,0,0.3)]",
+          "animate-slide-up-card",
           isExpanded ? "max-h-[85vh]" : "max-h-[20vh]",
           dragOffset === 0 && "transition-[max-height,transform] duration-300 ease-out"
         )}
-        style={{ transform: dragOffset ? `translateY(${dragOffset}px)` : undefined }}
+        style={{ 
+          transform: dragOffset ? `translateY(${dragOffset}px)` : undefined,
+          backgroundColor: `color-mix(in srgb, hsl(var(--card)) 75%, transparent)`,
+          backgroundImage: `linear-gradient(to bottom, ${tierAccent.tint}, transparent 40%)`,
+        }}
       >
         {/* Drag handle with car title */}
         <div 
