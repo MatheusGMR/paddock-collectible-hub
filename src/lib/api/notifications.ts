@@ -4,7 +4,7 @@ export interface Notification {
   id: string;
   user_id: string;
   actor_id: string;
-  type: "like" | "comment" | "follow" | "mention";
+  type: "like" | "comment" | "follow" | "mention" | "push";
   post_id: string | null;
   message: string | null;
   is_read: boolean;

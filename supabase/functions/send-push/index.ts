@@ -219,6 +219,38 @@ Deno.serve(async (req) => {
       tag: `paddock-${topic || 'news'}`,
     };
 
+    // ─── Create in-app notifications for each unique user ────
+    const uniqueUserIds = [...new Set(subscriptions.map((s: any) => s.user_id).filter(Boolean))];
+    if (uniqueUserIds.length > 0) {
+      const notificationRows = uniqueUserIds.map((uid: string) => ({
+        user_id: uid,
+        actor_id: uid, // self-referencing since it's a system notification
+        type: 'push',
+        message: `${payload.title}: ${payload.body}`,
+        is_read: false,
+      }));
+
+      const insertRes = await fetch(
+        `${supabaseUrl}/rest/v1/notifications`,
+        {
+          method: 'POST',
+          headers: {
+            'apikey': supabaseKey,
+            'Authorization': `Bearer ${supabaseKey}`,
+            'Content-Type': 'application/json',
+            'Prefer': 'return=minimal',
+          },
+          body: JSON.stringify(notificationRows),
+        }
+      );
+
+      if (!insertRes.ok) {
+        console.error('[Push] Failed to create in-app notifications:', await insertRes.text());
+      } else {
+        console.log(`[Push] Created ${uniqueUserIds.length} in-app notifications`);
+      }
+    }
+
     let sentNative = 0;
     let sentWeb = 0;
     let failed = 0;
