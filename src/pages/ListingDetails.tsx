@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Shield, MapPin, Calendar, Star, TrendingUp } from "lucide-react";
+import { ArrowLeft, Shield, MapPin, Calendar, Star, TrendingUp, ChevronRight, Package, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
@@ -10,6 +10,7 @@ import { IndexCard } from "@/components/index/IndexCard";
 import { supabase } from "@/integrations/supabase/client";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { formatPrice, getSourceByCode } from "@/data/marketplaceSources";
+import { getFollowCounts, getCollectionCount } from "@/lib/database";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -62,6 +63,7 @@ export default function ListingDetails() {
   const [listing, setListing] = useState<ListingData | null>(null);
   const [item, setItem] = useState<ItemData | null>(null);
   const [sellerProfile, setSellerProfile] = useState<{ username: string; avatar_url: string | null; city: string | null } | null>(null);
+  const [sellerStats, setSellerStats] = useState<{ collection: number; followers: number; averageIndex: number | null } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -93,14 +95,22 @@ export default function ListingDetails() {
           if (itemData) setItem(itemData);
         }
 
-        // Fetch seller profile
+        // Fetch seller profile and stats
         if (data.user_id) {
-          const { data: profile } = await supabase
-            .from("profiles")
-            .select("username, avatar_url, city")
-            .eq("user_id", data.user_id)
-            .single();
-          if (profile) setSellerProfile(profile);
+          const [profileRes, collectionCount, followCounts, avgIndexRes] = await Promise.all([
+            supabase.from("profiles").select("username, avatar_url, city").eq("user_id", data.user_id).single(),
+            getCollectionCount(data.user_id),
+            getFollowCounts(data.user_id),
+            supabase.from("user_collection").select("item:items!inner(price_index)").eq("user_id", data.user_id).not("items.price_index", "is", null),
+          ]);
+          if (profileRes.data) setSellerProfile(profileRes.data);
+          
+          const avgItems = (avgIndexRes.data || []) as any[];
+          const avgIndex = avgItems.length > 0
+            ? Math.round(avgItems.reduce((sum: number, r: any) => sum + (r.item?.price_index || 0), 0) / avgItems.length)
+            : null;
+          
+          setSellerStats({ collection: collectionCount, followers: followCounts.followers, averageIndex: avgIndex });
         }
       } catch (err) {
         console.error("Error fetching listing:", err);
@@ -280,10 +290,13 @@ export default function ListingDetails() {
           </Badge>
         </div>
 
-        {/* Seller info */}
-        {sellerProfile && (
-          <div className="flex items-center gap-3 rounded-xl border border-border bg-card p-4">
-            <div className="h-10 w-10 rounded-full bg-muted overflow-hidden">
+        {/* Seller info - clickable */}
+        {sellerProfile && listing.user_id && (
+          <div
+            onClick={() => navigate(`/user/${listing.user_id}`)}
+            className="flex items-center gap-3 rounded-xl border border-border bg-card p-4 cursor-pointer active:bg-muted/50 transition-colors"
+          >
+            <div className="h-12 w-12 rounded-full bg-muted overflow-hidden shrink-0">
               {sellerProfile.avatar_url ? (
                 <img src={sellerProfile.avatar_url} alt="" className="h-full w-full object-cover" />
               ) : (
@@ -292,12 +305,34 @@ export default function ListingDetails() {
                 </div>
               )}
             </div>
-            <div>
-              <p className="text-sm font-medium text-foreground">@{sellerProfile.username}</p>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-foreground">@{sellerProfile.username}</p>
               {sellerProfile.city && (
-                <p className="text-xs text-muted-foreground">{sellerProfile.city}</p>
+                <p className="text-xs text-muted-foreground flex items-center gap-1">
+                  <MapPin className="h-3 w-3" />
+                  {sellerProfile.city}
+                </p>
+              )}
+              {sellerStats && (
+                <div className="flex items-center gap-3 mt-1.5">
+                  <span className="text-xs text-muted-foreground flex items-center gap-1">
+                    <Package className="h-3 w-3" />
+                    {sellerStats.collection}
+                  </span>
+                  <span className="text-xs text-muted-foreground flex items-center gap-1">
+                    <Users className="h-3 w-3" />
+                    {sellerStats.followers}
+                  </span>
+                  {sellerStats.averageIndex != null && (
+                    <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                      <TrendingUp className="h-2.5 w-2.5 mr-0.5" />
+                      {sellerStats.averageIndex}
+                    </Badge>
+                  )}
+                </div>
               )}
             </div>
+            <ChevronRight className="h-5 w-5 text-muted-foreground shrink-0" />
           </div>
         )}
 
