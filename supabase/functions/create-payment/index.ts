@@ -7,8 +7,22 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+const PLATFORM_FEE_FIXED = 1.99;
+const PLATFORM_FEE_PERCENT = 4.99;
+
+function calculateFees(salePrice: number) {
+  const percentFee = salePrice * (PLATFORM_FEE_PERCENT / 100);
+  const totalFee = PLATFORM_FEE_FIXED + percentFee;
+  const sellerNet = salePrice - totalFee;
+  return {
+    platform_fee_fixed: PLATFORM_FEE_FIXED,
+    platform_fee_percent: PLATFORM_FEE_PERCENT,
+    platform_fee_total: Math.round(totalFee * 100) / 100,
+    seller_net: Math.round(sellerNet * 100) / 100,
+  };
+}
+
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -20,13 +34,18 @@ serve(async (req) => {
       throw new Error("listing_id is required");
     }
 
-    // Initialize Supabase client
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_ANON_KEY") ?? ""
     );
 
-    // Fetch listing details from database
+    // Service role client for inserting sales
+    const supabaseAdmin = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
+    );
+
+    // Fetch listing details
     const { data: listing, error: listingError } = await supabaseClient
       .from("listings")
       .select("*")
@@ -37,8 +56,9 @@ serve(async (req) => {
       throw new Error("Listing not found");
     }
 
-    // Try to get user from auth header (optional - supports guest checkout)
+    // Get authenticated user
     let userEmail: string | undefined;
+    let userId: string | undefined;
     let customerId: string | undefined;
 
     const authHeader = req.headers.get("Authorization");
@@ -46,14 +66,13 @@ serve(async (req) => {
       const token = authHeader.replace("Bearer ", "");
       const { data } = await supabaseClient.auth.getUser(token);
       userEmail = data.user?.email;
+      userId = data.user?.id;
     }
 
-    // Initialize Stripe
     const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
       apiVersion: "2025-08-27.basil",
     });
 
-    // Check if a Stripe customer already exists for this user
     if (userEmail) {
       const customers = await stripe.customers.list({ email: userEmail, limit: 1 });
       if (customers.data.length > 0) {
@@ -61,13 +80,9 @@ serve(async (req) => {
       }
     }
 
-    // Convert price to cents (Stripe uses smallest currency unit)
     const amountInCents = Math.round(listing.price * 100);
-
-    // Get origin for redirect URLs
     const origin = req.headers.get("origin") || "https://paddock-collectible-hub.lovable.app";
 
-    // Create Stripe Checkout session
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       customer_email: customerId ? undefined : userEmail,
@@ -92,8 +107,25 @@ serve(async (req) => {
       metadata: {
         listing_id: listing_id,
         listing_title: listing.title,
+        user_id: userId || "",
+        seller_id: listing.user_id || "",
       },
     });
+
+    // Record the sale with fee calculation
+    if (userId && listing.user_id) {
+      const fees = calculateFees(listing.price);
+      await supabaseAdmin.from("sales").insert({
+        listing_id: listing_id,
+        seller_id: listing.user_id,
+        buyer_id: userId,
+        sale_price: listing.price,
+        currency: listing.currency,
+        ...fees,
+        stripe_session_id: session.id,
+        status: "pending",
+      });
+    }
 
     return new Response(JSON.stringify({ url: session.url }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },

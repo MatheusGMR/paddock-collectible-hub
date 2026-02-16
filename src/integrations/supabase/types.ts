@@ -970,6 +970,65 @@ export type Database = {
         }
         Relationships: []
       }
+      sales: {
+        Row: {
+          buyer_id: string
+          created_at: string
+          currency: string
+          id: string
+          listing_id: string
+          paid_out_at: string | null
+          platform_fee_fixed: number
+          platform_fee_percent: number
+          platform_fee_total: number
+          sale_price: number
+          seller_id: string
+          seller_net: number
+          status: string
+          stripe_session_id: string | null
+        }
+        Insert: {
+          buyer_id: string
+          created_at?: string
+          currency?: string
+          id?: string
+          listing_id: string
+          paid_out_at?: string | null
+          platform_fee_fixed?: number
+          platform_fee_percent?: number
+          platform_fee_total: number
+          sale_price: number
+          seller_id: string
+          seller_net: number
+          status?: string
+          stripe_session_id?: string | null
+        }
+        Update: {
+          buyer_id?: string
+          created_at?: string
+          currency?: string
+          id?: string
+          listing_id?: string
+          paid_out_at?: string | null
+          platform_fee_fixed?: number
+          platform_fee_percent?: number
+          platform_fee_total?: number
+          sale_price?: number
+          seller_id?: string
+          seller_net?: number
+          status?: string
+          stripe_session_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "listings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       scan_feedback: {
         Row: {
           created_at: string
@@ -1235,6 +1294,7 @@ export type Database = {
           visual_cues: string
         }[]
       }
+      get_seller_receivables: { Args: { p_seller_id: string }; Returns: Json }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

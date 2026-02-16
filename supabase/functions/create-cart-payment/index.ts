@@ -7,6 +7,21 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+const PLATFORM_FEE_FIXED = 1.99;
+const PLATFORM_FEE_PERCENT = 4.99;
+
+function calculateFees(salePrice: number) {
+  const percentFee = salePrice * (PLATFORM_FEE_PERCENT / 100);
+  const totalFee = PLATFORM_FEE_FIXED + percentFee;
+  const sellerNet = salePrice - totalFee;
+  return {
+    platform_fee_fixed: PLATFORM_FEE_FIXED,
+    platform_fee_percent: PLATFORM_FEE_PERCENT,
+    platform_fee_total: Math.round(totalFee * 100) / 100,
+    seller_net: Math.round(sellerNet * 100) / 100,
+  };
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -22,6 +37,11 @@ serve(async (req) => {
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_ANON_KEY") ?? ""
+    );
+
+    const supabaseAdmin = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
 
     // Authenticate user
@@ -42,16 +62,13 @@ serve(async (req) => {
     if (listingsError) throw listingsError;
     if (!listings || listings.length === 0) throw new Error("No active listings found");
 
-    // Initialize Stripe
     const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
       apiVersion: "2025-08-27.basil",
     });
 
-    // Check for existing Stripe customer
     const customers = await stripe.customers.list({ email: user.email, limit: 1 });
     const customerId = customers.data.length > 0 ? customers.data[0].id : undefined;
 
-    // Build line items
     const lineItems = listings.map((listing) => ({
       price_data: {
         currency: listing.currency.toLowerCase(),
@@ -67,7 +84,6 @@ serve(async (req) => {
 
     const origin = req.headers.get("origin") || "https://paddock-collectible-hub.lovable.app";
 
-    // Create consolidated checkout session
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       customer_email: customerId ? undefined : user.email,
@@ -83,7 +99,28 @@ serve(async (req) => {
       },
     });
 
-    // Clear cart items after creating session
+    // Record sales for each listing with fee calculation
+    const salesRecords = listings
+      .filter((listing) => listing.user_id)
+      .map((listing) => {
+        const fees = calculateFees(listing.price);
+        return {
+          listing_id: listing.id,
+          seller_id: listing.user_id,
+          buyer_id: user.id,
+          sale_price: listing.price,
+          currency: listing.currency,
+          ...fees,
+          stripe_session_id: session.id,
+          status: "pending",
+        };
+      });
+
+    if (salesRecords.length > 0) {
+      await supabaseAdmin.from("sales").insert(salesRecords);
+    }
+
+    // Clear cart items
     await supabaseClient
       .from("cart_items")
       .delete()
