@@ -1046,6 +1046,7 @@ export const ScannerView = () => {
       }
       
       const imageBase64 = result.base64Image;
+      console.log(`[Scanner] Camera-preview captured. base64 length: ${imageBase64.length}, starts with: ${imageBase64.substring(0, 30)}`);
       const imageForDisplay = isBase64DataUri(imageBase64)
         ? imageBase64
         : `data:image/jpeg;base64,${imageBase64}`;
@@ -1187,6 +1188,7 @@ export const ScannerView = () => {
     context.drawImage(video, 0, 0, w, h);
 
     const imageBase64 = canvas.toDataURL("image/jpeg", 0.70);
+    console.log(`[Scanner] Captured image: ${w}x${h}, base64 length: ${imageBase64.length}`);
     
     // 1. IMMEDIATELY stop camera and show captured image (freeze the frame)
     stopCamera();
