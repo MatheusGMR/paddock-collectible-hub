@@ -371,25 +371,27 @@ export const ScannerView = () => {
     return () => {
       console.log("[Scanner] Restoring original backgrounds");
       
-      if (originalHtmlBg) {
-        html.style.backgroundColor = originalHtmlBg;
-      } else {
-        html.style.removeProperty("background-color");
-      }
-      
-      if (originalBodyBg) {
-        body.style.backgroundColor = originalBodyBg;
-      } else {
-        body.style.removeProperty("background-color");
-      }
-      
+      // Force restore to solid backgrounds to prevent black screen
+      html.style.removeProperty("background-color");
+      body.style.removeProperty("background-color");
       if (root) {
-        if (originalRootBg) {
-          root.style.backgroundColor = originalRootBg;
-        } else {
-          root.style.removeProperty("background-color");
-        }
+        root.style.removeProperty("background-color");
       }
+      
+      // Apply original or fallback to ensure no transparency remains
+      html.style.backgroundColor = originalHtmlBg || "";
+      body.style.backgroundColor = originalBodyBg || "";
+      if (root) {
+        root.style.backgroundColor = originalRootBg || "";
+      }
+      
+      // Force a repaint to ensure backgrounds are applied on iOS WebView
+      requestAnimationFrame(() => {
+        document.documentElement.style.opacity = "0.999";
+        requestAnimationFrame(() => {
+          document.documentElement.style.opacity = "";
+        });
+      });
     };
   }, [useCameraPreview]);
 
@@ -660,6 +662,14 @@ export const ScannerView = () => {
       if (recordingTimerRef.current) {
         clearInterval(recordingTimerRef.current);
       }
+      
+      // CRITICAL: Force restore backgrounds on unmount to prevent black screen
+      const html = document.documentElement;
+      const body = document.body;
+      const root = document.getElementById("root");
+      html.style.removeProperty("background-color");
+      body.style.removeProperty("background-color");
+      if (root) root.style.removeProperty("background-color");
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Empty deps - run only once on mount
