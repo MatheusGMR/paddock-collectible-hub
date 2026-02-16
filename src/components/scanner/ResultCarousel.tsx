@@ -322,11 +322,11 @@ export const ResultCarousel = ({
   const currentTier = result.priceIndex?.tier || "common";
   const getTierCardGradient = (tier: string) => {
     switch (tier) {
-      case "ultra_rare": return "from-amber-500/15 via-card to-card border-amber-500/20";
-      case "super_rare": return "from-purple-500/15 via-card to-card border-purple-500/20";
-      case "rare": return "from-blue-500/15 via-card to-card border-blue-500/20";
-      case "uncommon": return "from-green-500/15 via-card to-card border-green-500/20";
-      default: return "from-muted via-card to-card border-border/30";
+      case "ultra_rare": return "from-amber-500/25 via-amber-900/10 to-card border-amber-500/40";
+      case "super_rare": return "from-purple-500/25 via-purple-900/10 to-card border-purple-500/40";
+      case "rare": return "from-blue-500/25 via-blue-900/10 to-card border-blue-500/40";
+      case "uncommon": return "from-green-500/25 via-green-900/10 to-card border-green-500/40";
+      default: return "from-muted/40 via-card to-card border-border/30";
     }
   };
 

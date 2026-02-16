@@ -286,7 +286,7 @@ serve(async (req) => {
       ? "Analyze video of collectible cars (max 7)."
       : "Analyze image. Determine if collectible or real vehicle.";
 
-    const PRIMARY_MODEL = "gpt-4o-mini";
+    const PRIMARY_MODEL = "gpt-4o";
     const FALLBACK_MODEL = "gpt-4o";
 
     const stripFences = (s: string) => s.replace(/```json\n?|\n?```/g, "").trim();
