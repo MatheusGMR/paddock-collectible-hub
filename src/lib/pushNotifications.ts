@@ -6,8 +6,18 @@ let nativePlugin: typeof import('@capacitor/push-notifications').PushNotificatio
 
 async function getNativePlugin() {
   if (!nativePlugin) {
-    const mod = await import('@capacitor/push-notifications');
-    nativePlugin = mod.PushNotifications;
+    try {
+      console.log('[Push Native] Importing @capacitor/push-notifications...');
+      const mod = await Promise.race([
+        import('@capacitor/push-notifications'),
+        new Promise<never>((_, reject) => setTimeout(() => reject(new Error('import_timeout_5s')), 5000)),
+      ]);
+      nativePlugin = mod.PushNotifications;
+      console.log('[Push Native] Import successful, plugin ready');
+    } catch (err) {
+      console.error('[Push Native] Import failed or timed out:', err);
+      throw err;
+    }
   }
   return nativePlugin;
 }

@@ -103,7 +103,13 @@ export const SettingsSection = ({ onSignOut }: SettingsSectionProps) => {
           // On native, subscribeToPush handles permission + registration in one step
           // Avoids separate checkPermissions() call that can trigger biometric re-auth
           console.log('[Settings] Native: calling subscribeToPush directly...');
-          const success = await subscribeToPush(user.id);
+          const success = await Promise.race([
+            subscribeToPush(user.id),
+            new Promise<boolean>((resolve) => setTimeout(() => {
+              console.error('[Settings] subscribeToPush timed out after 20s');
+              resolve(false);
+            }, 20000)),
+          ]);
           console.log('[Settings] subscribeToPush result:', success);
           if (!success) {
             toast({
