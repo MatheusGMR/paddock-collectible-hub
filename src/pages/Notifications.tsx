@@ -20,8 +20,8 @@ import { ptBR } from "date-fns/locale";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 
-const getNotificationMessage = (type: Notification["type"]): string => {
-  switch (type) {
+const getNotificationMessage = (notification: Notification): string => {
+  switch (notification.type) {
     case "like":
       return "curtiu sua publicação";
     case "comment":
@@ -30,6 +30,8 @@ const getNotificationMessage = (type: Notification["type"]): string => {
       return "começou a seguir você";
     case "mention":
       return "mencionou você em uma publicação";
+    case "push":
+      return notification.message || "Nova notificação";
     default:
       return "interagiu com você";
   }
@@ -147,27 +149,39 @@ const Notifications = () => {
                 !notification.is_read && "bg-primary/5"
               )}
             >
-              {/* Avatar */}
-              <Avatar className="h-11 w-11">
-                <AvatarImage 
-                  src={notification.actor?.avatar_url || undefined} 
-                  alt={notification.actor?.username} 
-                />
-                <AvatarFallback className="bg-muted">
-                  {notification.actor?.username?.[0]?.toUpperCase() || "U"}
-                </AvatarFallback>
-              </Avatar>
+              {/* Avatar / Icon */}
+              {notification.type === "push" ? (
+                <div className="h-11 w-11 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                  <Bell className="h-5 w-5 text-primary" />
+                </div>
+              ) : (
+                <Avatar className="h-11 w-11">
+                  <AvatarImage 
+                    src={notification.actor?.avatar_url || undefined} 
+                    alt={notification.actor?.username} 
+                  />
+                  <AvatarFallback className="bg-muted">
+                    {notification.actor?.username?.[0]?.toUpperCase() || "U"}
+                  </AvatarFallback>
+                </Avatar>
+              )}
 
               {/* Content */}
               <div className="flex-1 text-left min-w-0">
-                <p className="text-sm">
-                  <span className="font-semibold">
-                    {notification.actor?.username || "Usuário"}
-                  </span>{" "}
-                  <span className="text-foreground/80">
-                    {getNotificationMessage(notification.type)}
-                  </span>
-                </p>
+                {notification.type === "push" ? (
+                  <p className="text-sm text-foreground/90">
+                    {notification.message || "Nova notificação"}
+                  </p>
+                ) : (
+                  <p className="text-sm">
+                    <span className="font-semibold">
+                      {notification.actor?.username || "Usuário"}
+                    </span>{" "}
+                    <span className="text-foreground/80">
+                      {getNotificationMessage(notification)}
+                    </span>
+                  </p>
+                )}
                 <p className="text-xs text-foreground-secondary mt-0.5">
                   {formatDistanceToNow(new Date(notification.created_at), {
                     addSuffix: true,
@@ -185,6 +199,11 @@ const Notifications = () => {
                     className="w-full h-full object-cover"
                   />
                 </div>
+              )}
+
+              {/* Unread dot for push */}
+              {!notification.is_read && notification.type === "push" && (
+                <div className="w-2.5 h-2.5 rounded-full bg-primary flex-shrink-0" />
               )}
             </button>
           ))}
