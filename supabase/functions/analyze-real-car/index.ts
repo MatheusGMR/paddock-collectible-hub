@@ -24,10 +24,8 @@ interface RealCarAnalysisResponse {
 
 // Pricing per 1M tokens (in USD)
 const MODEL_PRICING = {
-  "google/gemini-3-flash-preview": {
-    input: 0.50,
-    output: 3.00,
-  },
+  "gpt-4o-mini": { input: 0.15, output: 0.60 },
+  "gpt-4o": { input: 2.50, output: 10.00 },
 };
 
 // Estimate tokens based on content size
@@ -41,7 +39,7 @@ function estimateTokens(content: string, isImage: boolean = false): number {
 }
 
 function calculateCost(inputTokens: number, outputTokens: number, model: string): number {
-  const pricing = MODEL_PRICING[model as keyof typeof MODEL_PRICING] || MODEL_PRICING["google/gemini-3-flash-preview"];
+  const pricing = MODEL_PRICING[model as keyof typeof MODEL_PRICING] || MODEL_PRICING["gpt-4o-mini"];
   const inputCost = (inputTokens / 1_000_000) * pricing.input;
   const outputCost = (outputTokens / 1_000_000) * pricing.output;
   return inputCost + outputCost;
@@ -152,9 +150,9 @@ serve(async (req) => {
       );
     }
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
-      console.error("LOVABLE_API_KEY not configured");
+    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+    if (!OPENAI_API_KEY) {
+      console.error("OPENAI_API_KEY not configured");
       return new Response(
         JSON.stringify({ 
           identified: false, 
@@ -193,13 +191,13 @@ serve(async (req) => {
 
     console.log("[analyze-real-car] Sending image to Gemini for analysis...");
 
-    const model = "google/gemini-3-flash-preview";
+    const model = "gpt-4o-mini";
     const userPrompt = "Identifique o carro real nesta imagem e sugira termos de busca para encontrar miniaturas deste veículo.";
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        Authorization: `Bearer ${OPENAI_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
@@ -223,7 +221,7 @@ serve(async (req) => {
           },
         ],
         max_tokens: 1024,
-        temperature: 0.3,
+        response_format: { type: "json_object" },
       }),
     });
 
