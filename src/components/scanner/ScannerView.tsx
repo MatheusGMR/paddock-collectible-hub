@@ -159,7 +159,36 @@ function normalizeMultiCarAnalysisResponse(raw: MultiCarAnalysisResponse): Multi
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const r = raw as any;
 
-  const items: AnalysisResult[] = Array.isArray(r.items) ? r.items : [];
+  const rawItems: any[] = Array.isArray(r.items) ? r.items : [];
+  
+  // Ensure each item has the required realCar structure
+  const items: AnalysisResult[] = rawItems
+    .filter(item => item && (item.realCar || item.real_car || item.brand))
+    .map(item => {
+      // Handle different response shapes from the AI
+      const realCar = item.realCar || item.real_car || {};
+      const collectible = item.collectible || {};
+      return {
+        ...item,
+        realCar: {
+          brand: realCar.brand || realCar.real_car_brand || 'Desconhecido',
+          model: realCar.model || realCar.real_car_model || 'Desconhecido',
+          year: realCar.year || realCar.real_car_year || '',
+          historicalFact: realCar.historicalFact || realCar.historical_fact || '',
+        },
+        collectible: {
+          manufacturer: collectible.manufacturer || '',
+          scale: collectible.scale || '',
+          estimatedYear: collectible.estimatedYear || collectible.estimated_year || '',
+          origin: collectible.origin || '',
+          series: collectible.series || '',
+          condition: collectible.condition || '',
+          color: collectible.color || '',
+          notes: collectible.notes || '',
+        },
+      };
+    });
+
   const count = typeof r.count === "number" && r.count > 0 ? r.count : items.length;
   const identified = Boolean(r.identified) || items.length > 0;
 
