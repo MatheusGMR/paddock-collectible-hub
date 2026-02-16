@@ -316,7 +316,7 @@ serve(async (req) => {
         body: JSON.stringify({
           model,
           messages,
-          max_tokens: model === "gpt-4o-mini" ? 2048 : 4096,
+          max_tokens: model === "gpt-4o-mini" ? 4096 : 4096,
           response_format: { type: "json_object" },
         }),
       });
