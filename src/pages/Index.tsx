@@ -1,9 +1,10 @@
-import { useEffect, useRef, useCallback, useMemo } from "react";
+import { useEffect, useRef, useCallback, useMemo, useState } from "react";
 import { FeedHeader } from "@/components/feed/FeedHeader";
 import { PostCard } from "@/components/feed/PostCard";
 import { FeedNewsCard } from "@/components/feed/FeedNewsCard";
 import { PullToRefreshIndicator } from "@/components/feed/PullToRefreshIndicator";
 import { ChallengeProgressBar } from "@/components/challenge/ChallengeProgressBar";
+import { FeedContentFilter, FeedFilter } from "@/components/feed/FeedContentFilter";
 import { useFeedPosts, FeedPost } from "@/hooks/useFeedPosts";
 import { useFeaturedCuriosity } from "@/hooks/useFeaturedCuriosity";
 import { useNewsFeed } from "@/hooks/useNewsFeed";
@@ -17,6 +18,9 @@ type FeedItem =
   | { type: "news"; data: NewsArticle };
 
 const Index = () => {
+  const [feedFilter, setFeedFilter] = useState<FeedFilter>(() => {
+    return (localStorage.getItem("paddock-feed-filter") as FeedFilter) || "all";
+  });
   const { posts, loading, loadingMore, error, hasMore, loadMore, refetch } = useFeedPosts();
   const { curiosity, loading: curiosityLoading, refresh: refreshCuriosity } = useFeaturedCuriosity();
   const { articles: newsArticles, loading: newsLoading } = useNewsFeed();
@@ -99,6 +103,19 @@ const Index = () => {
     };
   }, [curiosity]);
 
+  const handleFilterChange = useCallback((filter: FeedFilter) => {
+    setFeedFilter(filter);
+    localStorage.setItem("paddock-feed-filter", filter);
+  }, []);
+
+  // Filter news by category
+  const filteredNews = useMemo(() => {
+    if (feedFilter === "posts_only") return [];
+    if (feedFilter === "all") return newsArticles;
+    // feedFilter matches a news category
+    return newsArticles.filter((a) => a.category === feedFilter);
+  }, [newsArticles, feedFilter]);
+
   // Build unified feed: interleave 1 news every 3 posts (or after fewer if not enough posts)
   const unifiedFeed: FeedItem[] = useMemo(() => {
     const items: FeedItem[] = [];
@@ -115,7 +132,7 @@ const Index = () => {
         items.push({ type: "post", data: curiosityAsPost });
       }
       // Show available news articles
-      newsArticles.forEach(article => {
+      filteredNews.forEach(article => {
         items.push({ type: "news", data: article });
       });
       return items;
@@ -131,22 +148,22 @@ const Index = () => {
 
       // Insert news every 3 posts, but also after posts 1-2 if we have few posts
       const shouldInsertNews = (i + 1) % 3 === 0 || (posts.length < 3 && i === posts.length - 1);
-      if (shouldInsertNews && newsIndex < newsArticles.length) {
-        items.push({ type: "news", data: newsArticles[newsIndex] });
+      if (shouldInsertNews && newsIndex < filteredNews.length) {
+        items.push({ type: "news", data: filteredNews[newsIndex] });
         newsIndex++;
       }
     }
 
     // If there are remaining news articles, append them spaced out
-    while (newsIndex < newsArticles.length) {
-      items.push({ type: "news", data: newsArticles[newsIndex] });
+    while (newsIndex < filteredNews.length) {
+      items.push({ type: "news", data: filteredNews[newsIndex] });
       newsIndex++;
       // Stop after a reasonable amount so feed doesn't become all news
       if (newsIndex >= Math.max(5, Math.ceil(posts.length / 2))) break;
     }
 
     return items;
-  }, [posts, newsArticles, curiosityAsPost, curiosity?.id]);
+  }, [posts, filteredNews, curiosityAsPost, curiosity?.id]);
 
   return (
     <div ref={containerRef} className="min-h-screen">
@@ -159,6 +176,8 @@ const Index = () => {
       
       <ChallengeProgressBar />
       
+      <FeedContentFilter value={feedFilter} onChange={handleFilterChange} />
+      
       {loading && !isRefreshing ? (
         <div className="flex items-center justify-center py-20">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -167,7 +186,7 @@ const Index = () => {
         <div className="flex flex-col items-center justify-center py-20 px-4 text-center">
           <p className="text-muted-foreground">{error}</p>
         </div>
-      ) : posts.length === 0 && !curiosityAsPost && newsArticles.length === 0 ? (
+      ) : posts.length === 0 && !curiosityAsPost && filteredNews.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 px-4 text-center">
           <Inbox className="h-12 w-12 text-muted-foreground/50 mb-4" />
           <p className="text-lg font-medium text-foreground mb-2">
