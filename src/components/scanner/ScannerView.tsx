@@ -327,6 +327,38 @@ export const ScannerView = () => {
     };
   }, [videoPreviewUrl]);
 
+  // Auto-save results to persistence whenever they change - prevents data loss
+  // from unexpected unmounts, screen locks, or app suspension
+  const analysisResultsRef = useRef(analysisResults);
+  const capturedImageRef = useRef(capturedImage);
+  const detectedTypeRef = useRef(detectedType);
+  const addedIndicesRef = useRef(addedIndices);
+  const skippedIndicesRef = useRef(skippedIndices);
+  
+  useEffect(() => {
+    analysisResultsRef.current = analysisResults;
+    capturedImageRef.current = capturedImage;
+    detectedTypeRef.current = detectedType;
+    addedIndicesRef.current = addedIndices;
+    skippedIndicesRef.current = skippedIndices;
+  }, [analysisResults, capturedImage, detectedType, addedIndices, skippedIndices]);
+
+  // Auto-persist valid results so they survive unmounts/reloads
+  useEffect(() => {
+    if (analysisResults.length > 0 && capturedImage && detectedType) {
+      const remaining = analysisResults.filter((_, i) => !addedIndices.has(i) && !skippedIndices.has(i));
+      const hasValid = remaining.some(item => item.realCar?.brand && item.realCar.brand !== 'Desconhecido');
+      if (hasValid && remaining.length > 0) {
+        scannerPersistence.saveResult({
+          capturedImage,
+          analysisResults: remaining,
+          detectedType,
+          timestamp: Date.now(),
+        });
+      }
+    }
+  }, [analysisResults, capturedImage, detectedType, addedIndices, skippedIndices]);
+
   // OPTIMIZED: Lazy-load real car photos AFTER results are displayed
   // This runs in the background and doesn't block the initial result display
   const enrichedResultsRef = useRef<Set<string>>(new Set());

@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { Check, Plus, RotateCcw, ChevronLeft, ChevronRight, Loader2, CheckCircle2, SkipForward, AlertTriangle, Car, Package, History, ChevronDown, ChevronUp, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
@@ -206,7 +206,10 @@ export const ResultCarousel = ({
   const [breakdownOpen, setBreakdownOpen] = useState(false);
   const [breakdownResult, setBreakdownResult] = useState<AnalysisResult | null>(null);
   const [isExpanded, setIsExpanded] = useState(true);
-  const dragStartY = useRef(0);
+  const [dragOffset, setDragOffset] = useState(0);
+  const dragStartYRef = useRef(0);
+  const isDraggingRef = useRef(false);
+  const expandedAtDragStart = useRef(true);
 
   // Get remaining items (not added)
   const remainingResults = results.filter((_, idx) => !addedIndices.has(idx));
@@ -301,32 +304,57 @@ export const ResultCarousel = ({
 
   const { result, originalIndex } = currentItem;
 
-  // Touch handlers for drag gesture
+  // Touch handlers for smooth drag gesture on the image/handle area
   const handleTouchStart = (e: React.TouchEvent) => {
-    dragStartY.current = e.touches[0].clientY;
+    dragStartYRef.current = e.touches[0].clientY;
+    isDraggingRef.current = false;
+    expandedAtDragStart.current = isExpanded;
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    const deltaY = e.touches[0].clientY - dragStartYRef.current;
+    // Only start tracking drag after a small threshold
+    if (Math.abs(deltaY) > 5) {
+      isDraggingRef.current = true;
+      // Allow dragging down when expanded, or up when collapsed
+      if (expandedAtDragStart.current) {
+        // When expanded: only allow dragging DOWN (positive deltaY)
+        setDragOffset(Math.max(0, deltaY));
+      } else {
+        // When collapsed: only allow dragging UP (negative deltaY), map to visual offset
+        setDragOffset(Math.min(0, deltaY));
+      }
+    }
   };
 
   const handleTouchEnd = (e: React.TouchEvent) => {
-    const deltaY = e.changedTouches[0].clientY - dragStartY.current;
-    // Only respond to intentional swipes (>50px), ignore taps
-    if (Math.abs(deltaY) < 30) {
-      // Tap on handle: toggle expand/collapse
+    const deltaY = e.changedTouches[0].clientY - dragStartYRef.current;
+    
+    if (!isDraggingRef.current && Math.abs(deltaY) < 10) {
+      // It was a tap, toggle
       setIsExpanded(prev => !prev);
-      return;
+    } else {
+      // Swipe gesture
+      if (expandedAtDragStart.current && deltaY > 80) {
+        setIsExpanded(false);
+      } else if (!expandedAtDragStart.current && deltaY < -80) {
+        setIsExpanded(true);
+      }
+      // Otherwise snap back
     }
-    if (deltaY > 50) setIsExpanded(false);  // Swipe down = collapse
-    if (deltaY < -50) setIsExpanded(true);  // Swipe up = expand
+    setDragOffset(0);
+    isDraggingRef.current = false;
   };
 
-  // Get tier-based card styling
+  // Get tier-based card styling - solid backgrounds for readability
   const currentTier = result.priceIndex?.tier || "common";
   const getTierCardGradient = (tier: string) => {
     switch (tier) {
-      case "ultra_rare": return "from-amber-500/25 via-amber-900/10 to-card border-amber-500/40";
-      case "super_rare": return "from-purple-500/25 via-purple-900/10 to-card border-purple-500/40";
-      case "rare": return "from-blue-500/25 via-blue-900/10 to-card border-blue-500/40";
-      case "uncommon": return "from-green-500/25 via-green-900/10 to-card border-green-500/40";
-      default: return "from-muted/40 via-card to-card border-border/30";
+      case "ultra_rare": return "from-amber-950 via-card to-card border-amber-500/40";
+      case "super_rare": return "from-purple-950 via-card to-card border-purple-500/40";
+      case "rare": return "from-blue-950 via-card to-card border-blue-500/40";
+      case "uncommon": return "from-green-950 via-card to-card border-green-500/40";
+      default: return "from-card via-card to-card border-border/30";
     }
   };
 
@@ -338,15 +366,18 @@ export const ResultCarousel = ({
           "fixed inset-x-0 bottom-0 z-50 flex flex-col rounded-t-[28px]",
           "bg-gradient-to-b border-t",
           getTierCardGradient(currentTier),
-          "transition-[max-height] duration-300 ease-out overflow-hidden",
+          "overflow-hidden",
           "animate-slide-up-card shadow-[0_-8px_30px_rgba(0,0,0,0.3)]",
-          isExpanded ? "max-h-[85vh]" : "max-h-[20vh]"
+          isExpanded ? "max-h-[85vh]" : "max-h-[20vh]",
+          dragOffset === 0 && "transition-[max-height,transform] duration-300 ease-out"
         )}
+        style={{ transform: dragOffset ? `translateY(${dragOffset}px)` : undefined }}
       >
         {/* Drag handle with car title */}
         <div 
           className="sticky top-0 z-20 pt-3 pb-2 cursor-grab active:cursor-grabbing"
           onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
         >
           {/* Visual drag indicator */}
