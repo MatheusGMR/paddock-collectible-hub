@@ -10,6 +10,7 @@ export interface Profile {
   bio: string | null;
   city: string | null;
   phone: string | null;
+  show_collection_value: boolean;
   created_at: string;
   updated_at: string;
 }
