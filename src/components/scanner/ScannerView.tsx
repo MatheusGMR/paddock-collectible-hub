@@ -264,6 +264,10 @@ export const ScannerView = () => {
   // Pinch-to-zoom state
   const [zoomLevel, setZoomLevel] = useState(1);
   const lastPinchDistance = useRef<number | null>(null);
+
+  // Tap-to-focus state
+  const [focusPoint, setFocusPoint] = useState<{ x: number; y: number } | null>(null);
+  const focusTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   const capturePhotoRef = useRef<(() => void) | null>(null);
   
@@ -2169,7 +2173,45 @@ export const ScannerView = () => {
             lastPinchDistance.current = dist;
           }
         }}
-        onTouchEnd={() => { lastPinchDistance.current = null; }}
+        onTouchEnd={(e) => {
+          // Pinch end
+          if (lastPinchDistance.current !== null) {
+            lastPinchDistance.current = null;
+            return;
+          }
+          // Tap-to-focus: single touch that didn't move (not pinch)
+          if (e.changedTouches.length === 1 && cameraActive && !capturedImage && !isScanning) {
+            const touch = e.changedTouches[0];
+            const rect = e.currentTarget.getBoundingClientRect();
+            const x = touch.clientX - rect.left;
+            const y = touch.clientY - rect.top;
+            
+            // Show focus indicator
+            setFocusPoint({ x, y });
+            if (focusTimeoutRef.current) clearTimeout(focusTimeoutRef.current);
+            focusTimeoutRef.current = setTimeout(() => setFocusPoint(null), 1500);
+            
+            // Web: try to apply focus constraints
+            if (!Capacitor.isNativePlatform() && streamRef.current) {
+              const track = streamRef.current.getVideoTracks()[0];
+              if (track) {
+                const capabilities = track.getCapabilities?.() as any;
+                if (capabilities?.focusMode?.includes?.('manual') || capabilities?.focusMode?.includes?.('single-shot')) {
+                  const normX = (touch.clientX - rect.left) / rect.width;
+                  const normY = (touch.clientY - rect.top) / rect.height;
+                  track.applyConstraints({
+                    advanced: [{ 
+                      focusMode: 'manual' as any,
+                      pointsOfInterest: [{ x: normX, y: normY }] as any,
+                    }],
+                  } as any).catch(() => {
+                    // Silently fail if not supported
+                  });
+                }
+              }
+            }
+          }
+        }}
       >
         {/* Video element for web camera - ALWAYS rendered, visibility controlled by CSS */}
         <video
@@ -2224,6 +2266,19 @@ export const ScannerView = () => {
         {/* Flash effect overlay */}
         {showFlash && (
           <div className="absolute inset-0 bg-white z-50 animate-fade-out-flash pointer-events-none" />
+        )}
+
+        {/* Tap-to-focus indicator */}
+        {focusPoint && (cameraActive || useCameraPreview) && !capturedImage && !isScanning && (
+          <div 
+            className="absolute z-20 pointer-events-none"
+            style={{ 
+              left: focusPoint.x - 30, 
+              top: focusPoint.y - 30,
+            }}
+          >
+            <div className="w-[60px] h-[60px] border-2 border-yellow-400 rounded-lg animate-focus-ring opacity-90" />
+          </div>
         )}
 
         {/* Paddock watermark - positioned below notch */}
