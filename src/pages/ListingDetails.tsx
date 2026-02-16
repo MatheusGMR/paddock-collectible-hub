@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { BuyButton } from "@/components/checkout/BuyButton";
+import { AddToCartButton } from "@/components/mercado/AddToCartButton";
 import { SourceBadge } from "@/components/mercado/SourceBadge";
 import { IndexCard } from "@/components/index/IndexCard";
 import { supabase } from "@/integrations/supabase/client";
@@ -364,12 +365,18 @@ export default function ListingDetails() {
         </div>
       </div>
 
-      {/* Fixed Bottom Buy Button */}
-      <div className="fixed bottom-0 left-0 right-0 border-t border-border bg-background/95 p-4 backdrop-blur">
+      {/* Fixed Bottom Buy Buttons */}
+      <div className="fixed bottom-0 left-0 right-0 border-t border-border bg-background/95 p-4 backdrop-blur space-y-2">
         <BuyButton
           listingId={listing.id}
           price={listing.price}
           currency={listing.currency}
+        />
+        <AddToCartButton
+          listingId={listing.id}
+          size="lg"
+          variant="outline"
+          className="w-full"
         />
       </div>
     </div>
