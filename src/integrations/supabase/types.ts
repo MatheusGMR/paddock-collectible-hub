@@ -180,6 +180,8 @@ export type Database = {
           collectible_series: string | null
           collectible_year: string | null
           created_at: string
+          estimated_value_max: number | null
+          estimated_value_min: number | null
           historical_fact: string | null
           id: string
           index_breakdown: Json | null
@@ -202,6 +204,8 @@ export type Database = {
           collectible_series?: string | null
           collectible_year?: string | null
           created_at?: string
+          estimated_value_max?: number | null
+          estimated_value_min?: number | null
           historical_fact?: string | null
           id?: string
           index_breakdown?: Json | null
@@ -224,6 +228,8 @@ export type Database = {
           collectible_series?: string | null
           collectible_year?: string | null
           created_at?: string
+          estimated_value_max?: number | null
+          estimated_value_min?: number | null
           historical_fact?: string | null
           id?: string
           index_breakdown?: Json | null
@@ -809,6 +815,53 @@ export type Database = {
             columns: ["collection_item_id"]
             isOneToOne: false
             referencedRelation: "user_collection"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      price_estimates: {
+        Row: {
+          created_at: string
+          currency: string
+          id: string
+          item_id: string
+          notes: string | null
+          price_brl: number | null
+          price_max_brl: number | null
+          price_min_brl: number | null
+          source: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          currency?: string
+          id?: string
+          item_id: string
+          notes?: string | null
+          price_brl?: number | null
+          price_max_brl?: number | null
+          price_min_brl?: number | null
+          source?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          currency?: string
+          id?: string
+          item_id?: string
+          notes?: string | null
+          price_brl?: number | null
+          price_max_brl?: number | null
+          price_min_brl?: number | null
+          source?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "price_estimates_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "items"
             referencedColumns: ["id"]
           },
         ]

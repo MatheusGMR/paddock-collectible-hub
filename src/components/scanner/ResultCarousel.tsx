@@ -5,11 +5,12 @@ import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/component
 import { useLanguage } from "@/contexts/LanguageContext";
 import { IndexBreakdown } from "@/components/index/IndexBreakdown";
 import { ScoreHero } from "@/components/scanner/ScoreHero";
-import { PriceIndex } from "@/lib/priceIndex";
+import { PriceIndex, MarketValue } from "@/lib/priceIndex";
 import { cn } from "@/lib/utils";
 import { MusicPlayer } from "./MusicPlayer";
 import { RealCarGallery } from "./RealCarGallery";
 import { ScanFeedback } from "./ScanFeedback";
+import { MarketValueCard } from "./MarketValueCard";
 
 import { BoundingBox } from "@/lib/imageCrop";
 
@@ -39,6 +40,7 @@ interface AnalysisResult {
   croppedImage?: string;
   isDuplicate?: boolean;
   existingItemImage?: string;
+  marketValue?: MarketValue;
 }
 
 interface ResultCarouselProps {
@@ -486,6 +488,11 @@ export const ResultCarousel = ({
                 tier={result.priceIndex.tier}
                 onClick={() => openBreakdown(result)}
               />
+            )}
+
+            {/* Market Value Card - below rarity index */}
+            {result.marketValue && (
+              <MarketValueCard marketValue={result.marketValue} />
             )}
 
             {/* Collapsible Sections - all closed by default */}

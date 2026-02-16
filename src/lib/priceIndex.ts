@@ -86,3 +86,33 @@ export const getRarityTier = (score: number): string => {
   if (score >= 30) return 'uncommon';
   return 'common';
 };
+
+export interface MarketValue {
+  min: number;
+  max: number;
+  currency: string;
+  source: string;
+  confidence: 'high' | 'medium' | 'low';
+}
+
+export const formatBRL = (value: number): string => {
+  return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0, maximumFractionDigits: 0 });
+};
+
+export const getConfidenceLabel = (confidence: string): string => {
+  const labels: Record<string, string> = {
+    high: 'Alta',
+    medium: 'Média',
+    low: 'Baixa',
+  };
+  return labels[confidence] || confidence;
+};
+
+export const getConfidenceColor = (confidence: string): string => {
+  const colors: Record<string, string> = {
+    high: 'text-green-500',
+    medium: 'text-amber-500',
+    low: 'text-red-400',
+  };
+  return colors[confidence] || 'text-muted-foreground';
+};

@@ -108,6 +108,7 @@ interface AnalysisResult {
   croppedImage?: string; // Will be populated after cropping
   isDuplicate?: boolean; // Duplicate detection flag
   existingItemImage?: string; // Image of existing item if duplicate
+  marketValue?: { min: number; max: number; currency: string; source: string; confidence: 'high' | 'medium' | 'low' };
 }
 
 interface ImageQualityResponse {
@@ -1961,6 +1962,8 @@ export const ScannerView = () => {
           music_suggestion: result.musicSuggestion || null,
           music_selection_reason: result.musicSelectionReason || null,
           real_car_photos: result.realCarPhotos || null,
+          estimated_value_min: result.marketValue?.min || null,
+          estimated_value_max: result.marketValue?.max || null,
         },
         imageUrl
       );
@@ -2041,6 +2044,8 @@ export const ScannerView = () => {
           music_suggestion: result.musicSuggestion || null,
           music_selection_reason: result.musicSelectionReason || null,
           real_car_photos: result.realCarPhotos || null,
+          estimated_value_min: result.marketValue?.min || null,
+          estimated_value_max: result.marketValue?.max || null,
         },
         imageUrl
       );
