@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, SlidersHorizontal, ShoppingBag } from "lucide-react";
+import { Search, SlidersHorizontal, ShoppingBag, ShoppingCart } from "lucide-react";
 import { CartSheet } from "@/components/mercado/CartSheet";
 import { SellerStoresSection } from "@/components/mercado/SellerStoresSection";
 import { Input } from "@/components/ui/input";
