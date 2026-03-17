@@ -28,12 +28,15 @@ export const useNativeCameraPreview = () => {
 
     try {
       console.log("[CameraPreview] Starting camera preview...");
-      
-      // Use screen dimensions to ensure full coverage on iOS
-      // window.innerHeight can be smaller than actual viewport due to safe areas / dynamic island
-      const fullWidth = Math.max(window.innerWidth, screen.width, document.documentElement.clientWidth);
-      const fullHeight = Math.max(window.innerHeight, screen.height, document.documentElement.clientHeight);
-      
+
+      const platform = Capacitor.getPlatform();
+      const viewportWidth = Math.round(
+        window.visualViewport?.width ?? window.innerWidth ?? document.documentElement.clientWidth
+      );
+      const viewportHeight = Math.round(
+        window.visualViewport?.height ?? window.innerHeight ?? document.documentElement.clientHeight
+      );
+
       const options: CameraPreviewOptions = {
         position: "rear",
         toBack: true,
@@ -41,15 +44,27 @@ export const useNativeCameraPreview = () => {
         className: "camera-preview",
         disableAudio: true,
         storeToFile: false,
-        enableHighResolution: true,
-        width: fullWidth,
-        height: fullHeight,
-        lockAndroidOrientation: "portrait",
+        width: viewportWidth,
+        height: viewportHeight,
+        includeSafeAreaInsets: platform === "ios",
+        lockAndroidOrientation: platform === "android",
       } as any;
-      
-      await CameraPreview.start(options);
+
+      const startedBounds = await CameraPreview.start(options);
+
+      // iOS plugin defaults to 4:3/top internally; force viewport ratio to avoid black blocks.
+      if (platform === "ios") {
+        const viewportAspectRatio = `${viewportHeight}:${viewportWidth}`;
+        try {
+          await CameraPreview.setAspectRatio({ aspectRatio: viewportAspectRatio, x: 0, y: 0 } as any);
+          await CameraPreview.setPreviewSize({ x: 0, y: 0, width: viewportWidth, height: viewportHeight } as any);
+        } catch (resizeError) {
+          console.warn("[CameraPreview] Could not force fullscreen preview on iOS:", resizeError);
+        }
+      }
+
       isStartedRef.current = true;
-      console.log("[CameraPreview] Camera preview started successfully");
+      console.log("[CameraPreview] Camera preview started successfully", startedBounds);
       return true;
     } catch (error) {
       console.error("[CameraPreview] Error starting camera:", error);
