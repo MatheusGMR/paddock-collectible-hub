@@ -962,10 +962,10 @@ export const ScannerView = () => {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
           facingMode: facingMode,
-          width: { ideal: 1280 },
-          height: { ideal: 720 }
+          width: { ideal: 1920 },
+          height: { ideal: 1920 }
         },
-        audio: false // No audio needed
+        audio: false
       });
 
       console.log("[Scanner] Camera stream acquired (manual)");
