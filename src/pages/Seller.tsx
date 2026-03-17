@@ -111,7 +111,7 @@ const SellerPage = () => {
               className="gap-2"
               onClick={() => {
                 const storeName = sellerDetails?.business_name || "minha loja";
-                const url = `${window.location.origin}/user/${user?.id}`;
+                const url = `${window.location.origin}/store/${user?.id}`;
                 const text = [
                   `🏁 *${storeName}* na Paddock`,
                   ``,
