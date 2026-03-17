@@ -76,6 +76,17 @@ const SellerStorefront = () => {
   const { user } = useAuth();
   const { toast } = useToast();
 
+  // Auth guard: redirect to auth with return URL
+  const requireAuth = useCallback((action: () => void) => {
+    if (!user) {
+      // Store the return URL so user comes back after login
+      sessionStorage.setItem("paddock_return_url", `/store/${sellerId}`);
+      navigate("/auth");
+      return;
+    }
+    action();
+  }, [user, navigate, sellerId]);
+
   const [profile, setProfile] = useState<SellerProfile | null>(null);
   const [sellerInfo, setSellerInfo] = useState<SellerInfo | null>(null);
   const [listings, setListings] = useState<ListingWithItem[]>([]);
