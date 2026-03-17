@@ -466,7 +466,7 @@ export const SettingsSheet = ({ open, onOpenChange, onSignOut }: SettingsSheetPr
               <button 
                 onClick={() => {
                   onOpenChange(false);
-                  navigate("/seller");
+                  navigate(isMobile ? "/minha-loja" : "/seller");
                 }}
                 className="w-full flex items-center justify-between p-4 hover:bg-muted/50 transition-colors"
               >
