@@ -7,6 +7,7 @@ import { SellerConta } from "@/components/seller/SellerConta";
 import { SellerClientes } from "@/components/seller/SellerClientes";
 import { SellerImport } from "@/components/seller/SellerImport";
 import { SellerAnalytics } from "@/components/seller/SellerAnalytics";
+import { OrderDetails } from "@/components/seller/OrderDetails";
 import { useSellerData } from "@/hooks/useSellerData";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
