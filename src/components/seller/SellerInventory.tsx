@@ -217,8 +217,18 @@ export const SellerInventory = ({ inventory, loading }: SellerInventoryProps) =>
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredSold.map((item) => (
-                    <TableRow key={item.id}>
+                  filteredSold.map((item: any) => (
+                    <TableRow
+                      key={item.id}
+                      className="cursor-pointer hover:bg-muted/50"
+                      onClick={() => {
+                        // Navigate to order details if sale id is available
+                        if (item.sold_at) {
+                          // We have sale data inline — find the sale id from the listing
+                          navigate(`/seller/order/${item.id}`);
+                        }
+                      }}
+                    >
                       <TableCell>
                         <div className="flex items-center gap-3">
                           <img
