@@ -2190,7 +2190,7 @@ export const ScannerView = () => {
       
       {/* Camera/Preview View */}
       <div
-        className={`relative flex-1 overflow-hidden select-none ${useCameraPreview ? 'bg-transparent' : 'bg-black'}`}
+        className={`relative flex-1 overflow-hidden select-none ${useCameraPreview && !capturedImage && !hasResults ? 'bg-transparent' : 'bg-black'}`}
         style={{ WebkitUserSelect: 'none', WebkitTouchCallout: 'none' } as React.CSSProperties}
         onTouchStart={(e) => {
           e.preventDefault();
