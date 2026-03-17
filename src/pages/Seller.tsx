@@ -13,6 +13,7 @@ import { Loader2, Store, ArrowLeft, Share2 } from "lucide-react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { supabase } from "@/integrations/supabase/client";
 
 const SellerPage = () => {
   const { user, loading: authLoading } = useAuth();
@@ -35,6 +36,23 @@ const SellerPage = () => {
     }
   }, [authLoading, user, navigate]);
 
+  // Auto-activate seller if profile says is_seller but useSellerData hasn't caught up yet
+  useEffect(() => {
+    const autoActivate = async () => {
+      if (!loading && !isSeller && user) {
+        const { data } = await supabase
+          .from("profiles")
+          .select("is_seller")
+          .eq("user_id", user.id)
+          .single();
+        if (data?.is_seller) {
+          await activateSeller();
+        }
+      }
+    };
+    autoActivate();
+  }, [loading, isSeller, user, activateSeller]);
+
   // Still loading
   if (authLoading || loading) {
     return (
@@ -43,7 +61,6 @@ const SellerPage = () => {
       </div>
     );
   }
-
 
   // Not a seller — show activation prompt
   if (!isSeller) {
