@@ -21,6 +21,7 @@ export const BuyButton = ({
   currency,
   disabled = false,
   className,
+  compact = false,
 }: BuyButtonProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
