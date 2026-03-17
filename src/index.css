@@ -189,11 +189,12 @@
   }
   
   /* Native camera preview mode - transparent WebView background */
+  /* IMPORTANT: Only target direct layout containers, NOT all descendants */
   .native-camera-mode {
     background-color: transparent !important;
   }
   
-  .native-camera-mode * {
+  .native-camera-mode > .scanner-camera-layer {
     background-color: transparent !important;
   }
   
