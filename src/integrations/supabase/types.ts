@@ -1019,8 +1019,11 @@ export type Database = {
           sale_price: number
           seller_id: string
           seller_net: number
+          shipping_photo_url: string | null
+          shipping_status: string
           status: string
           stripe_session_id: string | null
+          tracking_code: string | null
         }
         Insert: {
           buyer_id: string
@@ -1035,8 +1038,11 @@ export type Database = {
           sale_price: number
           seller_id: string
           seller_net: number
+          shipping_photo_url?: string | null
+          shipping_status?: string
           status?: string
           stripe_session_id?: string | null
+          tracking_code?: string | null
         }
         Update: {
           buyer_id?: string
@@ -1051,8 +1057,11 @@ export type Database = {
           sale_price?: number
           seller_id?: string
           seller_net?: number
+          shipping_photo_url?: string | null
+          shipping_status?: string
           status?: string
           stripe_session_id?: string | null
+          tracking_code?: string | null
         }
         Relationships: [
           {

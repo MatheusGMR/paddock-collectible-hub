@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Package, Plus, Search, Eye, Share2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -23,6 +24,7 @@ interface SellerInventoryProps {
 export const SellerInventory = ({ inventory, loading }: SellerInventoryProps) => {
   const [search, setSearch] = useState("");
   const [tab, setTab] = useState("active");
+  const navigate = useNavigate();
 
   if (loading) {
     return (
@@ -215,8 +217,16 @@ export const SellerInventory = ({ inventory, loading }: SellerInventoryProps) =>
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredSold.map((item) => (
-                    <TableRow key={item.id}>
+                  filteredSold.map((item: any) => (
+                    <TableRow
+                      key={item.id}
+                      className="cursor-pointer hover:bg-muted/50"
+                      onClick={() => {
+                        if (item.sale_id) {
+                          navigate(`/seller/order/${item.sale_id}`);
+                        }
+                      }}
+                    >
                       <TableCell>
                         <div className="flex items-center gap-3">
                           <img

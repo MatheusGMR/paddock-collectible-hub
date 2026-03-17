@@ -1,109 +1,123 @@
 
 
-## Plano: Pipeline de Status de Pedidos, Etiqueta de Envio e Gestão de Inventário Automática
+# Carrinho de Compras no Mercado
 
-### Contexto Atual
+## Resumo
+Implementar um sistema de carrinho de compras dentro do Mercado, permitindo que o usuario adicione multiplos anuncios ao carrinho e finalize a compra com um pagamento unico consolidado via Stripe.
 
-- Vendas são registradas na tabela `sales` com `status: "pending"` no momento do checkout
-- O listing **não** é marcado como "sold" após pagamento confirmado — não existe lógica de atualização automática
-- Não existe página de detalhes de pedido para o vendedor
-- A `get-purchase-items` verifica `payment_status === "paid"` no Stripe mas não atualiza o banco
-- Tabela `sales` não possui coluna para tracking de envio
-- Listagem tem RLS que só mostra `status = 'active'`
+## Fase 1: Carrinho (esta etapa)
 
----
+### 1. Tabela `cart_items` no banco de dados
 
-### 1. Schema: Adicionar coluna de status de envio + atualizar sales
-
-**Migração SQL:**
-- Adicionar `shipping_status` à tabela `sales` (enum: `confirmed`, `preparing`, `in_transit`, `delivered`) com default `confirmed`
-- Adicionar `shipping_photo_url` (text, nullable) para foto do produto embalado
-- Adicionar `tracking_code` (text, nullable)
-- Adicionar policy UPDATE para sellers na tabela `sales`: `seller_id = auth.uid()::text`
-- Adicionar policy UPDATE para sellers na tabela `listings` (já existe)
-
-### 2. Edge Function: `confirm-payment` (webhook-like verificação)
-
-Criar uma edge function que, ao ser chamada com `session_id`:
-1. Verifica o status do pagamento no Stripe (`session.payment_status === "paid"`)
-2. Atualiza `sales.status` de `pending` para `completed`
-3. Atualiza `sales.shipping_status` para `confirmed`
-4. Marca o `listing.status` como `sold` (gestão de inventário automática)
-5. Retorna os dados do pedido
-
-Esta function será chamada em dois momentos:
-- Na página `PaymentSuccess` (confirma imediatamente)
-- Na página de detalhes do pedido do seller (para refresh)
-
-### 3. Nova Página: Detalhes do Pedido (`/seller/order/:saleId`)
-
-**Pipeline Visual (Timeline):**
-- Barra horizontal com 4 etapas: Venda Confirmada → Preparando Envio → Em Trânsito → Entregue
-- Ícones e cores mudam conforme `shipping_status`
-- Cada step com check verde se concluído, amarelo se atual, cinza se futuro
-
-**Card do Pedido:**
-- Foto do item, título, preço, dados do comprador
-- Badge de status com cor dinâmica
-
-**Botão "Gerar Etiqueta de Envio":**
-- Visível quando status = `confirmed`
-- Fluxo: Botão "Abrir Câmera" → captura foto do produto embalado → upload para storage → habilita "Gerar Etiqueta"
-- Etiqueta: componente formatado para impressão com dados do destinatário, lista de itens, QR Code (usando qrcode.react já instalado)
-- Botão para imprimir/baixar via `window.print()`
-
-**Botões de Avanço de Status:**
-- Seller pode avançar status: Confirmar Envio → Marcar em Trânsito → Marcar Entregue
-
-### 4. Atualizar `SellerInventory` e Fluxo do Vendedor
-
-- Na aba "Vendidos", cada item clicável navega para `/seller/order/:saleId`
-- Listings vendidos mostram badge "Vendido" (já existe)
-
-### 5. Vitrine: Desabilitar compra quando `status !== 'active'`
-
-- `ListingDetails`: verificar `listing.status` — se `sold`, mostrar badge "Vendido" e desabilitar BuyButton e AddToCartButton
-- A RLS já filtra por `status = 'active'`, mas a query em ListingDetails busca por ID sem filtro de status — adicionar tratamento visual
-
-### 6. PaymentSuccess: Chamar `confirm-payment`
-
-- Após carregar, invocar `confirm-payment` com `session_id` para confirmar venda e marcar listing como sold
-- Isso garante que o inventário é decrementado no momento certo (quando Stripe confirma)
-
-### 7. Rota e Navegação
-
-- Adicionar rota `/seller/order/:saleId` no `Seller.tsx` (dentro do Routes existente)
-- Garantir que rotas de skip de assinatura não quebrem — `/seller/order` requer auth mas não requer subscription
-
----
-
-### Arquivos a Criar/Editar
-
-| Arquivo | Ação |
-|---|---|
-| Migração SQL | Criar (add shipping_status, shipping_photo_url, tracking_code, RLS update) |
-| `supabase/functions/confirm-payment/index.ts` | Criar |
-| `src/components/seller/OrderDetails.tsx` | Criar (timeline + etiqueta + câmera) |
-| `src/components/seller/ShippingLabel.tsx` | Criar (componente de etiqueta impressível) |
-| `src/pages/Seller.tsx` | Editar (adicionar rota order/:saleId) |
-| `src/pages/ListingDetails.tsx` | Editar (desabilitar compra se sold) |
-| `src/pages/PaymentSuccess.tsx` | Editar (chamar confirm-payment) |
-| `src/components/seller/SellerInventory.tsx` | Editar (link para order details) |
-| `supabase/config.toml` | Editar (registrar confirm-payment) |
-
-### Fluxo Resumido
+Nova tabela para persistir o carrinho do usuario entre sessoes:
 
 ```text
-Comprador paga (Stripe) 
-  → PaymentSuccess chama confirm-payment
-    → sales.status = completed, shipping_status = confirmed
-    → listing.status = sold (remove da vitrine)
-  
-Vendedor abre /seller/order/:id
-  → Vê timeline: [✓ Confirmada] → [Preparando] → [Trânsito] → [Entregue]
-  → Tira foto do embalado → Gera etiqueta com QR
-  → Avança status manualmente
-  
-Vitrine: listing sold → botão desabilitado, badge "Vendido"
+cart_items
+-----------
+id          UUID (PK)
+user_id     TEXT (NOT NULL)
+listing_id  UUID (FK -> listings.id, NOT NULL)
+quantity    INT (default 1)
+created_at  TIMESTAMPTZ (default now())
+
+UNIQUE(user_id, listing_id)
+RLS: usuarios so veem/editam seus proprios itens
 ```
+
+### 2. Icone do carrinho no header do Mercado
+
+- Adicionar icone `ShoppingCart` no canto superior direito do header de `Mercado.tsx`
+- Badge com contador de itens no carrinho (numero vermelho)
+- Ao clicar, abre um Sheet (drawer) lateral com os itens do carrinho
+
+### 3. Botao "Adicionar ao Carrinho" nos listings
+
+- No `MarketplaceCard` e no `ListingDetails`, adicionar botao "Adicionar ao Carrinho" ao lado do botao de compra direta
+- Feedback visual (toast) ao adicionar
+- Prevenir duplicatas (UNIQUE constraint)
+
+### 4. Sheet do Carrinho (`CartSheet.tsx`)
+
+Novo componente drawer que mostra:
+- Lista de itens no carrinho com imagem, titulo, preco
+- Botao de remover item individual
+- Subtotal calculado
+- Botao "Finalizar Compra" que inicia o checkout consolidado
+
+### 5. Checkout Consolidado (Edge Function)
+
+Atualizar `create-payment` (ou criar `create-cart-payment`) para aceitar multiplos listing_ids:
+- Recebe array de listing_ids do carrinho
+- Cria uma unica sessao Stripe Checkout com multiplos `line_items`
+- Cada item vira um line_item separado na fatura
+- Apos sucesso, limpa o carrinho do usuario
+
+### 6. Pos-compra
+
+- Pagina de sucesso ja existente sera reaproveitada
+- Limpar os itens do carrinho apos pagamento confirmado
+- Atualizar status dos listings para "sold"
+
+---
+
+## Detalhes Tecnicos
+
+### Migracao SQL
+```text
+CREATE TABLE cart_items (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id TEXT NOT NULL,
+  listing_id UUID NOT NULL REFERENCES listings(id) ON DELETE CASCADE,
+  quantity INT NOT NULL DEFAULT 1,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  UNIQUE(user_id, listing_id)
+);
+
+ALTER TABLE cart_items ENABLE ROW LEVEL SECURITY;
+
+-- Usuarios so acessam seu proprio carrinho
+CREATE POLICY "Users manage own cart"
+  ON cart_items FOR ALL
+  USING (user_id = auth.uid()::text)
+  WITH CHECK (user_id = auth.uid()::text);
+```
+
+### Arquivos novos
+- `src/components/mercado/CartSheet.tsx` - Drawer do carrinho com lista de itens
+- `src/components/mercado/AddToCartButton.tsx` - Botao reutilizavel de adicionar ao carrinho
+- `src/hooks/useCart.ts` - Hook para gerenciar estado do carrinho (add, remove, count, total)
+- `supabase/functions/create-cart-payment/index.ts` - Edge function para checkout consolidado
+
+### Arquivos modificados
+- `src/pages/Mercado.tsx` - Adicionar icone do carrinho no header
+- `src/pages/ListingDetails.tsx` - Adicionar botao "Adicionar ao Carrinho" ao lado do "Comprar Agora"
+- `src/components/checkout/BuyButton.tsx` - Manter como opcao de compra direta
+
+### Hook `useCart`
+```text
+useCart() retorna:
+- items: CartItem[] (com dados do listing join)
+- count: number
+- total: number
+- isLoading: boolean
+- addItem(listingId)
+- removeItem(listingId)
+- clearCart()
+- checkout() -> abre Stripe
+```
+
+### Edge Function `create-cart-payment`
+- Recebe: { listing_ids: string[] }
+- Busca todos os listings no banco
+- Cria sessao Stripe com multiplos line_items (um por listing)
+- Retorna URL do checkout
+- Metadata inclui todos os listing_ids para rastreamento
+
+---
+
+## Fase 2 (proxima etapa - nao implementada agora)
+- Perfil de loja com dashboard web
+- Upload de estoque via Excel/CSV/imagem
+- Painel financeiro com vendas e recebiveis
+- Stripe Connect para distribuicao automatica aos vendedores
 
