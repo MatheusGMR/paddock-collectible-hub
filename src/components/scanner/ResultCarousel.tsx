@@ -200,6 +200,7 @@ export const ResultCarousel = ({
   onComplete,
   onScanAgain,
   addedIndices,
+  addedItemIds,
   mlVariantId,
 }: ResultCarouselProps) => {
   const { t } = useLanguage();
