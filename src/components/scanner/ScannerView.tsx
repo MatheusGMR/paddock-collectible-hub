@@ -1064,6 +1064,9 @@ export const ScannerView = () => {
       
       // 2. IMMEDIATELY stop camera and show captured image (freeze the frame)
       await cameraPreview.stop();
+      // Force a synchronous style update to exit transparent mode before setting state
+      const container = document.getElementById('camera-preview-container');
+      if (container) container.style.display = 'none';
       setUseCameraPreview(false);
       setCameraActive(false);
       setCapturedImage(imageForDisplay);
@@ -2109,6 +2112,9 @@ export const ScannerView = () => {
     
     // Restart camera - use camera-preview on native platforms
     if (Capacitor.isNativePlatform()) {
+      // Re-show the native camera container
+      const container = document.getElementById('camera-preview-container');
+      if (container) container.style.display = '';
       const started = await cameraPreview.start();
       if (started) {
         setUseCameraPreview(true);
@@ -2190,7 +2196,9 @@ export const ScannerView = () => {
       
       {/* Camera/Preview View */}
       <div
-        className={`relative flex-1 overflow-hidden select-none ${useCameraPreview && !capturedImage && !hasResults ? 'bg-transparent' : 'bg-black'}`}
+        className={`scanner-camera-layer relative flex-1 overflow-hidden select-none ${
+          useCameraPreview && !capturedImage && !hasResults ? 'bg-transparent' : 'bg-black'
+        }`}
         style={{ WebkitUserSelect: 'none', WebkitTouchCallout: 'none' } as React.CSSProperties}
         onTouchStart={(e) => {
           e.preventDefault();
@@ -2291,9 +2299,10 @@ export const ScannerView = () => {
           <img
             src={capturedImage}
             alt="Captured"
-            className={`absolute inset-0 w-full h-full object-cover transition-all duration-300 ${
+            className={`absolute inset-0 w-full h-full object-cover z-[5] transition-all duration-300 ${
               hasResults ? 'blur-sm scale-105' : ''
             }`}
+            style={{ backgroundColor: '#000' }}
           />
         )}
 
