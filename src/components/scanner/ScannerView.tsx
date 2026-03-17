@@ -2181,7 +2181,7 @@ export const ScannerView = () => {
   }
 
   return (
-    <div className={`fixed inset-0 z-50 flex flex-col ${useCameraPreview && !capturedImage && !hasResults ? 'native-camera-mode' : 'bg-background'}`}>
+    <div className={`fixed inset-0 z-50 flex flex-col ${useCameraPreview && !capturedImage && !hasResults ? 'native-camera-mode' : 'bg-background'}`} style={{ height: '100dvh' }}>
       {/* Camera-preview container - native layer renders behind WebView */}
       {/* IMPORTANT: this container must exist BEFORE CameraPreview.start() runs (parent option) */}
       {Capacitor.isNativePlatform() && (
