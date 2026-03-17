@@ -2112,6 +2112,9 @@ export const ScannerView = () => {
     
     // Restart camera - use camera-preview on native platforms
     if (Capacitor.isNativePlatform()) {
+      // Re-show the native camera container
+      const container = document.getElementById('camera-preview-container');
+      if (container) container.style.display = '';
       const started = await cameraPreview.start();
       if (started) {
         setUseCameraPreview(true);
