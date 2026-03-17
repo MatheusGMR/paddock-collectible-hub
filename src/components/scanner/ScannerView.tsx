@@ -1064,6 +1064,9 @@ export const ScannerView = () => {
       
       // 2. IMMEDIATELY stop camera and show captured image (freeze the frame)
       await cameraPreview.stop();
+      // Force a synchronous style update to exit transparent mode before setting state
+      const container = document.getElementById('camera-preview-container');
+      if (container) container.style.display = 'none';
       setUseCameraPreview(false);
       setCameraActive(false);
       setCapturedImage(imageForDisplay);
