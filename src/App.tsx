@@ -366,6 +366,7 @@ const AppContent = () => {
             <Route path="/privacy" element={<PrivacyPolicy />} />
             <Route path="/seller/*" element={<Seller />} />
             <Route path="/store/:sellerId" element={<SellerStorefront />} />
+            <Route path="/seller-mobile" element={<SellerMobile />} />
             <Route path="/payment-success" element={<PaymentSuccess />} />
             <Route path="/payment-canceled" element={<PaymentCanceled />} />
             <Route path="/subscription-success" element={<PaymentSuccess />} />
