@@ -170,7 +170,7 @@ const Mercado = () => {
       </div>
 
       {/* Seller Stores */}
-      <SellerStoresSection />
+      <div data-tip="mercado-stores"><SellerStoresSection /></div>
 
       {/* Listings */}
       <div className="p-4 pb-20">
