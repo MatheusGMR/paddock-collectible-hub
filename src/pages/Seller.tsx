@@ -160,6 +160,10 @@ const SellerPage = () => {
                 path="importar"
                 element={<SellerImport />}
               />
+              <Route
+                path="analytics"
+                element={<SellerAnalytics />}
+              />
             </Routes>
           </div>
         </main>

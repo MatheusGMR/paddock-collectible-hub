@@ -1,4 +1,4 @@
-import { Package, DollarSign, User, Users, ArrowLeft, Upload } from "lucide-react";
+import { Package, DollarSign, User, Users, ArrowLeft, Upload, BarChart3 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useNavigate } from "react-router-dom";
 import {
@@ -17,6 +17,7 @@ import paddockLogo from "@/assets/paddock-logo.png";
 const items = [
   { title: "Estoque", url: "/seller", icon: Package },
   { title: "Importar", url: "/seller/importar", icon: Upload },
+  { title: "Desempenho", url: "/seller/analytics", icon: BarChart3 },
   { title: "Financeiro", url: "/seller/financeiro", icon: DollarSign },
   { title: "Conta", url: "/seller/conta", icon: User },
   { title: "Clientes", url: "/seller/clientes", icon: Users },
