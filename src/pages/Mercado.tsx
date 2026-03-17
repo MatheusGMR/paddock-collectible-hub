@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, SlidersHorizontal, ShoppingBag, ShoppingCart } from "lucide-react";
+import { Search, ShoppingBag, Star, Car, Package } from "lucide-react";
+import { useDebounce } from "@/hooks/useDebounce";
 import { CartSheet } from "@/components/mercado/CartSheet";
 import { SellerStoresSection } from "@/components/mercado/SellerStoresSection";
 import { AddToCartButton } from "@/components/mercado/AddToCartButton";
@@ -10,9 +11,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { useDebounce } from "@/hooks/useDebounce";
 import { formatPrice } from "@/data/marketplaceSources";
 import { useScreenTips } from "@/hooks/useScreenTips";
+import { getTierLabel, getTierColor, getTierBgColor } from "@/lib/priceIndex";
 import { cn } from "@/lib/utils";
 
 interface MarketplaceListing {
@@ -35,6 +36,8 @@ interface MarketplaceListing {
     collectible_scale: string | null;
     collectible_manufacturer: string | null;
     collectible_condition: string | null;
+    collectible_color: string | null;
+    collectible_series: string | null;
     rarity_tier: string | null;
     price_index: number | null;
     estimated_value_min: number | null;
@@ -47,12 +50,24 @@ interface MarketplaceListing {
   } | null;
 }
 
-const rarityColors: Record<string, string> = {
-  legendary: "bg-amber-500/20 text-amber-400 border-amber-500/30",
-  epic: "bg-purple-500/20 text-purple-400 border-purple-500/30",
-  rare: "bg-blue-500/20 text-blue-400 border-blue-500/30",
-  uncommon: "bg-green-500/20 text-green-400 border-green-500/30",
-  common: "bg-muted text-muted-foreground border-border",
+const tierBorderAccent: Record<string, string> = {
+  ultra_rare: "border-amber-400/40",
+  super_rare: "border-purple-400/40",
+  legendary: "border-amber-400/40",
+  epic: "border-purple-400/40",
+  rare: "border-blue-400/40",
+  uncommon: "border-green-400/40",
+  common: "border-border",
+};
+
+const tierGlowShadow: Record<string, string> = {
+  ultra_rare: "shadow-[0_2px_12px_rgba(245,158,11,0.15)]",
+  super_rare: "shadow-[0_2px_12px_rgba(168,85,247,0.15)]",
+  legendary: "shadow-[0_2px_12px_rgba(245,158,11,0.15)]",
+  epic: "shadow-[0_2px_12px_rgba(168,85,247,0.15)]",
+  rare: "shadow-[0_2px_12px_rgba(59,130,246,0.15)]",
+  uncommon: "shadow-[0_2px_12px_rgba(16,185,129,0.12)]",
+  common: "",
 };
 
 const Mercado = () => {
@@ -73,7 +88,6 @@ const Mercado = () => {
     const currentOffset = reset ? 0 : offset;
 
     try {
-      // Fetch listings with joined item data
       let query = supabase
         .from("listings")
         .select(`
@@ -83,6 +97,7 @@ const Mercado = () => {
           items (
             real_car_brand, real_car_model, real_car_year,
             collectible_scale, collectible_manufacturer, collectible_condition,
+            collectible_color, collectible_series,
             rarity_tier, price_index, estimated_value_min, estimated_value_max
           )
         `)
@@ -98,7 +113,6 @@ const Mercado = () => {
 
       if (error) throw error;
 
-      // Fetch seller profiles for listings with user_id
       const userIds = [...new Set((data || []).filter(l => l.user_id).map(l => l.user_id!))];
       let profilesMap = new Map<string, { username: string; avatar_url: string | null; city: string | null }>();
 
@@ -133,13 +147,11 @@ const Mercado = () => {
     }
   }, [offset, debouncedSearch]);
 
-  // Initial load
   useEffect(() => {
     fetchListings(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Reload on search change
   useEffect(() => {
     fetchListings(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -221,19 +233,24 @@ const Mercado = () => {
   );
 };
 
-// Rich listing card with collectible details
+/** Card inspired by the scanner result card — glassmorphism, rarity tint, rich specs */
 const MarketplaceCard = ({ listing, onClick }: { listing: MarketplaceListing; onClick: () => void }) => {
   const item = listing.item;
   const { t } = useLanguage();
+  const tier = item?.rarity_tier || "common";
+  const borderClass = tierBorderAccent[tier] || tierBorderAccent.common;
+  const glowClass = tierGlowShadow[tier] || "";
 
   return (
     <div
       className={cn(
-        "group relative w-full overflow-hidden rounded-xl bg-card border border-border text-left",
-        "transition-all duration-200 hover:shadow-lg hover:border-primary/30",
+        "group relative w-full overflow-hidden rounded-2xl border bg-card/80 backdrop-blur-sm text-left",
+        "transition-all duration-200 hover:shadow-lg",
+        borderClass,
+        glowClass
       )}
     >
-      {/* Clickable main area */}
+      {/* Clickable area */}
       <button onClick={onClick} className="w-full text-left active:scale-[0.98] transition-transform">
         {/* Image */}
         <div className="relative aspect-square overflow-hidden bg-muted">
@@ -244,27 +261,42 @@ const MarketplaceCard = ({ listing, onClick }: { listing: MarketplaceListing; on
             loading="lazy"
           />
 
-          {/* Rarity badge */}
-          {item?.rarity_tier && (
-            <Badge
-              variant="outline"
-              className={cn(
-                "absolute top-2 left-2 text-[10px]",
-                rarityColors[item.rarity_tier] || rarityColors.common
-              )}
-            >
-              {t.index?.tiers?.[item.rarity_tier as keyof typeof t.index.tiers] || item.rarity_tier}
-            </Badge>
+          {/* Rarity badge - top left */}
+          {item?.rarity_tier && item.rarity_tier !== "common" && (
+            <div className={cn(
+              "absolute top-2 left-2 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide backdrop-blur-md border",
+              tier === "ultra_rare" || tier === "legendary"
+                ? "bg-amber-500/20 text-amber-300 border-amber-400/40"
+                : tier === "super_rare" || tier === "epic"
+                ? "bg-purple-500/20 text-purple-300 border-purple-400/40"
+                : tier === "rare"
+                ? "bg-blue-500/20 text-blue-300 border-blue-400/40"
+                : "bg-green-500/20 text-green-300 border-green-400/40"
+            )}>
+              <Star className="h-2.5 w-2.5 inline mr-0.5 -mt-px" />
+              {getTierLabel(tier)}
+            </div>
           )}
 
-          {/* Price Index badge */}
+          {/* Score badge - top right */}
           {item?.price_index != null && (
-            <Badge className="absolute top-2 right-2 bg-primary/90 text-primary-foreground text-[10px]">
+            <div className={cn(
+              "absolute top-2 right-2 h-8 w-8 rounded-full flex items-center justify-center text-xs font-black backdrop-blur-md border",
+              tier === "ultra_rare" || tier === "legendary"
+                ? "bg-amber-500/30 text-amber-200 border-amber-400/50"
+                : tier === "super_rare" || tier === "epic"
+                ? "bg-purple-500/30 text-purple-200 border-purple-400/50"
+                : tier === "rare"
+                ? "bg-blue-500/30 text-blue-200 border-blue-400/50"
+                : tier === "uncommon"
+                ? "bg-green-500/30 text-green-200 border-green-400/50"
+                : "bg-background/70 text-foreground border-border/50"
+            )}>
               {item.price_index}
-            </Badge>
+            </div>
           )}
 
-          {/* Asking price overlay */}
+          {/* Price overlay */}
           <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-3 pt-8">
             <p className="text-lg font-bold text-white">
               {formatPrice(listing.price, listing.currency)}
@@ -272,41 +304,45 @@ const MarketplaceCard = ({ listing, onClick }: { listing: MarketplaceListing; on
           </div>
         </div>
 
-        {/* Content */}
-        <div className="p-3 space-y-1.5">
-          <h3 className="font-medium text-foreground line-clamp-2 text-sm leading-tight">
-            {listing.title}
-          </h3>
-
-          {/* Car info */}
-          {item && (
-            <p className="text-xs text-muted-foreground">
-              {item.real_car_brand} {item.real_car_model}
-              {item.real_car_year ? ` (${item.real_car_year})` : ""}
-            </p>
+        {/* Content - scanner-style layout */}
+        <div className="p-3 space-y-2">
+          {/* Title — brand + model as header, like scanner */}
+          {item ? (
+            <>
+              <h3 className="font-bold text-foreground text-sm leading-tight line-clamp-1">
+                {item.real_car_brand} {item.real_car_model}
+              </h3>
+              <p className="text-[11px] text-muted-foreground line-clamp-1">
+                {item.collectible_manufacturer}
+                {item.collectible_scale ? ` • ${item.collectible_scale}` : ""}
+                {item.real_car_year ? ` • ${item.real_car_year}` : ""}
+              </p>
+            </>
+          ) : (
+            <h3 className="font-bold text-foreground text-sm leading-tight line-clamp-2">
+              {listing.title}
+            </h3>
           )}
 
-          {/* Scale & manufacturer */}
-          {item && (item.collectible_scale || item.collectible_manufacturer) && (
+          {/* Spec chips — condition, color, series */}
+          {item && (
             <div className="flex flex-wrap gap-1">
-              {item.collectible_scale && (
-                <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
-                  {item.collectible_scale}
+              {item.collectible_condition && (
+                <span className="text-[9px] px-1.5 py-0.5 rounded-md bg-muted/80 text-muted-foreground border border-border/50">
+                  {item.collectible_condition}
                 </span>
               )}
-              {item.collectible_manufacturer && (
-                <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
-                  {item.collectible_manufacturer}
+              {item.collectible_color && (
+                <span className="text-[9px] px-1.5 py-0.5 rounded-md bg-muted/80 text-muted-foreground border border-border/50">
+                  {item.collectible_color}
+                </span>
+              )}
+              {item.collectible_series && (
+                <span className="text-[9px] px-1.5 py-0.5 rounded-md bg-muted/80 text-muted-foreground border border-border/50">
+                  {item.collectible_series}
                 </span>
               )}
             </div>
-          )}
-
-          {/* Market value estimate */}
-          {item?.estimated_value_min != null && item?.estimated_value_max != null && (
-            <p className="text-[10px] text-muted-foreground">
-              Valor aprox: {formatPrice(item.estimated_value_min, listing.currency)} – {formatPrice(item.estimated_value_max, listing.currency)}
-            </p>
           )}
 
           {/* Seller */}
