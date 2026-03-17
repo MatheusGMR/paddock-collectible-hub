@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import Stripe from "https://esm.sh/stripe@18.5.0";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
+import Stripe from "npm:stripe@18.5.0";
+import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -39,7 +39,6 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_ANON_KEY") ?? ""
     );
 
-    // Service role client for inserting sales
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
@@ -83,7 +82,23 @@ serve(async (req) => {
     const amountInCents = Math.round(listing.price * 100);
     const origin = req.headers.get("origin") || "https://paddock-collectible-hub.lovable.app";
 
-    const session = await stripe.checkout.sessions.create({
+    // Look up seller's Stripe Connected Account
+    let sellerStripeAccountId: string | null = null;
+    if (listing.user_id) {
+      const { data: sellerDetails } = await supabaseAdmin
+        .from("seller_details")
+        .select("stripe_account_id")
+        .eq("user_id", listing.user_id)
+        .single();
+
+      sellerStripeAccountId = sellerDetails?.stripe_account_id || null;
+    }
+
+    const fees = calculateFees(listing.price);
+    const applicationFeeInCents = Math.round(fees.platform_fee_total * 100);
+
+    // Build checkout session params
+    const sessionParams: Stripe.Checkout.SessionCreateParams = {
       customer: customerId,
       customer_email: customerId ? undefined : userEmail,
       payment_method_types: ["card"],
@@ -110,11 +125,23 @@ serve(async (req) => {
         user_id: userId || "",
         seller_id: listing.user_id || "",
       },
-    });
+    };
+
+    // If seller has a connected Stripe account, route payment via Connect
+    if (sellerStripeAccountId) {
+      sessionParams.payment_intent_data = {
+        application_fee_amount: applicationFeeInCents,
+        transfer_data: {
+          destination: sellerStripeAccountId,
+        },
+      };
+      console.log(`Routing payment to Connected Account: ${sellerStripeAccountId}, fee: ${applicationFeeInCents}`);
+    }
+
+    const session = await stripe.checkout.sessions.create(sessionParams);
 
     // Record the sale with fee calculation
     if (userId && listing.user_id) {
-      const fees = calculateFees(listing.price);
       await supabaseAdmin.from("sales").insert({
         listing_id: listing_id,
         seller_id: listing.user_id,
