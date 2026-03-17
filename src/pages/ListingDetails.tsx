@@ -15,6 +15,7 @@ import { getFollowCounts, getCollectionCount } from "@/lib/database";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import { trackListingEvent } from "@/lib/api/listingEvents";
 
 interface ListingData {
   id: string;
