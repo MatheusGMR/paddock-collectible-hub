@@ -29,6 +29,11 @@ export const useNativeCameraPreview = () => {
     try {
       console.log("[CameraPreview] Starting camera preview...");
       
+      // Use screen dimensions to ensure full coverage on iOS
+      // window.innerHeight can be smaller than actual viewport due to safe areas / dynamic island
+      const fullWidth = Math.max(window.innerWidth, screen.width, document.documentElement.clientWidth);
+      const fullHeight = Math.max(window.innerHeight, screen.height, document.documentElement.clientHeight);
+      
       const options: CameraPreviewOptions = {
         position: "rear",
         toBack: true,
@@ -37,8 +42,8 @@ export const useNativeCameraPreview = () => {
         disableAudio: true,
         storeToFile: false,
         enableHighResolution: true,
-        width: window.innerWidth,
-        height: window.innerHeight,
+        width: fullWidth,
+        height: fullHeight,
         lockAndroidOrientation: "portrait",
       } as any;
       
