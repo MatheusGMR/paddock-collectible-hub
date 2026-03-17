@@ -222,10 +222,8 @@ export const SellerInventory = ({ inventory, loading }: SellerInventoryProps) =>
                       key={item.id}
                       className="cursor-pointer hover:bg-muted/50"
                       onClick={() => {
-                        // Navigate to order details if sale id is available
-                        if (item.sold_at) {
-                          // We have sale data inline — find the sale id from the listing
-                          navigate(`/seller/order/${item.id}`);
+                        if (item.sale_id) {
+                          navigate(`/seller/order/${item.sale_id}`);
                         }
                       }}
                     >
