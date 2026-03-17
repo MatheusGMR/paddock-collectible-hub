@@ -1039,6 +1039,7 @@ export const ScannerView = () => {
     setImageQualityError(null);
     setAddedIndices(new Set());
     setSkippedIndices(new Set());
+    setAddedItemIds(new Map());
     setWarningMessage(null);
     
     // Trigger flash effect
