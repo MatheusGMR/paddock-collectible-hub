@@ -216,7 +216,7 @@ export const SellerInventory = ({ inventory, loading }: SellerInventoryProps) =>
                   <TableHead>Valor Venda</TableHead>
                   <TableHead>Líquido</TableHead>
                   <TableHead>Vendido em</TableHead>
-                  <TableHead>Status</TableHead>
+                  <TableHead>Envio</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -227,46 +227,55 @@ export const SellerInventory = ({ inventory, loading }: SellerInventoryProps) =>
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredSold.map((item: any) => (
-                    <TableRow
-                      key={item.id}
-                      className="cursor-pointer hover:bg-muted/50"
-                      onClick={() => {
-                        if (item.sale_id) {
-                          navigate(`/seller/order/${item.sale_id}`);
-                        }
-                      }}
-                    >
-                      <TableCell>
-                        <div className="flex items-center gap-3">
-                          <img
-                            src={item.image_url}
-                            alt={item.title}
-                            className="h-10 w-10 rounded-md object-cover"
-                          />
-                          <span className="font-medium text-foreground truncate max-w-[200px]">
-                            {item.title}
-                          </span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="font-semibold">
-                        {formatPrice(item.sale_price || item.price, item.currency)}
-                      </TableCell>
-                      <TableCell className="text-green-500 font-semibold">
-                        {formatPrice(item.seller_net || 0, item.currency)}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground text-sm">
-                        {item.sold_at
-                          ? new Date(item.sold_at).toLocaleDateString("pt-BR")
-                          : "—"}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="secondary" className="bg-primary/10 text-primary">
-                          Vendido
-                        </Badge>
-                      </TableCell>
-                    </TableRow>
-                  ))
+                  filteredSold.map((item: any) => {
+                    const shippingBadge: Record<string, { label: string; className: string }> = {
+                      confirmed: { label: "Confirmado", className: "bg-green-500/10 text-green-600" },
+                      preparing: { label: "Preparando", className: "bg-amber-500/10 text-amber-600" },
+                      in_transit: { label: "Em Trânsito", className: "bg-blue-500/10 text-blue-600" },
+                      delivered: { label: "Entregue", className: "bg-primary/10 text-primary" },
+                    };
+                    const badge = shippingBadge[item.shipping_status] || shippingBadge.confirmed;
+                    return (
+                      <TableRow
+                        key={item.id}
+                        className="cursor-pointer hover:bg-muted/50"
+                        onClick={() => {
+                          if (item.sale_id) {
+                            navigate(`/seller/order/${item.sale_id}`);
+                          }
+                        }}
+                      >
+                        <TableCell>
+                          <div className="flex items-center gap-3">
+                            <img
+                              src={item.image_url}
+                              alt={item.title}
+                              className="h-10 w-10 rounded-md object-cover"
+                            />
+                            <span className="font-medium text-foreground truncate max-w-[200px]">
+                              {item.title}
+                            </span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="font-semibold">
+                          {formatPrice(item.sale_price || item.price, item.currency)}
+                        </TableCell>
+                        <TableCell className="text-green-500 font-semibold">
+                          {formatPrice(item.seller_net || 0, item.currency)}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground text-sm">
+                          {item.sold_at
+                            ? new Date(item.sold_at).toLocaleDateString("pt-BR")
+                            : "—"}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="secondary" className={badge.className}>
+                            {badge.label}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
                 )}
               </TableBody>
             </Table>
