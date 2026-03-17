@@ -36,6 +36,7 @@ const PaymentSuccess = lazy(() => import("./pages/PaymentSuccess"));
 const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy"));
 const PaymentCanceled = lazy(() => import("./pages/PaymentCanceled"));
 const Seller = lazy(() => import("./pages/Seller"));
+const SellerMobile = lazy(() => import("./pages/SellerMobile"));
 const SellerStorefront = lazy(() => import("./pages/SellerStorefront"));
 
 // Suspense fallback for lazy routes
