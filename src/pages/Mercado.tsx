@@ -1,8 +1,10 @@
 import { useState, useCallback, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, SlidersHorizontal, ShoppingBag } from "lucide-react";
+import { Search, SlidersHorizontal, ShoppingBag, ShoppingCart } from "lucide-react";
 import { CartSheet } from "@/components/mercado/CartSheet";
 import { SellerStoresSection } from "@/components/mercado/SellerStoresSection";
+import { AddToCartButton } from "@/components/mercado/AddToCartButton";
+import { BuyButton } from "@/components/checkout/BuyButton";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
@@ -224,97 +226,115 @@ const MarketplaceCard = ({ listing, onClick }: { listing: MarketplaceListing; on
   const { t } = useLanguage();
 
   return (
-    <button
-      onClick={onClick}
+    <div
       className={cn(
         "group relative w-full overflow-hidden rounded-xl bg-card border border-border text-left",
         "transition-all duration-200 hover:shadow-lg hover:border-primary/30",
-        "active:scale-[0.98]"
       )}
     >
-      {/* Image */}
-      <div className="relative aspect-square overflow-hidden bg-muted">
-        <img
-          src={listing.image_url}
-          alt={listing.title}
-          className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-          loading="lazy"
-        />
+      {/* Clickable main area */}
+      <button onClick={onClick} className="w-full text-left active:scale-[0.98] transition-transform">
+        {/* Image */}
+        <div className="relative aspect-square overflow-hidden bg-muted">
+          <img
+            src={listing.image_url}
+            alt={listing.title}
+            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+            loading="lazy"
+          />
 
-        {/* Rarity badge */}
-        {item?.rarity_tier && (
-          <Badge
-            variant="outline"
-            className={cn(
-              "absolute top-2 left-2 text-[10px]",
-              rarityColors[item.rarity_tier] || rarityColors.common
-            )}
-          >
-            {t.index?.tiers?.[item.rarity_tier as keyof typeof t.index.tiers] || item.rarity_tier}
-          </Badge>
-        )}
+          {/* Rarity badge */}
+          {item?.rarity_tier && (
+            <Badge
+              variant="outline"
+              className={cn(
+                "absolute top-2 left-2 text-[10px]",
+                rarityColors[item.rarity_tier] || rarityColors.common
+              )}
+            >
+              {t.index?.tiers?.[item.rarity_tier as keyof typeof t.index.tiers] || item.rarity_tier}
+            </Badge>
+          )}
 
-        {/* Price Index badge */}
-        {item?.price_index != null && (
-          <Badge className="absolute top-2 right-2 bg-primary/90 text-primary-foreground text-[10px]">
-            {item.price_index}
-          </Badge>
-        )}
+          {/* Price Index badge */}
+          {item?.price_index != null && (
+            <Badge className="absolute top-2 right-2 bg-primary/90 text-primary-foreground text-[10px]">
+              {item.price_index}
+            </Badge>
+          )}
 
-        {/* Asking price overlay */}
-        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-3 pt-8">
-          <p className="text-lg font-bold text-white">
-            {formatPrice(listing.price, listing.currency)}
-          </p>
-        </div>
-      </div>
-
-      {/* Content */}
-      <div className="p-3 space-y-1.5">
-        <h3 className="font-medium text-foreground line-clamp-2 text-sm leading-tight">
-          {listing.title}
-        </h3>
-
-        {/* Car info */}
-        {item && (
-          <p className="text-xs text-muted-foreground">
-            {item.real_car_brand} {item.real_car_model}
-            {item.real_car_year ? ` (${item.real_car_year})` : ""}
-          </p>
-        )}
-
-        {/* Scale & manufacturer */}
-        {item && (item.collectible_scale || item.collectible_manufacturer) && (
-          <div className="flex flex-wrap gap-1">
-            {item.collectible_scale && (
-              <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
-                {item.collectible_scale}
-              </span>
-            )}
-            {item.collectible_manufacturer && (
-              <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
-                {item.collectible_manufacturer}
-              </span>
-            )}
+          {/* Asking price overlay */}
+          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-3 pt-8">
+            <p className="text-lg font-bold text-white">
+              {formatPrice(listing.price, listing.currency)}
+            </p>
           </div>
-        )}
+        </div>
 
-        {/* Market value estimate */}
-        {item?.estimated_value_min != null && item?.estimated_value_max != null && (
-          <p className="text-[10px] text-muted-foreground">
-            Valor aprox: {formatPrice(item.estimated_value_min, listing.currency)} – {formatPrice(item.estimated_value_max, listing.currency)}
-          </p>
-        )}
+        {/* Content */}
+        <div className="p-3 space-y-1.5">
+          <h3 className="font-medium text-foreground line-clamp-2 text-sm leading-tight">
+            {listing.title}
+          </h3>
 
-        {/* Seller */}
-        {listing.seller && (
-          <p className="text-[10px] text-muted-foreground truncate">
-            por @{listing.seller.username}
-            {listing.seller.city ? ` · ${listing.seller.city}` : ""}
-          </p>
-        )}
+          {/* Car info */}
+          {item && (
+            <p className="text-xs text-muted-foreground">
+              {item.real_car_brand} {item.real_car_model}
+              {item.real_car_year ? ` (${item.real_car_year})` : ""}
+            </p>
+          )}
+
+          {/* Scale & manufacturer */}
+          {item && (item.collectible_scale || item.collectible_manufacturer) && (
+            <div className="flex flex-wrap gap-1">
+              {item.collectible_scale && (
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
+                  {item.collectible_scale}
+                </span>
+              )}
+              {item.collectible_manufacturer && (
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
+                  {item.collectible_manufacturer}
+                </span>
+              )}
+            </div>
+          )}
+
+          {/* Market value estimate */}
+          {item?.estimated_value_min != null && item?.estimated_value_max != null && (
+            <p className="text-[10px] text-muted-foreground">
+              Valor aprox: {formatPrice(item.estimated_value_min, listing.currency)} – {formatPrice(item.estimated_value_max, listing.currency)}
+            </p>
+          )}
+
+          {/* Seller */}
+          {listing.seller && (
+            <p className="text-[10px] text-muted-foreground truncate">
+              por @{listing.seller.username}
+              {listing.seller.city ? ` · ${listing.seller.city}` : ""}
+            </p>
+          )}
+        </div>
+      </button>
+
+      {/* Quick action buttons */}
+      <div className="px-3 pb-3 flex gap-2">
+        <AddToCartButton
+          listingId={listing.id}
+          size="sm"
+          variant="outline"
+          className="flex-1 text-xs h-8"
+          showLabel={true}
+        />
+        <BuyButton
+          listingId={listing.id}
+          price={listing.price}
+          currency={listing.currency}
+          compact
+        />
       </div>
-    </button>
+    </div>
   );
 };
 

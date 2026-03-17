@@ -12,6 +12,7 @@ interface BuyButtonProps {
   currency: string;
   disabled?: boolean;
   className?: string;
+  compact?: boolean;
 }
 
 export const BuyButton = ({
@@ -20,6 +21,7 @@ export const BuyButton = ({
   currency,
   disabled = false,
   className,
+  compact = false,
 }: BuyButtonProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
@@ -57,6 +59,26 @@ export const BuyButton = ({
       setIsLoading(false);
     }
   };
+
+  if (compact) {
+    return (
+      <Button
+        onClick={(e) => { e.stopPropagation(); handleCheckout(); }}
+        disabled={disabled || isLoading}
+        size="sm"
+        className="flex-1 text-xs h-8 gap-1"
+      >
+        {isLoading ? (
+          <Loader2 className="h-3 w-3 animate-spin" />
+        ) : (
+          <>
+            <ShoppingCart className="h-3 w-3" />
+            {t.checkout?.buyNow || "Comprar"}
+          </>
+        )}
+      </Button>
+    );
+  }
 
   return (
     <div className={className}>
