@@ -230,6 +230,7 @@ export const ScannerView = () => {
   // Multi-car state
   const [addedIndices, setAddedIndices] = useState<Set<number>>(new Set());
   const [skippedIndices, setSkippedIndices] = useState<Set<number>>(new Set());
+  const [addedItemIds, setAddedItemIds] = useState<Map<number, string>>(new Map());
   
   // Video recording states
   const [isRecording, setIsRecording] = useState(false);
