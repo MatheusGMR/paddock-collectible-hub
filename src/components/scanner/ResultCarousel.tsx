@@ -494,7 +494,10 @@ export const ResultCarousel = ({
 
             {/* Market Value Card - below rarity index */}
             {result.marketValue && (
-              <MarketValueCard marketValue={result.marketValue} />
+              <MarketValueCard 
+                marketValue={result.marketValue} 
+                itemId={addedItemIds?.get(originalIndex)}
+              />
             )}
 
             {/* Collapsible Sections - all closed by default */}
