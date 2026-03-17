@@ -36,6 +36,7 @@ const PaymentSuccess = lazy(() => import("./pages/PaymentSuccess"));
 const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy"));
 const PaymentCanceled = lazy(() => import("./pages/PaymentCanceled"));
 const Seller = lazy(() => import("./pages/Seller"));
+const SellerStorefront = lazy(() => import("./pages/SellerStorefront"));
 
 // Suspense fallback for lazy routes
 const RouteFallback = () => (
@@ -230,7 +231,7 @@ const SubscriptionFlow = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   // Bypass subscription flow for admin and auth routes
-  const bypassRoutes = ["/admin", "/auth", "/privacy", "/payment-success", "/payment-canceled", "/subscription-success", "/seller"];
+  const bypassRoutes = ["/admin", "/auth", "/privacy", "/payment-success", "/payment-canceled", "/subscription-success", "/seller", "/store"];
   if (bypassRoutes.some(r => location.pathname.startsWith(r))) {
     return <>{children}</>;
   }
@@ -360,6 +361,7 @@ const AppContent = () => {
             <Route path="/user/:userId" element={<UserProfile />} />
             <Route path="/privacy" element={<PrivacyPolicy />} />
             <Route path="/seller/*" element={<Seller />} />
+            <Route path="/store/:sellerId" element={<SellerStorefront />} />
             <Route path="/payment-success" element={<PaymentSuccess />} />
             <Route path="/payment-canceled" element={<PaymentCanceled />} />
             <Route path="/subscription-success" element={<PaymentSuccess />} />
