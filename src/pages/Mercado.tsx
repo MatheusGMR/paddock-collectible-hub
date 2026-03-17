@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Search, ShoppingBag, Star, Car, Package } from "lucide-react";
+import { useDebounce } from "@/hooks/useDebounce";
 import { CartSheet } from "@/components/mercado/CartSheet";
 import { SellerStoresSection } from "@/components/mercado/SellerStoresSection";
 import { AddToCartButton } from "@/components/mercado/AddToCartButton";
