@@ -231,7 +231,7 @@ const SubscriptionFlow = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   // Bypass subscription flow for admin and auth routes
-  const bypassRoutes = ["/admin", "/auth", "/privacy", "/payment-success", "/payment-canceled", "/subscription-success", "/seller"];
+  const bypassRoutes = ["/admin", "/auth", "/privacy", "/payment-success", "/payment-canceled", "/subscription-success", "/seller", "/store"];
   if (bypassRoutes.some(r => location.pathname.startsWith(r))) {
     return <>{children}</>;
   }
