@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { SellerReceivablesSheet } from "@/components/profile/SellerReceivablesSheet";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
@@ -65,6 +66,7 @@ export const SettingsSheet = ({ open, onOpenChange, onSignOut }: SettingsSheetPr
   const [nativeInfo, setNativeInfo] = useState<{ version: string; build: string } | null>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   
   const [pushEnabled, setPushEnabled] = useState(false);
   const [pushLoading, setPushLoading] = useState(false);
@@ -465,7 +467,7 @@ export const SettingsSheet = ({ open, onOpenChange, onSignOut }: SettingsSheetPr
               <button 
                 onClick={() => {
                   onOpenChange(false);
-                  navigate("/seller");
+                  navigate(isMobile ? "/minha-loja" : "/seller");
                 }}
                 className="w-full flex items-center justify-between p-4 hover:bg-muted/50 transition-colors"
               >

@@ -36,6 +36,7 @@ const PaymentSuccess = lazy(() => import("./pages/PaymentSuccess"));
 const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy"));
 const PaymentCanceled = lazy(() => import("./pages/PaymentCanceled"));
 const Seller = lazy(() => import("./pages/Seller"));
+const SellerMobile = lazy(() => import("./pages/SellerMobile"));
 const SellerStorefront = lazy(() => import("./pages/SellerStorefront"));
 
 // Suspense fallback for lazy routes
@@ -365,6 +366,7 @@ const AppContent = () => {
             <Route path="/privacy" element={<PrivacyPolicy />} />
             <Route path="/seller/*" element={<Seller />} />
             <Route path="/store/:sellerId" element={<SellerStorefront />} />
+            
             <Route path="/payment-success" element={<PaymentSuccess />} />
             <Route path="/payment-canceled" element={<PaymentCanceled />} />
             <Route path="/subscription-success" element={<PaymentSuccess />} />
@@ -378,6 +380,7 @@ const AppContent = () => {
                       <Route path="/mercado" element={<Mercado />} />
                       <Route path="/notifications" element={<Notifications />} />
                       <Route path="/profile" element={<Profile />} />
+                      <Route path="/minha-loja" element={<SellerMobile />} />
                       <Route path="*" element={<NotFound />} />
                     </Routes>
                   </Suspense>
