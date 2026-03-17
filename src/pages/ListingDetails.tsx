@@ -30,6 +30,7 @@ interface ListingData {
   created_at: string;
   user_id: string | null;
   item_id: string | null;
+  status: string;
 }
 
 interface ItemData {
