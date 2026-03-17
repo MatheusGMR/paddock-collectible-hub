@@ -12,8 +12,6 @@ serve(async (req) => {
 
   try {
     const { type, content } = await req.json();
-    // type: "csv" | "text" | "image"
-    // content: string (CSV text, extracted text, or base64 image)
 
     if (!content) {
       return new Response(JSON.stringify({ error: "Content required" }), {
@@ -27,7 +25,6 @@ serve(async (req) => {
 
     const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
-    // Auth
     const auth = req.headers.get("authorization");
     let uid: string | null = null;
     if (auth) {
@@ -36,6 +33,8 @@ serve(async (req) => {
         uid = data.user?.id || null;
       } catch { /* ignore */ }
     }
+
+    const isImage = type === "image";
 
     const systemPrompt = `Você é um especialista em carrinhos colecionáveis diecast. 
 Sua tarefa é extrair uma lista estruturada de miniaturas/colecionáveis a partir de dados fornecidos (planilha CSV, texto descritivo, ou imagem de catálogo/inventário).
@@ -52,17 +51,17 @@ Para CADA item identificado, extraia:
 - suggestedPrice: preço sugerido em BRL (número). Estime baseado em mercado brasileiro se não informado.
 - currency: "BRL"
 - notes: observações adicionais
+${isImage ? `- boundingBox: objeto com {x, y, width, height} em PORCENTAGEM (0-100) da imagem original indicando a região aproximada onde este item aparece na foto. Se a imagem mostrar múltiplos carros, identifique a posição de cada um. Se houver apenas um carro, use {x: 0, y: 0, width: 100, height: 100}. Seja o mais preciso possível na localização.` : ""}
 
 Responda APENAS em JSON:
-{"items": [{title, brand, model, year, manufacturer, scale, condition, color, suggestedPrice, currency, notes}]}
+{"items": [{title, brand, model, year, manufacturer, scale, condition, color, suggestedPrice, currency, notes${isImage ? ", boundingBox" : ""}}]}
 
 Se não encontrar nenhum item, retorne {"items": [], "error": "Nenhum item identificado"}.
 Máximo 50 itens por vez.`;
 
     let messages;
 
-    if (type === "image") {
-      // Image-based analysis (photo of inventory list, catalog, etc.)
+    if (isImage) {
       let imageUrl = content;
       if (!content.startsWith("data:")) {
         imageUrl = `data:image/jpeg;base64,${content}`;
@@ -73,13 +72,12 @@ Máximo 50 itens por vez.`;
         {
           role: "user",
           content: [
-            { type: "text", text: "Extraia todos os itens colecionáveis desta imagem de catálogo/inventário/planilha." },
-            { type: "image_url", image_url: { url: imageUrl, detail: "auto" } },
+            { type: "text", text: "Extraia todos os itens colecionáveis desta imagem de catálogo/inventário/planilha. Para cada item, forneça as coordenadas aproximadas (boundingBox em porcentagem) de onde ele aparece na imagem." },
+            { type: "image_url", image_url: { url: imageUrl, detail: "high" } },
           ],
         },
       ];
     } else {
-      // CSV or text content
       messages = [
         { role: "system", content: systemPrompt },
         {
@@ -115,7 +113,6 @@ Máximo 50 itens por vez.`;
 
     const parsed = JSON.parse(raw.replace(/```json\n?|\n?```/g, "").trim());
 
-    // Log usage
     const usage = data.usage || {};
     sb.from("ai_usage_logs").insert({
       user_id: uid,
