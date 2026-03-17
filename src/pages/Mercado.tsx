@@ -194,11 +194,12 @@ const Mercado = () => {
           <>
             <div className="grid grid-cols-2 gap-3">
               {listings.map((listing) => (
+                <div key={listing.id} data-tip={listings.indexOf(listing) === 0 ? "mercado-listing" : undefined}>
                 <MarketplaceCard
-                  key={listing.id}
                   listing={listing}
                   onClick={() => navigate(`/listing/${listing.id}`)}
                 />
+                </div>
               ))}
             </div>
 
