@@ -2105,6 +2105,7 @@ export const ScannerView = () => {
     setIsInitializing(true);
     setAddedIndices(new Set());
     setSkippedIndices(new Set());
+    setAddedItemIds(new Map());
     setWarningMessage(null);
     setImageQualityError(null);
     setRecordedVideo(null);
