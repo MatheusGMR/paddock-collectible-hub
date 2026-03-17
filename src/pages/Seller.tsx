@@ -200,6 +200,10 @@ const SellerPage = () => {
                 element={<SellerImport />}
               />
               <Route
+                path="pedidos"
+                element={<SellerOrders />}
+              />
+              <Route
                 path="analytics"
                 element={<SellerAnalytics />}
               />
