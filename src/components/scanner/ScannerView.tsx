@@ -2181,7 +2181,7 @@ export const ScannerView = () => {
   }
 
   return (
-    <div className={`fixed inset-0 z-50 flex flex-col ${useCameraPreview ? 'native-camera-mode' : 'bg-background'}`}>
+    <div className={`fixed inset-0 z-50 flex flex-col ${useCameraPreview && !capturedImage && !hasResults ? 'native-camera-mode' : 'bg-background'}`}>
       {/* Camera-preview container - native layer renders behind WebView */}
       {/* IMPORTANT: this container must exist BEFORE CameraPreview.start() runs (parent option) */}
       {Capacitor.isNativePlatform() && (
@@ -2190,7 +2190,7 @@ export const ScannerView = () => {
       
       {/* Camera/Preview View */}
       <div
-        className={`relative flex-1 overflow-hidden select-none ${useCameraPreview ? 'bg-transparent' : 'bg-black'}`}
+        className={`relative flex-1 overflow-hidden select-none ${useCameraPreview && !capturedImage && !hasResults ? 'bg-transparent' : 'bg-black'}`}
         style={{ WebkitUserSelect: 'none', WebkitTouchCallout: 'none' } as React.CSSProperties}
         onTouchStart={(e) => {
           e.preventDefault();
