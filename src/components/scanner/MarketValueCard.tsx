@@ -16,6 +16,9 @@ export const MarketValueCard = ({ marketValue, itemId, onGuessSaved }: MarketVal
   const [showGuess, setShowGuess] = useState(false);
   const [guessType, setGuessType] = useState<"guess" | "paid">("guess");
 
+  // Only allow price guess/paid if we have a valid itemId
+  const canSubmitPrice = !!itemId;
+
   return (
     <div className="rounded-2xl border border-border/50 bg-card/80 backdrop-blur-sm p-4 space-y-3">
       {/* Header */}
@@ -42,8 +45,8 @@ export const MarketValueCard = ({ marketValue, itemId, onGuessSaved }: MarketVal
         </p>
       </div>
 
-      {/* User Guess Section */}
-      {showGuess ? (
+      {/* User Guess Section - only show if itemId exists */}
+      {showGuess && itemId ? (
         <UserPriceGuess
           itemId={itemId}
           type={guessType}
@@ -60,6 +63,8 @@ export const MarketValueCard = ({ marketValue, itemId, onGuessSaved }: MarketVal
             size="sm"
             className="flex-1 text-xs"
             onClick={() => { setGuessType("guess"); setShowGuess(true); }}
+            disabled={!canSubmitPrice}
+            title={!canSubmitPrice ? "Adicione à coleção primeiro" : undefined}
           >
             <MessageSquare className="h-3.5 w-3.5 mr-1" />
             Meu palpite
@@ -69,11 +74,20 @@ export const MarketValueCard = ({ marketValue, itemId, onGuessSaved }: MarketVal
             size="sm"
             className="flex-1 text-xs"
             onClick={() => { setGuessType("paid"); setShowGuess(true); }}
+            disabled={!canSubmitPrice}
+            title={!canSubmitPrice ? "Adicione à coleção primeiro" : undefined}
           >
             <ShoppingCart className="h-3.5 w-3.5 mr-1" />
             Quanto paguei
           </Button>
         </div>
+      )}
+      
+      {/* Hint when no itemId */}
+      {!canSubmitPrice && (
+        <p className="text-[10px] text-muted-foreground text-center">
+          Adicione à coleção para registrar seu palpite ou valor pago
+        </p>
       )}
     </div>
   );

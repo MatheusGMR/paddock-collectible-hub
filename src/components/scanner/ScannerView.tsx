@@ -230,6 +230,7 @@ export const ScannerView = () => {
   // Multi-car state
   const [addedIndices, setAddedIndices] = useState<Set<number>>(new Set());
   const [skippedIndices, setSkippedIndices] = useState<Set<number>>(new Set());
+  const [addedItemIds, setAddedItemIds] = useState<Map<number, string>>(new Map());
   
   // Video recording states
   const [isRecording, setIsRecording] = useState(false);
@@ -929,6 +930,7 @@ export const ScannerView = () => {
             setAnalysisResults(processedItems);
             setAddedIndices(new Set());
             setSkippedIndices(new Set());
+            setAddedItemIds(new Map());
             
             if (response.warning) {
               setWarningMessage(response.warning);
@@ -1037,6 +1039,7 @@ export const ScannerView = () => {
     setImageQualityError(null);
     setAddedIndices(new Set());
     setSkippedIndices(new Set());
+    setAddedItemIds(new Map());
     setWarningMessage(null);
     
     // Trigger flash effect
@@ -1153,6 +1156,7 @@ export const ScannerView = () => {
           setAnalysisResults(processedItems);
           setAddedIndices(new Set());
           setSkippedIndices(new Set());
+          setAddedItemIds(new Map());
           
           if (response.warning) {
             setWarningMessage(response.warning);
@@ -1186,6 +1190,7 @@ export const ScannerView = () => {
     setImageQualityError(null);
     setAddedIndices(new Set());
     setSkippedIndices(new Set());
+    setAddedItemIds(new Map());
     setWarningMessage(null);
 
     // Trigger flash effect
@@ -1310,6 +1315,7 @@ export const ScannerView = () => {
           setAnalysisResults(processedItems);
           setAddedIndices(new Set());
           setSkippedIndices(new Set());
+          setAddedItemIds(new Map());
           
           if (response.warning) {
             setWarningMessage(response.warning);
@@ -1435,6 +1441,7 @@ export const ScannerView = () => {
           setAnalysisResults(processedItems);
           setAddedIndices(new Set());
           setSkippedIndices(new Set());
+          setAddedItemIds(new Map());
           
           if (response.warning) {
             setWarningMessage(response.warning);
@@ -1522,6 +1529,7 @@ export const ScannerView = () => {
           setAnalysisResults(processedItems);
           setAddedIndices(new Set());
           setSkippedIndices(new Set());
+          setAddedItemIds(new Map());
         }
       }
     } catch (error) {
@@ -1651,6 +1659,7 @@ export const ScannerView = () => {
           setAnalysisResults(processedItems);
           setAddedIndices(new Set());
           setSkippedIndices(new Set());
+          setAddedItemIds(new Map());
           
           if (response.warning) {
             setWarningMessage(response.warning);
@@ -1781,6 +1790,7 @@ export const ScannerView = () => {
               setAnalysisResults(processedItems);
               setAddedIndices(new Set());
               setSkippedIndices(new Set());
+              setAddedItemIds(new Map());
               
               if (response.warning) {
                 setWarningMessage(response.warning);
@@ -1906,7 +1916,7 @@ export const ScannerView = () => {
     capturePhoto();
   }, [isScanning, cameraActive, capturePhoto]);
 
-  const handleAddToCollection = async (index: number) => {
+  const handleAddToCollection = async (index: number): Promise<string | void> => {
     // Prevent duplicate adds
     if (addedIndices.has(index)) return;
     
@@ -1944,7 +1954,7 @@ export const ScannerView = () => {
         imageUrl = imageToSave;
       }
 
-      await addToCollection(
+      const collectionItem = await addToCollection(
         user.id,
         {
           real_car_brand: result.realCar.brand,
@@ -1971,6 +1981,9 @@ export const ScannerView = () => {
         imageUrl
       );
 
+      // Get the item_id from the collection item
+      const itemId = collectionItem.item_id;
+
       toast({
         title: t.scanner.addedToCollection,
         description: `${result.realCar.brand} ${result.realCar.model}`,
@@ -1985,6 +1998,9 @@ export const ScannerView = () => {
       });
       
       setAddedIndices(prev => new Set(prev).add(index));
+      setAddedItemIds(prev => new Map(prev).set(index, itemId));
+      
+      return itemId;
     } catch (error) {
       console.error("Add to collection error:", error);
       toast({
@@ -2096,6 +2112,7 @@ export const ScannerView = () => {
     setIsInitializing(true);
     setAddedIndices(new Set());
     setSkippedIndices(new Set());
+    setAddedItemIds(new Map());
     setWarningMessage(null);
     setImageQualityError(null);
     setRecordedVideo(null);
@@ -2440,6 +2457,7 @@ export const ScannerView = () => {
           onScanAgain={resetScan}
           addedIndices={addedIndices}
           skippedIndices={skippedIndices}
+          addedItemIds={addedItemIds}
           warning={warningMessage || undefined}
         />
       ) : !videoPreviewUrl && (

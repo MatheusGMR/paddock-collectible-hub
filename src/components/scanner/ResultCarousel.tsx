@@ -46,13 +46,14 @@ interface AnalysisResult {
 interface ResultCarouselProps {
   results: AnalysisResult[];
   originalImage?: string;
-  onAddToCollection: (index: number) => Promise<void>;
+  onAddToCollection: (index: number) => Promise<string | void>; // Returns itemId on success
   onAddAndPost: (index: number) => Promise<void>;
   onSkip: (index: number) => void;
   onComplete: () => void;
   onScanAgain: () => void;
   addedIndices: Set<number>;
   skippedIndices: Set<number>;
+  addedItemIds?: Map<number, string>; // Map of index -> itemId for added items
   warning?: string;
   mlVariantId?: string; // ML A/B testing variant ID
 }
@@ -199,6 +200,7 @@ export const ResultCarousel = ({
   onComplete,
   onScanAgain,
   addedIndices,
+  addedItemIds,
   mlVariantId,
 }: ResultCarouselProps) => {
   const { t } = useLanguage();
@@ -492,7 +494,10 @@ export const ResultCarousel = ({
 
             {/* Market Value Card - below rarity index */}
             {result.marketValue && (
-              <MarketValueCard marketValue={result.marketValue} />
+              <MarketValueCard 
+                marketValue={result.marketValue} 
+                itemId={addedItemIds?.get(originalIndex)}
+              />
             )}
 
             {/* Collapsible Sections - all closed by default */}
