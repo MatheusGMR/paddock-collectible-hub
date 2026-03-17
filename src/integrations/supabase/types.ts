@@ -276,6 +276,38 @@ export type Database = {
         }
         Relationships: []
       }
+      listing_events: {
+        Row: {
+          created_at: string
+          event_type: string
+          id: string
+          listing_id: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          event_type: string
+          id?: string
+          listing_id: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          event_type?: string
+          id?: string
+          listing_id?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "listing_events_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "listings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       listings: {
         Row: {
           created_at: string
@@ -1371,6 +1403,10 @@ export type Database = {
       }
       get_seller_customers: { Args: { p_seller_id: string }; Returns: Json }
       get_seller_inventory: { Args: { p_seller_id: string }; Returns: Json }
+      get_seller_listing_analytics: {
+        Args: { p_seller_id: string }
+        Returns: Json
+      }
       get_seller_receivables: { Args: { p_seller_id: string }; Returns: Json }
       has_role: {
         Args: {

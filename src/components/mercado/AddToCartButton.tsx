@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { useCart } from "@/hooks/useCart";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
+import { trackListingEvent } from "@/lib/api/listingEvents";
 
 interface AddToCartButtonProps {
   listingId: string;
@@ -28,6 +29,7 @@ export const AddToCartButton = ({
     if (inCart) return;
     setIsAdding(true);
     await addItem(listingId);
+    trackListingEvent(listingId, "cart_add");
     setIsAdding(false);
   };
 

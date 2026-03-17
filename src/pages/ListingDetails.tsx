@@ -15,6 +15,7 @@ import { getFollowCounts, getCollectionCount } from "@/lib/database";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import { trackListingEvent } from "@/lib/api/listingEvents";
 
 interface ListingData {
   id: string;
@@ -67,6 +68,10 @@ export default function ListingDetails() {
   const [sellerStats, setSellerStats] = useState<{ collection: number; followers: number; averageIndex: number | null } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (id) trackListingEvent(id, "view");
+  }, [id]);
 
   useEffect(() => {
     const fetchListing = async () => {

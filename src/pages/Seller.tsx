@@ -6,6 +6,7 @@ import { SellerFinanceiro } from "@/components/seller/SellerFinanceiro";
 import { SellerConta } from "@/components/seller/SellerConta";
 import { SellerClientes } from "@/components/seller/SellerClientes";
 import { SellerImport } from "@/components/seller/SellerImport";
+import { SellerAnalytics } from "@/components/seller/SellerAnalytics";
 import { useSellerData } from "@/hooks/useSellerData";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
@@ -158,6 +159,10 @@ const SellerPage = () => {
               <Route
                 path="importar"
                 element={<SellerImport />}
+              />
+              <Route
+                path="analytics"
+                element={<SellerAnalytics />}
               />
             </Routes>
           </div>
