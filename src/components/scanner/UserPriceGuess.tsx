@@ -7,7 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import { savePriceEstimate } from "@/lib/database";
 
 interface UserPriceGuessProps {
-  itemId?: string;
+  itemId: string; // Required - must have a valid item_id
   type: "guess" | "paid";
   onSaved?: () => void;
   onCancel?: () => void;
@@ -31,10 +31,15 @@ export const UserPriceGuess = ({ itemId, type, onSaved, onCancel }: UserPriceGue
       return;
     }
 
+    if (!itemId) {
+      toast({ title: "Erro", description: "Item não identificado. Adicione à coleção primeiro.", variant: "destructive" });
+      return;
+    }
+
     setSaving(true);
     try {
       await savePriceEstimate({
-        item_id: itemId || null,
+        item_id: itemId,
         user_id: user.id,
         source: type === "paid" ? "user_paid" : "user_guess",
         price_brl: numValue,
@@ -63,7 +68,7 @@ export const UserPriceGuess = ({ itemId, type, onSaved, onCancel }: UserPriceGue
           autoFocus
         />
       </div>
-      <Button size="icon" className="h-9 w-9 shrink-0" onClick={handleSave} disabled={saving || !value}>
+      <Button size="icon" className="h-9 w-9 shrink-0" onClick={handleSave} disabled={saving || !value || !itemId}>
         {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
       </Button>
       <Button size="icon" variant="ghost" className="h-9 w-9 shrink-0" onClick={onCancel}>

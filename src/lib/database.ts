@@ -600,7 +600,7 @@ export const deleteFromCollection = async (collectionItemId: string): Promise<vo
 // =====================================================
 
 export interface PriceEstimateInput {
-  item_id: string | null;
+  item_id: string; // Required - NOT NULL in database
   user_id: string;
   source: 'ai' | 'user_guess' | 'user_paid';
   price_min_brl?: number | null;
@@ -610,8 +610,12 @@ export interface PriceEstimateInput {
 }
 
 export const savePriceEstimate = async (input: PriceEstimateInput): Promise<void> => {
+  if (!input.item_id) {
+    throw new Error("item_id is required for price estimates");
+  }
+  
   const { error } = await supabase
-    .from("price_estimates" as any)
+    .from("price_estimates")
     .insert({
       item_id: input.item_id,
       user_id: input.user_id,
