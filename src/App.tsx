@@ -342,7 +342,9 @@ const AppContent = () => {
   // Handle sign out - redirect to auth when user becomes null AFTER initial check
   useEffect(() => {
     if (initialAuthChecked && !loading && !user) {
-      if (location.pathname !== "/auth" && !hasOAuthCallbackParams) {
+      const publicRoutes = ["/auth", "/store", "/listing", "/privacy"];
+      const isPublicRoute = publicRoutes.some(r => location.pathname.startsWith(r));
+      if (!isPublicRoute && !hasOAuthCallbackParams) {
         navigate("/auth", { replace: true });
       }
     }
