@@ -203,7 +203,7 @@ const SellerStorefront = () => {
   };
 
   const handleOpenMessages = async () => {
-    if (!sellerId) return;
+    if (!user || !sellerId) return;
     setLoadingMessage(true);
     try {
       const convId = await getOrCreateConversation(sellerId);
