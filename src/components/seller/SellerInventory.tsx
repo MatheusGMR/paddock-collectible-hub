@@ -24,6 +24,7 @@ interface SellerInventoryProps {
 export const SellerInventory = ({ inventory, loading }: SellerInventoryProps) => {
   const [search, setSearch] = useState("");
   const [tab, setTab] = useState("active");
+  const navigate = useNavigate();
 
   if (loading) {
     return (
