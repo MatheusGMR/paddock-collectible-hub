@@ -122,6 +122,29 @@ export const SellerConta = ({ sellerDetails, onSave, loading }: SellerContaProps
     setSaving(true);
     try {
       await onSave(form);
+
+      // After saving details, create/update Stripe Connected Account
+      if (form.bank_account && form.bank_agency) {
+        const { data: sessionData } = await supabase.auth.getSession();
+        const token = sessionData?.session?.access_token;
+        if (token) {
+          const response = await supabase.functions.invoke("create-seller-stripe-account", {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (response.error) {
+            console.error("Stripe Connect error:", response.error);
+            toast({
+              title: "Dados salvos, mas houve erro ao conectar Stripe",
+              description: "Tente novamente mais tarde",
+              variant: "destructive",
+            });
+            return;
+          }
+          toast({ title: "Dados salvos e conta Stripe conectada!" });
+          return;
+        }
+      }
+
       toast({ title: "Dados salvos com sucesso" });
     } catch {
       toast({ title: "Erro ao salvar dados", variant: "destructive" });
