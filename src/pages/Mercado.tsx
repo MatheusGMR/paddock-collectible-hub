@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { Search, SlidersHorizontal, ShoppingBag, ShoppingCart } from "lucide-react";
 import { CartSheet } from "@/components/mercado/CartSheet";
 import { SellerStoresSection } from "@/components/mercado/SellerStoresSection";
+import { AddToCartButton } from "@/components/mercado/AddToCartButton";
+import { BuyButton } from "@/components/checkout/BuyButton";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";

@@ -12,6 +12,7 @@ interface BuyButtonProps {
   currency: string;
   disabled?: boolean;
   className?: string;
+  compact?: boolean;
 }
 
 export const BuyButton = ({
