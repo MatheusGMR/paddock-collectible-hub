@@ -381,7 +381,7 @@ const SellerStorefront = () => {
               </Button>
               <Button
                 variant="outline"
-                onClick={handleOpenMessages}
+                onClick={() => requireAuth(handleOpenMessages)}
                 disabled={loadingMessage}
                 size="icon"
               >
