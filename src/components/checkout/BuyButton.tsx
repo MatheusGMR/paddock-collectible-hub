@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { formatPrice } from "@/data/marketplaceSources";
+import { trackListingEvent } from "@/lib/api/listingEvents";
 
 interface BuyButtonProps {
   listingId: string;
