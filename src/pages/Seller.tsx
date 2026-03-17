@@ -13,6 +13,7 @@ import { Loader2, Store, ArrowLeft, Share2 } from "lucide-react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { supabase } from "@/integrations/supabase/client";
 
 const SellerPage = () => {
   const { user, loading: authLoading } = useAuth();
