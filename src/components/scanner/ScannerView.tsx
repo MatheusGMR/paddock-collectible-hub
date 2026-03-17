@@ -2447,6 +2447,7 @@ export const ScannerView = () => {
           onScanAgain={resetScan}
           addedIndices={addedIndices}
           skippedIndices={skippedIndices}
+          addedItemIds={addedItemIds}
           warning={warningMessage || undefined}
         />
       ) : !videoPreviewUrl && (
