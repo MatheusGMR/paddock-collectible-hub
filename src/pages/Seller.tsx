@@ -155,6 +155,10 @@ const SellerPage = () => {
                 path="clientes"
                 element={<SellerClientes customers={customers} loading={false} />}
               />
+              <Route
+                path="importar"
+                element={<SellerImport />}
+              />
             </Routes>
           </div>
         </main>
