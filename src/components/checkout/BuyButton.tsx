@@ -30,6 +30,7 @@ export const BuyButton = ({
 
   const handleCheckout = async () => {
     setIsLoading(true);
+    trackListingEvent(listingId, "buy_click");
 
     try {
       const { data, error } = await supabase.functions.invoke<{ url: string }>(

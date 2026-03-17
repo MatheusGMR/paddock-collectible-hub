@@ -70,6 +70,10 @@ export default function ListingDetails() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (id) trackListingEvent(id, "view");
+  }, [id]);
+
+  useEffect(() => {
     const fetchListing = async () => {
       if (!id) {
         setError("ID não encontrado");

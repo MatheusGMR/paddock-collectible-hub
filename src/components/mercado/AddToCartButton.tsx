@@ -29,6 +29,7 @@ export const AddToCartButton = ({
     if (inCart) return;
     setIsAdding(true);
     await addItem(listingId);
+    trackListingEvent(listingId, "cart_add");
     setIsAdding(false);
   };
 
