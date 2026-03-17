@@ -1,4 +1,4 @@
-import { Package, DollarSign, User, Users, ArrowLeft, Upload, BarChart3 } from "lucide-react";
+import { Package, DollarSign, User, Users, ArrowLeft, BarChart3 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useNavigate } from "react-router-dom";
 import {

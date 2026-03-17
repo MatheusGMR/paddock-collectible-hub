@@ -106,10 +106,20 @@ export const SellerInventory = ({ inventory, loading }: SellerInventoryProps) =>
             className="pl-10"
           />
         </div>
-        <Button className="gap-2">
-          <Plus className="h-4 w-4" />
-          Novo Anúncio
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            className="gap-2"
+            onClick={() => navigate("/seller/importar")}
+          >
+            <Upload className="h-4 w-4" />
+            Importar
+          </Button>
+          <Button className="gap-2">
+            <Plus className="h-4 w-4" />
+            Novo Anúncio
+          </Button>
+        </div>
       </div>
 
       {/* Tabs */}
