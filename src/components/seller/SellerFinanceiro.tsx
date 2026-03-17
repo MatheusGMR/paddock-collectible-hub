@@ -59,36 +59,11 @@ export const SellerFinanceiro = ({ receivables, loading }: SellerFinanceiroProps
     paid_out: { label: "Pago", color: "bg-primary/10 text-primary" },
   };
 
-  const sales = receivables?.recent_sales || [];
   const totalSales = receivables?.total_sales || 0;
   const avgTicket = totalSales > 0 ? (receivables?.total_revenue || 0) / totalSales : 0;
   const margin = receivables?.total_revenue && receivables.total_revenue > 0
     ? ((receivables.total_net || 0) / receivables.total_revenue) * 100
     : 0;
-
-  // Monthly sales chart data (last 6 months)
-  const monthlyData = useMemo(() => {
-    const months: Record<string, { revenue: number; count: number }> = {};
-    const now = new Date();
-    for (let i = 5; i >= 0; i--) {
-      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-      months[key] = { revenue: 0, count: 0 };
-    }
-    sales.forEach((s: any) => {
-      const d = new Date(s.created_at);
-      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-      if (months[key]) {
-        months[key].revenue += s.sale_price || 0;
-        months[key].count += 1;
-      }
-    });
-    return Object.entries(months).map(([key, val]) => ({
-      month: key,
-      label: new Date(key + "-01").toLocaleDateString("pt-BR", { month: "short" }),
-      ...val,
-    }));
-  }, [sales]);
 
   const maxRevenue = Math.max(...monthlyData.map((m) => m.revenue), 1);
   const maxCount = Math.max(...monthlyData.map((m) => m.count), 1);
