@@ -81,6 +81,17 @@ export default function PaymentSuccess() {
 
     setTimeout(() => setShowContent(true), 300);
 
+    // Confirm payment & mark listings as sold
+    if (sessionId) {
+      supabase.functions.invoke("confirm-payment", {
+        body: { session_id: sessionId },
+      }).then(({ data }) => {
+        console.log("Payment confirmed:", data);
+      }).catch((err) => {
+        console.error("Error confirming payment:", err);
+      });
+    }
+
     if (isCart) {
       fetchPurchasedItems();
     }

@@ -202,6 +202,10 @@ const SellerPage = () => {
                 path="analytics"
                 element={<SellerAnalytics />}
               />
+              <Route
+                path="order/:saleId"
+                element={<OrderDetails />}
+              />
             </Routes>
           </div>
         </main>

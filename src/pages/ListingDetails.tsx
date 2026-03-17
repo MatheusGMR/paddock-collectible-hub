@@ -396,22 +396,33 @@ export default function ListingDetails() {
       </div>
 
       {/* Fixed Bottom Buy Buttons */}
-      <div className="fixed bottom-0 left-0 right-0 border-t border-border bg-background/95 p-4 backdrop-blur space-y-2">
-        <BuyButton
-          listingId={listing.id}
-          price={listing.price}
-          currency={listing.currency}
-        />
-        <AddToCartButton
-          listingId={listing.id}
-          size="lg"
-          variant="outline"
-          className="w-full"
-        />
-        <p className="text-[11px] text-muted-foreground text-center leading-tight">
-          Taxa por venda: R$ 1,99 + 4,99% sobre o valor do item.
-        </p>
-      </div>
+      {listing.status === "sold" ? (
+        <div className="fixed bottom-0 left-0 right-0 border-t border-border bg-background/95 p-4 backdrop-blur text-center">
+          <Badge variant="secondary" className="bg-destructive/10 text-destructive border-destructive/30 text-base px-6 py-2">
+            Vendido
+          </Badge>
+          <p className="text-xs text-muted-foreground mt-2">
+            Este item já foi vendido e não está mais disponível.
+          </p>
+        </div>
+      ) : (
+        <div className="fixed bottom-0 left-0 right-0 border-t border-border bg-background/95 p-4 backdrop-blur space-y-2">
+          <BuyButton
+            listingId={listing.id}
+            price={listing.price}
+            currency={listing.currency}
+          />
+          <AddToCartButton
+            listingId={listing.id}
+            size="lg"
+            variant="outline"
+            className="w-full"
+          />
+          <p className="text-[11px] text-muted-foreground text-center leading-tight">
+            Taxa por venda: R$ 1,99 + 4,99% sobre o valor do item.
+          </p>
+        </div>
+      )}
     </div>
   );
 }
