@@ -36,21 +36,10 @@ const SellerPage = () => {
     }
   }, [authLoading, user, navigate]);
 
-  // Still loading
-  if (authLoading || loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
-
-
   // Auto-activate seller if profile says is_seller but useSellerData hasn't caught up yet
   useEffect(() => {
     const autoActivate = async () => {
       if (!loading && !isSeller && user) {
-        // Check if profile has is_seller = true (set during onboarding)
         const { data } = await supabase
           .from("profiles")
           .select("is_seller")
@@ -64,8 +53,17 @@ const SellerPage = () => {
     autoActivate();
   }, [loading, isSeller, user, activateSeller]);
 
+  // Still loading
+  if (authLoading || loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
   // Not a seller — show activation prompt
-  if (!isSeller && !loading) {
+  if (!isSeller) {
     const handleActivate = async () => {
       setActivating(true);
       await activateSeller();
