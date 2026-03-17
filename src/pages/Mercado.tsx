@@ -167,6 +167,9 @@ const Mercado = () => {
         </div>
       </div>
 
+      {/* Seller Stores */}
+      <SellerStoresSection />
+
       {/* Listings */}
       <div className="p-4 pb-20">
         {isLoading && listings.length === 0 ? (
