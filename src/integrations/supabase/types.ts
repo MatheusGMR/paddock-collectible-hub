@@ -1397,6 +1397,7 @@ export type Database = {
       get_admin_subscription_stats: { Args: never; Returns: Json }
       get_admin_user_growth: { Args: never; Returns: Json }
       get_admin_users: { Args: never; Returns: Json }
+      get_refined_market_value: { Args: { p_item_id: string }; Returns: Json }
       get_relevant_corrections: {
         Args: { p_brand?: string; p_limit?: number; p_manufacturer?: string }
         Returns: {
