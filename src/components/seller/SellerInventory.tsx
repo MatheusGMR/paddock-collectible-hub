@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Package, Plus, Search, Eye, Share2 } from "lucide-react";
+import { Package, Plus, Search, Eye, Share2, Upload } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -106,10 +106,20 @@ export const SellerInventory = ({ inventory, loading }: SellerInventoryProps) =>
             className="pl-10"
           />
         </div>
-        <Button className="gap-2">
-          <Plus className="h-4 w-4" />
-          Novo Anúncio
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            className="gap-2"
+            onClick={() => navigate("/seller/importar")}
+          >
+            <Upload className="h-4 w-4" />
+            Importar
+          </Button>
+          <Button className="gap-2">
+            <Plus className="h-4 w-4" />
+            Novo Anúncio
+          </Button>
+        </div>
       </div>
 
       {/* Tabs */}
