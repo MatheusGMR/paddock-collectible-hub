@@ -1,4 +1,5 @@
 import { ShoppingCart, Trash2, Loader2, X } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -19,10 +20,17 @@ export const CartSheet = () => {
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
-        <Button variant="ghost" size="icon" className="relative">
+        <Button
+          variant="ghost"
+          size="icon"
+          className={cn(
+            "relative transition-colors",
+            count > 0 && "text-primary animate-[pulse_1.5s_ease-in-out_infinite]"
+          )}
+        >
           <ShoppingCart className="h-5 w-5" />
           {count > 0 && (
-            <Badge className="absolute -top-1 -right-1 h-5 min-w-5 flex items-center justify-center p-0 text-[10px] bg-destructive text-destructive-foreground">
+            <Badge className="absolute -top-1 -right-1 h-5 min-w-5 flex items-center justify-center p-0 text-[10px] bg-primary text-primary-foreground">
               {count}
             </Badge>
           )}
