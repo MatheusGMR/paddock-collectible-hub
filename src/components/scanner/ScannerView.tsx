@@ -1315,6 +1315,7 @@ export const ScannerView = () => {
           setAnalysisResults(processedItems);
           setAddedIndices(new Set());
           setSkippedIndices(new Set());
+          setAddedItemIds(new Map());
           
           if (response.warning) {
             setWarningMessage(response.warning);
