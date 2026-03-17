@@ -11,11 +11,13 @@ import { useSellerData } from "@/hooks/useSellerData";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
-import { Loader2, Store, ArrowLeft, Share2 } from "lucide-react";
+import { Loader2, Store, ArrowLeft, Share2, Copy, MessageCircle } from "lucide-react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { useToast } from "@/hooks/use-toast";
 
 const SellerPage = () => {
   const { user, loading: authLoading } = useAuth();
