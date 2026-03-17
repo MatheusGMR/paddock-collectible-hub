@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import Stripe from "https://esm.sh/stripe@18.5.0";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
+import Stripe from "npm:stripe@18.5.0";
+import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -69,6 +69,30 @@ serve(async (req) => {
     const customers = await stripe.customers.list({ email: user.email, limit: 1 });
     const customerId = customers.data.length > 0 ? customers.data[0].id : undefined;
 
+    // Collect unique seller IDs to look up their Stripe accounts
+    const sellerIds = [...new Set(listings.map((l) => l.user_id).filter(Boolean))];
+
+    // Fetch seller Stripe account IDs
+    const sellerAccountMap: Record<string, string> = {};
+    if (sellerIds.length > 0) {
+      const { data: sellerDetailsList } = await supabaseAdmin
+        .from("seller_details")
+        .select("user_id, stripe_account_id")
+        .in("user_id", sellerIds);
+
+      if (sellerDetailsList) {
+        for (const sd of sellerDetailsList) {
+          if (sd.stripe_account_id) {
+            sellerAccountMap[sd.user_id] = sd.stripe_account_id;
+          }
+        }
+      }
+    }
+
+    // Determine if all listings go to the same connected account (for transfer_data)
+    const connectedAccounts = [...new Set(Object.values(sellerAccountMap))];
+    const allSameSeller = connectedAccounts.length === 1 && sellerIds.length === 1;
+
     const lineItems = listings.map((listing) => ({
       price_data: {
         currency: listing.currency.toLowerCase(),
@@ -84,7 +108,12 @@ serve(async (req) => {
 
     const origin = req.headers.get("origin") || "https://paddock-collectible-hub.lovable.app";
 
-    const session = await stripe.checkout.sessions.create({
+    // Calculate total fees for the cart
+    const totalPrice = listings.reduce((sum, l) => sum + l.price, 0);
+    const totalFees = calculateFees(totalPrice);
+    const applicationFeeInCents = Math.round(totalFees.platform_fee_total * 100);
+
+    const sessionParams: Stripe.Checkout.SessionCreateParams = {
       customer: customerId,
       customer_email: customerId ? undefined : user.email,
       payment_method_types: ["card"],
@@ -97,7 +126,24 @@ serve(async (req) => {
         user_id: user.id,
         is_cart: "true",
       },
-    });
+    };
+
+    // If all items are from one seller with a connected account, route the payment
+    if (allSameSeller && connectedAccounts[0]) {
+      sessionParams.payment_intent_data = {
+        application_fee_amount: applicationFeeInCents,
+        transfer_data: {
+          destination: connectedAccounts[0],
+        },
+      };
+      console.log(`Cart payment routed to Connected Account: ${connectedAccounts[0]}, fee: ${applicationFeeInCents}`);
+    } else if (connectedAccounts.length > 1) {
+      // Multiple sellers: we'll handle transfers after payment via separate transfers
+      // For now, collect payment normally and log for manual/automated payout
+      console.log(`Cart has multiple sellers (${connectedAccounts.length}). Payment collected centrally.`);
+    }
+
+    const session = await stripe.checkout.sessions.create(sessionParams);
 
     // Record sales for each listing with fee calculation
     const salesRecords = listings
