@@ -157,7 +157,7 @@ const Mercado = () => {
             </div>
             <div data-tip="mercado-cart"><CartSheet /></div>
           </div>
-          <div className="relative">
+          <div className="relative" data-tip="mercado-search">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder={t.mercado.searchPlaceholder}
