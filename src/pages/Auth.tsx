@@ -10,18 +10,21 @@ import { AuthStepField } from "@/components/auth/AuthStepField";
 import { AuthStepPassword } from "@/components/auth/AuthStepPassword";
 import { AuthStepLogin } from "@/components/auth/AuthStepLogin";
 import { AuthStepPermissions } from "@/components/auth/AuthStepPermissions";
+import { AuthStepProfileType } from "@/components/auth/AuthStepProfileType";
 import { AuthProgressDots } from "@/components/auth/AuthProgressDots";
 import { AnimatePresence, motion } from "framer-motion";
 
-type AuthStep = "email" | "register-name" | "register-username" | "register-phone" | "register-password" | "login" | "permissions";
+type ProfileType = "collector" | "seller";
+type AuthStep = "email" | "register-name" | "register-username" | "register-phone" | "register-profile-type" | "register-password" | "login" | "permissions";
 
-const REGISTER_STEPS: AuthStep[] = ["email", "register-name", "register-username", "register-phone", "register-password"];
+const REGISTER_STEPS: AuthStep[] = ["email", "register-name", "register-username", "register-phone", "register-profile-type", "register-password"];
 
 interface FormData {
   email: string;
   name: string;
   username: string;
   phone: string;
+  profileType: ProfileType | null;
 }
 
 interface UserProfile {
@@ -36,10 +39,11 @@ const Auth = () => {
     name: "",
     username: "",
     phone: "",
+    profileType: null,
   });
   const [existingProfile, setExistingProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(false);
-  const [direction, setDirection] = useState(1); // 1 = forward, -1 = back
+  const [direction, setDirection] = useState(1);
 
   const { signIn, signUp, user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
@@ -57,7 +61,20 @@ const Auth = () => {
   // Redirect if already authenticated
   useEffect(() => {
     if (!authLoading && user) {
-      navigate("/", { replace: true });
+      // Check if user is a seller and redirect accordingly
+      const checkAndRedirect = async () => {
+        const { data } = await supabase
+          .from("profiles")
+          .select("is_seller")
+          .eq("user_id", user.id)
+          .single();
+        if (data?.is_seller) {
+          navigate("/seller", { replace: true });
+        } else {
+          navigate("/", { replace: true });
+        }
+      };
+      checkAndRedirect();
     }
   }, [user, authLoading, navigate]);
 
@@ -69,19 +86,16 @@ const Auth = () => {
       });
 
       if (data?.exists) {
-        // User exists - show login with profile info
         if (data.profile) {
           setExistingProfile(data.profile);
         }
         setDirection(1);
         setStep("login");
       } else {
-        // New user - start registration flow
         setDirection(1);
         setStep("register-name");
       }
     } catch {
-      // Default to registration
       setDirection(1);
       setStep("register-name");
     } finally {
@@ -106,7 +120,20 @@ const Auth = () => {
       );
       if (error) throw error;
 
-      // After signup, go to permissions
+      // After signup, if seller, mark profile as seller
+      if (formData.profileType === "seller") {
+        // Small delay to ensure profile is created by trigger
+        setTimeout(async () => {
+          const { data: { user: currentUser } } = await supabase.auth.getUser();
+          if (currentUser) {
+            await supabase
+              .from("profiles")
+              .update({ is_seller: true } as any)
+              .eq("user_id", currentUser.id);
+          }
+        }, 1000);
+      }
+
       goToStep("permissions");
     } catch (error) {
       toast({
@@ -124,7 +151,7 @@ const Auth = () => {
     try {
       const { error } = await signIn(formData.email, password);
       if (error) throw error;
-      navigate("/", { replace: true });
+      // Redirect handled by useEffect above based on is_seller
     } catch (error) {
       toast({
         title: "Erro",
@@ -142,7 +169,7 @@ const Auth = () => {
       if (success) {
         const { data: { session } } = await supabase.auth.getSession();
         if (session) {
-          navigate("/", { replace: true });
+          // Redirect handled by useEffect
           return true;
         } else {
           toast({
@@ -160,7 +187,11 @@ const Auth = () => {
   };
 
   const handlePermissionsComplete = () => {
-    navigate("/", { replace: true });
+    if (formData.profileType === "seller") {
+      navigate("/seller", { replace: true });
+    } else {
+      navigate("/", { replace: true });
+    }
   };
 
   const handleEnableBiometric = async (): Promise<boolean> => {
@@ -186,11 +217,11 @@ const Auth = () => {
 
       {/* Progress dots - always rendered to avoid layout shift, invisible when not registering */}
       <div className={`mb-6 transition-opacity duration-200 ${isRegistering && step !== "permissions" ? "opacity-100" : "opacity-0 pointer-events-none"}`}>
-        <AuthProgressDots currentStep={Math.max(0, currentRegisterIndex - 1)} totalSteps={4} />
+        <AuthProgressDots currentStep={Math.max(0, currentRegisterIndex - 1)} totalSteps={5} />
       </div>
 
       {/* Step content - fixed height container for consistent layout */}
-      <div className="w-full max-w-sm h-[360px] relative overflow-hidden px-1">
+      <div className="w-full max-w-sm h-[400px] relative overflow-hidden px-1">
         <AnimatePresence mode="wait" custom={direction} initial={false}>
           <motion.div
             key={step}
@@ -243,17 +274,26 @@ const Auth = () => {
                 placeholder="(11) 99999-9999"
                 value={formData.phone}
                 onChange={(phone) => setFormData((p) => ({ ...p, phone }))}
-                onNext={() => goToStep("register-password")}
+                onNext={() => goToStep("register-profile-type")}
                 onBack={() => goToStep("register-username", -1)}
                 type="tel"
                 required={false}
               />
             )}
 
+            {step === "register-profile-type" && (
+              <AuthStepProfileType
+                selected={formData.profileType}
+                onSelect={(profileType) => setFormData((p) => ({ ...p, profileType }))}
+                onNext={() => goToStep("register-password")}
+                onBack={() => goToStep("register-phone", -1)}
+              />
+            )}
+
             {step === "register-password" && (
               <AuthStepPassword
                 onSubmit={handlePasswordRegister}
-                onBack={() => goToStep("register-phone", -1)}
+                onBack={() => goToStep("register-profile-type", -1)}
                 loading={loading}
               />
             )}
