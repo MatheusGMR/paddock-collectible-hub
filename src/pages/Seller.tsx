@@ -109,30 +109,10 @@ const SellerPage = () => {
           <header className="h-14 flex items-center gap-3 border-b border-border px-6">
             <SidebarTrigger />
             <h1 className="text-lg font-semibold text-foreground flex-1">Painel do Lojista</h1>
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-2"
-              onClick={() => {
-                const storeName = sellerDetails?.business_name || "minha loja";
-                const url = `${window.location.origin}/store/${user?.id}`;
-                const text = [
-                  `🏁 *${storeName}* na Paddock`,
-                  ``,
-                  `Miniaturas exclusivas, peças raras e colecionáveis selecionados a dedo.`,
-                  ``,
-                  `🔍 Veja o catálogo completo:`,
-                  url,
-                  ``,
-                  `📦 Envio para todo o Brasil`,
-                  `💳 Pagamento seguro via Apple Pay, Google Pay e cartão`,
-                ].join("\n");
-                window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
-              }}
-            >
-              <Share2 className="h-4 w-4" />
-              Compartilhar Loja
-            </Button>
+            <ShareStoreButton
+              storeName={sellerDetails?.business_name || "minha loja"}
+              storeUrl={`${window.location.origin}/store/${user?.id}`}
+            />
           </header>
           <div className="p-6">
             <Routes>
