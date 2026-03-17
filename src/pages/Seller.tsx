@@ -19,6 +19,61 @@ import { supabase } from "@/integrations/supabase/client";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useToast } from "@/hooks/use-toast";
 
+const ShareStoreButton = ({ storeName, storeUrl }: { storeName: string; storeUrl: string }) => {
+  const { toast } = useToast();
+
+  const handleCopyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(storeUrl);
+      toast({ title: "Link copiado!", description: "Cole onde quiser para compartilhar" });
+    } catch {
+      toast({ title: "Erro ao copiar", variant: "destructive" });
+    }
+  };
+
+  const handleWhatsApp = () => {
+    const text = [
+      `🏁 *${storeName}* na Paddock`,
+      ``,
+      `Miniaturas exclusivas, peças raras e colecionáveis selecionados a dedo.`,
+      ``,
+      `🔍 Veja o catálogo completo:`,
+      storeUrl,
+      ``,
+      `📦 Envio para todo o Brasil`,
+      `💳 Pagamento seguro via Apple Pay, Google Pay e cartão`,
+    ].join("\n");
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
+  };
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button variant="outline" size="sm" className="gap-2">
+          <Share2 className="h-4 w-4" />
+          Compartilhar Loja
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-56 p-2" align="end">
+        <button
+          onClick={handleCopyLink}
+          className="flex items-center gap-3 w-full rounded-md px-3 py-2.5 text-sm hover:bg-accent transition-colors"
+        >
+          <Copy className="h-4 w-4 text-muted-foreground" />
+          Copiar link
+        </button>
+        <button
+          onClick={handleWhatsApp}
+          className="flex items-center gap-3 w-full rounded-md px-3 py-2.5 text-sm hover:bg-accent transition-colors"
+        >
+          <MessageCircle className="h-4 w-4 text-green-500" />
+          Enviar via WhatsApp
+        </button>
+      </PopoverContent>
+    </Popover>
+  );
+};
+
 const SellerPage = () => {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
