@@ -1907,7 +1907,7 @@ export const ScannerView = () => {
     capturePhoto();
   }, [isScanning, cameraActive, capturePhoto]);
 
-  const handleAddToCollection = async (index: number) => {
+  const handleAddToCollection = async (index: number): Promise<string | void> => {
     // Prevent duplicate adds
     if (addedIndices.has(index)) return;
     
@@ -1945,7 +1945,7 @@ export const ScannerView = () => {
         imageUrl = imageToSave;
       }
 
-      await addToCollection(
+      const collectionItem = await addToCollection(
         user.id,
         {
           real_car_brand: result.realCar.brand,
@@ -1972,6 +1972,9 @@ export const ScannerView = () => {
         imageUrl
       );
 
+      // Get the item_id from the collection item
+      const itemId = collectionItem.item_id;
+
       toast({
         title: t.scanner.addedToCollection,
         description: `${result.realCar.brand} ${result.realCar.model}`,
@@ -1986,6 +1989,9 @@ export const ScannerView = () => {
       });
       
       setAddedIndices(prev => new Set(prev).add(index));
+      setAddedItemIds(prev => new Map(prev).set(index, itemId));
+      
+      return itemId;
     } catch (error) {
       console.error("Add to collection error:", error);
       toast({
