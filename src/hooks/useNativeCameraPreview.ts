@@ -37,6 +37,9 @@ export const useNativeCameraPreview = () => {
         disableAudio: true,
         storeToFile: false,
         enableHighResolution: true,
+        width: window.innerWidth,
+        height: window.innerHeight,
+        lockAndroidOrientation: "portrait",
       } as any;
       
       await CameraPreview.start(options);
