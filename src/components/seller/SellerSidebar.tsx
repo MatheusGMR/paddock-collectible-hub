@@ -16,7 +16,6 @@ import paddockLogo from "@/assets/paddock-logo.png";
 
 const items = [
   { title: "Estoque", url: "/seller", icon: Package },
-  { title: "Importar", url: "/seller/importar", icon: Upload },
   { title: "Desempenho", url: "/seller/analytics", icon: BarChart3 },
   { title: "Financeiro", url: "/seller/financeiro", icon: DollarSign },
   { title: "Conta", url: "/seller/conta", icon: User },
