@@ -45,8 +45,26 @@ const SellerPage = () => {
   }
 
 
+  // Auto-activate seller if profile says is_seller but useSellerData hasn't caught up yet
+  useEffect(() => {
+    const autoActivate = async () => {
+      if (!loading && !isSeller && user) {
+        // Check if profile has is_seller = true (set during onboarding)
+        const { data } = await supabase
+          .from("profiles")
+          .select("is_seller")
+          .eq("user_id", user.id)
+          .single();
+        if (data?.is_seller) {
+          await activateSeller();
+        }
+      }
+    };
+    autoActivate();
+  }, [loading, isSeller, user, activateSeller]);
+
   // Not a seller — show activation prompt
-  if (!isSeller) {
+  if (!isSeller && !loading) {
     const handleActivate = async () => {
       setActivating(true);
       await activateSeller();
