@@ -380,6 +380,7 @@ const AppContent = () => {
                       <Route path="/mercado" element={<Mercado />} />
                       <Route path="/notifications" element={<Notifications />} />
                       <Route path="/profile" element={<Profile />} />
+                      <Route path="/minha-loja" element={<SellerMobile />} />
                       <Route path="*" element={<NotFound />} />
                     </Routes>
                   </Suspense>
