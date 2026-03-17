@@ -2,24 +2,34 @@ import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
-  Store,
-  MapPin,
+  ArrowLeft,
+  UserPlus,
+  UserMinus,
   MessageCircle,
   Share2,
   ShoppingBag,
   Loader2,
-  ArrowLeft,
+  Grid3X3,
+  TrendingUp,
+  Store,
+  Copy,
   Search,
-  SlidersHorizontal,
+  MapPin,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/hooks/use-toast";
 import { formatPrice } from "@/data/marketplaceSources";
+import { isFollowing, followUser, unfollowUser, getFollowCounts } from "@/lib/database";
+import { MessagesSheet } from "@/components/messages/MessagesSheet";
+import { getOrCreateConversation } from "@/lib/api/messages";
+import { trackInteraction } from "@/lib/analytics";
 import paddockWordmark from "@/assets/paddock-wordmark-new.png";
-import paddockLogo from "@/assets/paddock-logo.png";
 
 interface SellerProfile {
   username: string;
@@ -43,24 +53,55 @@ interface StoreListing {
   image_url: string;
   description: string | null;
   created_at: string;
+  item_id: string | null;
 }
+
+interface ListingWithItem extends StoreListing {
+  rarity_tier?: string | null;
+  real_car_brand?: string;
+  real_car_model?: string;
+}
+
+const RARITY_COLORS: Record<string, string> = {
+  "Legendary": "bg-amber-500/90 text-white",
+  "Epic": "bg-purple-500/90 text-white",
+  "Rare": "bg-blue-500/90 text-white",
+  "Uncommon": "bg-green-500/90 text-white",
+  "Common": "bg-muted text-muted-foreground",
+};
 
 const SellerStorefront = () => {
   const { sellerId } = useParams<{ sellerId: string }>();
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const { toast } = useToast();
+
   const [profile, setProfile] = useState<SellerProfile | null>(null);
   const [sellerInfo, setSellerInfo] = useState<SellerInfo | null>(null);
-  const [listings, setListings] = useState<StoreListing[]>([]);
+  const [listings, setListings] = useState<ListingWithItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [activeTab, setActiveTab] = useState<"grid" | "ranking">("grid");
   const [sortBy, setSortBy] = useState<"recent" | "price_asc" | "price_desc">("recent");
+
+  // Social state
+  const [followCounts, setFollowCounts] = useState({ followers: 0, following: 0 });
+  const [isFollowingUser, setIsFollowingUser] = useState(false);
+  const [followLoading, setFollowLoading] = useState(false);
+
+  // Messages
+  const [messagesOpen, setMessagesOpen] = useState(false);
+  const [conversationId, setConversationId] = useState<string | null>(null);
+  const [loadingMessage, setLoadingMessage] = useState(false);
+
+  const isOwnStore = user?.id === sellerId;
 
   const loadStoreData = useCallback(async () => {
     if (!sellerId) return;
     setLoading(true);
 
     try {
-      const [profileRes, detailsRes, listingsRes] = await Promise.all([
+      const [profileRes, detailsRes, listingsRes, counts] = await Promise.all([
         supabase
           .from("profiles")
           .select("username, avatar_url, bio, city, is_seller")
@@ -73,27 +114,126 @@ const SellerStorefront = () => {
           .maybeSingle(),
         supabase
           .from("listings")
-          .select("id, title, price, currency, image_url, description, created_at")
+          .select("id, title, price, currency, image_url, description, created_at, item_id")
           .eq("user_id", sellerId)
           .eq("status", "active")
           .order("created_at", { ascending: false }),
+        getFollowCounts(sellerId),
       ]);
 
       if (profileRes.data && profileRes.data.is_seller) {
         setProfile(profileRes.data);
       }
       setSellerInfo(detailsRes.data as SellerInfo | null);
-      setListings((listingsRes.data as StoreListing[]) || []);
+      setFollowCounts(counts);
+
+      // Get listings with item data for rarity
+      const rawListings = (listingsRes.data || []) as StoreListing[];
+      const itemIds = rawListings.map((l) => l.item_id).filter(Boolean) as string[];
+
+      let itemMap: Record<string, { rarity_tier: string | null; real_car_brand: string; real_car_model: string }> = {};
+      if (itemIds.length > 0) {
+        const { data: items } = await supabase
+          .from("items")
+          .select("id, rarity_tier, real_car_brand, real_car_model")
+          .in("id", itemIds);
+        if (items) {
+          for (const item of items) {
+            itemMap[item.id] = item;
+          }
+        }
+      }
+
+      const enriched: ListingWithItem[] = rawListings.map((l) => ({
+        ...l,
+        rarity_tier: l.item_id ? itemMap[l.item_id]?.rarity_tier : null,
+        real_car_brand: l.item_id ? itemMap[l.item_id]?.real_car_brand : undefined,
+        real_car_model: l.item_id ? itemMap[l.item_id]?.real_car_model : undefined,
+      }));
+
+      setListings(enriched);
+
+      // Check follow status
+      if (user && user.id !== sellerId) {
+        const following = await isFollowing(user.id, sellerId);
+        setIsFollowingUser(following);
+      }
     } catch (error) {
       console.error("Error loading store:", error);
     } finally {
       setLoading(false);
     }
-  }, [sellerId]);
+  }, [sellerId, user]);
 
   useEffect(() => {
     loadStoreData();
   }, [loadStoreData]);
+
+  const handleFollowToggle = async () => {
+    if (!user || !sellerId) return;
+    setFollowLoading(true);
+    try {
+      if (isFollowingUser) {
+        await unfollowUser(user.id, sellerId);
+        setIsFollowingUser(false);
+        setFollowCounts((prev) => ({ ...prev, followers: prev.followers - 1 }));
+        trackInteraction("unfollow_user", `user_${sellerId}`);
+      } else {
+        await followUser(user.id, sellerId);
+        setIsFollowingUser(true);
+        setFollowCounts((prev) => ({ ...prev, followers: prev.followers + 1 }));
+        trackInteraction("follow_user", `user_${sellerId}`);
+      }
+    } catch {
+      toast({ title: "Erro", variant: "destructive" });
+    } finally {
+      setFollowLoading(false);
+    }
+  };
+
+  const handleOpenMessages = async () => {
+    if (!sellerId) return;
+    setLoadingMessage(true);
+    try {
+      const convId = await getOrCreateConversation(sellerId);
+      setConversationId(convId);
+      setMessagesOpen(true);
+    } catch {
+      toast({ title: "Erro ao abrir mensagens", variant: "destructive" });
+    } finally {
+      setLoadingMessage(false);
+    }
+  };
+
+  const storeUrl = `${window.location.origin}/store/${sellerId}`;
+  const storeName = sellerInfo?.business_name || profile?.username || "Loja";
+  const storeLocation = sellerInfo?.address_city
+    ? `${sellerInfo.address_city}${sellerInfo.address_state ? `, ${sellerInfo.address_state}` : ""}`
+    : profile?.city;
+
+  const handleCopyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(storeUrl);
+      toast({ title: "Link copiado!" });
+    } catch {
+      toast({ title: "Erro ao copiar", variant: "destructive" });
+    }
+  };
+
+  const handleWhatsApp = () => {
+    const text = [
+      `🏁 *${storeName}* na Paddock`,
+      ``,
+      `Miniaturas exclusivas, peças raras e colecionáveis selecionados a dedo.`,
+      ``,
+      `🔍 Veja o catálogo completo:`,
+      storeUrl,
+      ``,
+      `📦 Envio para todo o Brasil`,
+      `💳 Pagamento seguro via Apple Pay, Google Pay e cartão`,
+    ].join("\n");
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
+  };
 
   const filteredListings = listings
     .filter((l) =>
@@ -105,33 +245,13 @@ const SellerStorefront = () => {
       return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
     });
 
-  const storeName = sellerInfo?.business_name || profile?.username || "Loja";
-  const storeLocation = sellerInfo?.address_city
-    ? `${sellerInfo.address_city}${sellerInfo.address_state ? `, ${sellerInfo.address_state}` : ""}`
-    : profile?.city;
-
-  const handleShare = () => {
-    const url = window.location.href;
-    const text = [
-      `🏁 *${storeName}* na Paddock`,
-      ``,
-      `Miniaturas exclusivas e colecionáveis selecionados.`,
-      ``,
-      `🔍 Veja o catálogo: ${url}`,
-    ].join("\n");
-    if (navigator.share) {
-      navigator.share({ title: storeName, text, url });
-    } else {
-      window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
-    }
-  };
-
-  const handleContactSeller = () => {
-    if (sellerInfo?.phone) {
-      const msg = encodeURIComponent(`Olá! Vi sua loja na Paddock e gostaria de saber mais.`);
-      window.open(`https://wa.me/${sellerInfo.phone.replace(/\D/g, "")}?text=${msg}`, "_blank");
-    }
-  };
+  // Ranking: sort by rarity
+  const RARITY_ORDER = ["Legendary", "Epic", "Rare", "Uncommon", "Common"];
+  const rankedListings = [...filteredListings].sort((a, b) => {
+    const ai = RARITY_ORDER.indexOf(a.rarity_tier || "Common");
+    const bi = RARITY_ORDER.indexOf(b.rarity_tier || "Common");
+    return ai - bi;
+  });
 
   if (loading) {
     return (
@@ -157,188 +277,284 @@ const SellerStorefront = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Top Nav Bar */}
-      <header className="sticky top-0 z-40 bg-background/80 backdrop-blur-xl border-b border-border">
-        <div className="max-w-6xl mx-auto flex items-center justify-between px-4 h-14 sm:px-6">
-          <button onClick={() => navigate(-1)} className="p-2 -ml-2 sm:hidden">
-            <ArrowLeft className="h-5 w-5 text-foreground" />
+    <div className="min-h-screen pb-20 bg-background">
+      {/* Header bar */}
+      <div className="border-b border-border">
+        <div className="flex items-center justify-between px-4 py-3">
+          <button onClick={() => navigate(-1)} className="p-2 -ml-2">
+            <ArrowLeft className="h-5 w-5" />
           </button>
-          <img src={paddockWordmark} alt="Paddock" className="h-5 opacity-80" />
-          <Button variant="ghost" size="icon" onClick={handleShare}>
-            <Share2 className="h-4 w-4" />
-          </Button>
+          <img src={paddockWordmark} alt="Paddock" style={{ height: 24 }} className="object-contain opacity-80" />
+          <Popover>
+            <PopoverTrigger asChild>
+              <button className="p-2 -mr-2">
+                <Share2 className="h-5 w-5" />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent className="w-52 p-2" align="end">
+              <button
+                onClick={handleCopyLink}
+                className="flex items-center gap-3 w-full rounded-md px-3 py-2.5 text-sm hover:bg-accent transition-colors"
+              >
+                <Copy className="h-4 w-4 text-muted-foreground" />
+                Copiar link
+              </button>
+              <button
+                onClick={handleWhatsApp}
+                className="flex items-center gap-3 w-full rounded-md px-3 py-2.5 text-sm hover:bg-accent transition-colors"
+              >
+                <MessageCircle className="h-4 w-4 text-green-500" />
+                Enviar via WhatsApp
+              </button>
+            </PopoverContent>
+          </Popover>
         </div>
-      </header>
 
-      {/* Hero Banner */}
-      <section className="relative overflow-hidden">
-        {/* Gradient background with glow */}
-        <div className="absolute inset-0 bg-gradient-to-b from-primary/8 via-background to-background" />
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[300px] rounded-full bg-primary/5 blur-3xl" />
-
-        <div className="relative max-w-6xl mx-auto px-4 sm:px-6 pt-10 pb-8">
-          <div className="flex flex-col sm:flex-row items-center sm:items-end gap-6">
-            {/* Avatar */}
-            <motion.div
-              initial={{ scale: 0.8, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ type: "spring", stiffness: 200, damping: 20 }}
-            >
-              <Avatar className="h-24 w-24 sm:h-28 sm:w-28 ring-2 ring-primary/30 ring-offset-2 ring-offset-background">
+        {/* Profile Info — same structure as UserProfile */}
+        <div className="px-4 pb-4">
+          <div className="flex items-start gap-6">
+            <div className="flex flex-col items-center">
+              <Avatar className="h-20 w-20 ring-2 ring-primary/30">
                 <AvatarImage src={profile.avatar_url || ""} alt={storeName} />
-                <AvatarFallback className="bg-primary/10 text-primary text-3xl font-bold">
+                <AvatarFallback className="bg-muted text-2xl font-semibold">
                   {storeName[0]?.toUpperCase()}
                 </AvatarFallback>
               </Avatar>
-            </motion.div>
-
-            {/* Store Info */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
-              className="flex-1 text-center sm:text-left"
-            >
-              <h1 className="text-2xl sm:text-3xl font-bold text-foreground">{storeName}</h1>
-              <p className="text-sm text-muted-foreground mt-1">@{profile.username}</p>
-              {storeLocation && (
-                <p className="text-sm text-muted-foreground mt-1 flex items-center gap-1 justify-center sm:justify-start">
-                  <MapPin className="h-3.5 w-3.5" /> {storeLocation}
-                </p>
-              )}
-              {profile.bio && (
-                <p className="text-sm text-foreground/80 mt-3 max-w-md">{profile.bio}</p>
-              )}
-            </motion.div>
-
-            {/* Action Buttons */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-              className="flex gap-2 shrink-0"
-            >
-              {sellerInfo?.phone && (
-                <Button onClick={handleContactSeller} className="gap-2">
-                  <MessageCircle className="h-4 w-4" />
-                  Contato
-                </Button>
-              )}
-              <Button variant="outline" onClick={handleShare} className="gap-2">
-                <Share2 className="h-4 w-4" />
-                Compartilhar
-              </Button>
-            </motion.div>
-          </div>
-
-          {/* Stats Bar */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.3 }}
-            className="flex items-center justify-center sm:justify-start gap-6 mt-6 pt-6 border-t border-border"
-          >
-            <div className="text-center">
-              <p className="text-xl font-bold text-foreground">{listings.length}</p>
-              <p className="text-xs text-muted-foreground">Anúncios</p>
+              <p className="mt-2 text-sm font-semibold text-foreground">
+                {storeName}
+              </p>
             </div>
-          </motion.div>
-        </div>
-      </section>
 
-      {/* Search & Filter Bar */}
-      <section className="sticky top-14 z-30 bg-background/90 backdrop-blur-lg border-b border-border">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3 flex items-center gap-3">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Buscar nesta loja..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9 bg-card border-border"
-            />
+            <div className="flex flex-1 justify-around pt-2">
+              <StatItem value={listings.length} label="À venda" />
+              <StatItem value={followCounts.followers} label="Seguidores" />
+              <StatItem value={followCounts.following} label="Seguindo" />
+            </div>
           </div>
-          <div className="flex gap-1.5">
-            {(["recent", "price_asc", "price_desc"] as const).map((sort) => {
-              const labels = { recent: "Recentes", price_asc: "Menor preço", price_desc: "Maior preço" };
-              return (
-                <Badge
-                  key={sort}
-                  variant={sortBy === sort ? "default" : "outline"}
-                  className="cursor-pointer whitespace-nowrap text-xs py-1 px-2.5"
-                  onClick={() => setSortBy(sort)}
-                >
-                  {labels[sort]}
-                </Badge>
-              );
-            })}
-          </div>
-        </div>
-      </section>
 
-      {/* Product Grid */}
-      <section className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
-        {filteredListings.length === 0 ? (
+          {/* Bio & Location */}
+          <div className="mt-4 space-y-1">
+            <p className="text-sm text-foreground/90 leading-relaxed">
+              {profile.bio || "Lojista na Paddock"}
+            </p>
+            {storeLocation && (
+              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                <MapPin className="h-3 w-3" /> {storeLocation}
+              </p>
+            )}
+            <p className="text-xs text-muted-foreground">@{profile.username}</p>
+          </div>
+
+          {/* Action Buttons */}
+          {!isOwnStore && (
+            <div className="flex gap-2 mt-4">
+              <Button
+                variant={isFollowingUser ? "outline" : "default"}
+                onClick={handleFollowToggle}
+                disabled={followLoading}
+                className="flex-1 gap-2"
+              >
+                {followLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : isFollowingUser ? (
+                  <>
+                    <UserMinus className="h-4 w-4" />
+                    Deixar de seguir
+                  </>
+                ) : (
+                  <>
+                    <UserPlus className="h-4 w-4" />
+                    Seguir
+                  </>
+                )}
+              </Button>
+              <Button
+                variant="outline"
+                onClick={handleOpenMessages}
+                disabled={loadingMessage}
+                size="icon"
+              >
+                {loadingMessage ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <MessageCircle className="h-4 w-4" />
+                )}
+              </Button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <div className="flex border-b border-border">
+        <button
+          className={`flex-1 flex items-center justify-center py-3 relative transition-colors ${
+            activeTab === "grid" ? "text-foreground" : "text-muted-foreground"
+          }`}
+          onClick={() => setActiveTab("grid")}
+        >
+          <Grid3X3 className="h-6 w-6" />
+          {activeTab === "grid" && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-foreground" />}
+        </button>
+        <button
+          className={`flex-1 flex items-center justify-center py-3 relative transition-colors ${
+            activeTab === "ranking" ? "text-foreground" : "text-muted-foreground"
+          }`}
+          onClick={() => setActiveTab("ranking")}
+        >
+          <TrendingUp className="h-6 w-6" />
+          {activeTab === "ranking" && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-foreground" />}
+        </button>
+      </div>
+
+      {/* Search & Sort */}
+      <div className="px-4 py-3 flex items-center gap-2 border-b border-border">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Buscar nesta loja..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-9 bg-card border-border h-9 text-sm"
+          />
+        </div>
+        <div className="flex gap-1">
+          {(["recent", "price_asc", "price_desc"] as const).map((sort) => {
+            const labels = { recent: "Recentes", price_asc: "↓ Preço", price_desc: "↑ Preço" };
+            return (
+              <Badge
+                key={sort}
+                variant={sortBy === sort ? "default" : "outline"}
+                className="cursor-pointer whitespace-nowrap text-[10px] py-0.5 px-2"
+                onClick={() => setSortBy(sort)}
+              >
+                {labels[sort]}
+              </Badge>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Content */}
+      {activeTab === "grid" ? (
+        filteredListings.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 gap-4">
             <ShoppingBag className="h-16 w-16 text-muted-foreground/40" />
-            <p className="text-muted-foreground text-center">
-              {searchQuery
-                ? "Nenhum produto encontrado para essa busca."
-                : "Esta loja ainda não possui anúncios."}
+            <p className="text-muted-foreground text-center text-sm">
+              {searchQuery ? "Nenhum produto encontrado." : "Nenhum anúncio disponível."}
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
-            {filteredListings.map((listing, i) => (
-              <motion.button
-                key={listing.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.03, duration: 0.3 }}
-                onClick={() => navigate(`/listing/${listing.id}`)}
-                className="group relative w-full overflow-hidden rounded-xl bg-card border border-border transition-all duration-200 hover:border-primary/30 active:scale-[0.98] text-left"
-              >
-                {/* Image */}
-                <div className="relative aspect-square overflow-hidden bg-muted">
-                  <img
-                    src={listing.image_url}
-                    alt={listing.title}
-                    className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                    loading="lazy"
-                  />
-                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-3 pt-8">
-                    <p className="text-lg font-bold text-white">
-                      {formatPrice(listing.price, listing.currency)}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Content */}
-                <div className="p-3">
-                  <h3 className="font-medium text-foreground line-clamp-2 text-sm leading-tight">
-                    {listing.title}
-                  </h3>
-                </div>
-              </motion.button>
+          <div className="grid grid-cols-3 gap-px bg-border">
+            {filteredListings.map((listing) => (
+              <ListingGridItem key={listing.id} listing={listing} onPress={() => navigate(`/listing/${listing.id}`)} />
             ))}
           </div>
-        )}
-      </section>
-
-      {/* Footer */}
-      <footer className="border-t border-border mt-8">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 flex flex-col items-center gap-4">
-          <img src={paddockLogo} alt="Paddock" className="h-8 opacity-40" />
-          <p className="text-xs text-muted-foreground text-center">
-            Miniaturas, colecionáveis e paixão por carros.
-          </p>
-          <p className="text-xs text-muted-foreground/50">
-            © {new Date().getFullYear()} Paddock
-          </p>
+        )
+      ) : (
+        <div className="divide-y divide-border">
+          {rankedListings.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-20 gap-4">
+              <TrendingUp className="h-16 w-16 text-muted-foreground/40" />
+              <p className="text-muted-foreground text-center text-sm">Sem itens para rankear.</p>
+            </div>
+          ) : (
+            rankedListings.map((listing, i) => (
+              <RankingListItem key={listing.id} listing={listing} rank={i + 1} onPress={() => navigate(`/listing/${listing.id}`)} />
+            ))
+          )}
         </div>
-      </footer>
+      )}
+
+      {/* Messages Sheet */}
+      <MessagesSheet
+        open={messagesOpen}
+        onOpenChange={setMessagesOpen}
+        initialConversationId={conversationId}
+        initialOtherUser={
+          profile
+            ? {
+                user_id: sellerId!,
+                username: profile.username,
+                avatar_url: profile.avatar_url,
+              }
+            : null
+        }
+      />
     </div>
+  );
+};
+
+/* ─── Sub-components ──────────────────────────────────────────── */
+
+const StatItem = ({ value, label }: { value: number; label: string }) => (
+  <div className="text-center">
+    <p className="text-lg font-semibold text-foreground">{value.toLocaleString()}</p>
+    <p className="text-xs text-muted-foreground">{label}</p>
+  </div>
+);
+
+const ListingGridItem = ({ listing, onPress }: { listing: ListingWithItem; onPress: () => void }) => {
+  const rarityClass = listing.rarity_tier ? RARITY_COLORS[listing.rarity_tier] || RARITY_COLORS["Common"] : null;
+
+  return (
+    <button onClick={onPress} className="relative aspect-square overflow-hidden bg-card group">
+      <img
+        src={listing.image_url}
+        alt={listing.title}
+        className="h-full w-full object-cover transition-transform duration-200 group-hover:scale-105"
+        loading="lazy"
+      />
+      {/* Rarity badge */}
+      {listing.rarity_tier && (
+        <span className={`absolute top-1.5 left-1.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full ${rarityClass}`}>
+          {listing.rarity_tier}
+        </span>
+      )}
+      {/* Price overlay */}
+      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent px-2 pb-1.5 pt-6">
+        <p className="text-xs font-bold text-white">{formatPrice(listing.price, listing.currency)}</p>
+      </div>
+    </button>
+  );
+};
+
+const RankingListItem = ({
+  listing,
+  rank,
+  onPress,
+}: {
+  listing: ListingWithItem;
+  rank: number;
+  onPress: () => void;
+}) => {
+  const rarityClass = listing.rarity_tier ? RARITY_COLORS[listing.rarity_tier] || RARITY_COLORS["Common"] : null;
+
+  return (
+    <button onClick={onPress} className="flex items-center gap-3 w-full px-4 py-3 hover:bg-accent/50 transition-colors text-left">
+      <span className="text-lg font-bold text-muted-foreground w-7 text-center shrink-0">
+        {rank}
+      </span>
+      <div className="h-14 w-14 rounded-lg overflow-hidden bg-muted shrink-0">
+        <img src={listing.image_url} alt="" className="h-full w-full object-cover" loading="lazy" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium text-foreground truncate">{listing.title}</p>
+        {listing.real_car_brand && (
+          <p className="text-xs text-muted-foreground truncate">
+            {listing.real_car_brand} {listing.real_car_model}
+          </p>
+        )}
+        {listing.rarity_tier && (
+          <span className={`inline-block mt-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full ${rarityClass}`}>
+            {listing.rarity_tier}
+          </span>
+        )}
+      </div>
+      <p className="text-sm font-bold text-primary shrink-0">
+        {formatPrice(listing.price, listing.currency)}
+      </p>
+    </button>
   );
 };
 
