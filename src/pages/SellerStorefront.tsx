@@ -361,7 +361,7 @@ const SellerStorefront = () => {
             <div className="flex gap-2 mt-4">
               <Button
                 variant={isFollowingUser ? "outline" : "default"}
-                onClick={handleFollowToggle}
+                onClick={() => requireAuth(handleFollowToggle)}
                 disabled={followLoading}
                 className="flex-1 gap-2"
               >
