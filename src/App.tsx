@@ -329,9 +329,10 @@ const AppContent = () => {
     if (!showSplash && !loading && !initialAuthChecked) {
       setInitialAuthChecked(true);
       if (!user) {
-        // Avoid navigating if we're already on /auth (especially with ?code=...)
-        // and avoid dropping OAuth callback params by redirecting too early.
-        if (location.pathname !== "/auth" && !hasOAuthCallbackParams) {
+        // Allow public routes without auth
+        const publicRoutes = ["/auth", "/store", "/listing", "/privacy"];
+        const isPublicRoute = publicRoutes.some(r => location.pathname.startsWith(r));
+        if (!isPublicRoute && !hasOAuthCallbackParams) {
           navigate("/auth", { replace: true });
         }
       }
