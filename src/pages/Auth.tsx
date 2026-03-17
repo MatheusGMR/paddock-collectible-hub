@@ -61,6 +61,13 @@ const Auth = () => {
   // Redirect if already authenticated
   useEffect(() => {
     if (!authLoading && user) {
+      // Check for a return URL first (e.g. from public store page)
+      const returnUrl = sessionStorage.getItem("paddock_return_url");
+      if (returnUrl) {
+        sessionStorage.removeItem("paddock_return_url");
+        navigate(returnUrl, { replace: true });
+        return;
+      }
       // Check if user is a seller and redirect accordingly
       const checkAndRedirect = async () => {
         const { data } = await supabase

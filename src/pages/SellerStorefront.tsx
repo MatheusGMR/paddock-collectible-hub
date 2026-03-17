@@ -76,6 +76,17 @@ const SellerStorefront = () => {
   const { user } = useAuth();
   const { toast } = useToast();
 
+  // Auth guard: redirect to auth with return URL
+  const requireAuth = useCallback((action: () => void) => {
+    if (!user) {
+      // Store the return URL so user comes back after login
+      sessionStorage.setItem("paddock_return_url", `/store/${sellerId}`);
+      navigate("/auth");
+      return;
+    }
+    action();
+  }, [user, navigate, sellerId]);
+
   const [profile, setProfile] = useState<SellerProfile | null>(null);
   const [sellerInfo, setSellerInfo] = useState<SellerInfo | null>(null);
   const [listings, setListings] = useState<ListingWithItem[]>([]);
@@ -192,7 +203,7 @@ const SellerStorefront = () => {
   };
 
   const handleOpenMessages = async () => {
-    if (!sellerId) return;
+    if (!user || !sellerId) return;
     setLoadingMessage(true);
     try {
       const convId = await getOrCreateConversation(sellerId);
@@ -350,7 +361,7 @@ const SellerStorefront = () => {
             <div className="flex gap-2 mt-4">
               <Button
                 variant={isFollowingUser ? "outline" : "default"}
-                onClick={handleFollowToggle}
+                onClick={() => requireAuth(handleFollowToggle)}
                 disabled={followLoading}
                 className="flex-1 gap-2"
               >
@@ -370,7 +381,7 @@ const SellerStorefront = () => {
               </Button>
               <Button
                 variant="outline"
-                onClick={handleOpenMessages}
+                onClick={() => requireAuth(handleOpenMessages)}
                 disabled={loadingMessage}
                 size="icon"
               >

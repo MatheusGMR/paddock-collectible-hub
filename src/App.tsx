@@ -231,7 +231,7 @@ const SubscriptionFlow = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   // Bypass subscription flow for admin and auth routes
-  const bypassRoutes = ["/admin", "/auth", "/privacy", "/payment-success", "/payment-canceled", "/subscription-success", "/seller", "/store"];
+  const bypassRoutes = ["/admin", "/auth", "/privacy", "/payment-success", "/payment-canceled", "/subscription-success", "/seller", "/store", "/listing"];
   if (bypassRoutes.some(r => location.pathname.startsWith(r))) {
     return <>{children}</>;
   }
@@ -329,9 +329,10 @@ const AppContent = () => {
     if (!showSplash && !loading && !initialAuthChecked) {
       setInitialAuthChecked(true);
       if (!user) {
-        // Avoid navigating if we're already on /auth (especially with ?code=...)
-        // and avoid dropping OAuth callback params by redirecting too early.
-        if (location.pathname !== "/auth" && !hasOAuthCallbackParams) {
+        // Allow public routes without auth
+        const publicRoutes = ["/auth", "/store", "/listing", "/privacy"];
+        const isPublicRoute = publicRoutes.some(r => location.pathname.startsWith(r));
+        if (!isPublicRoute && !hasOAuthCallbackParams) {
           navigate("/auth", { replace: true });
         }
       }
@@ -341,7 +342,9 @@ const AppContent = () => {
   // Handle sign out - redirect to auth when user becomes null AFTER initial check
   useEffect(() => {
     if (initialAuthChecked && !loading && !user) {
-      if (location.pathname !== "/auth" && !hasOAuthCallbackParams) {
+      const publicRoutes = ["/auth", "/store", "/listing", "/privacy"];
+      const isPublicRoute = publicRoutes.some(r => location.pathname.startsWith(r));
+      if (!isPublicRoute && !hasOAuthCallbackParams) {
         navigate("/auth", { replace: true });
       }
     }
