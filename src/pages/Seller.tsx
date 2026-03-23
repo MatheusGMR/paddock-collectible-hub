@@ -93,6 +93,7 @@ const SellerPage = () => {
     loading,
     saveSellerDetails,
     activateSeller,
+    loadInventory,
   } = useSellerData();
 
   useEffect(() => {
