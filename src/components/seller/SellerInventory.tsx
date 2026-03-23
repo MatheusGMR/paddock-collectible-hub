@@ -179,8 +179,8 @@ export const SellerInventory = ({ inventory, loading }: SellerInventoryProps) =>
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <button
-                          onClick={() => {
+                        <a
+                          href={(() => {
                             const url = `${window.location.origin}/listing/${item.id}`;
                             const text = [
                               `🏎️ *${item.title}*`,
@@ -191,13 +191,15 @@ export const SellerInventory = ({ inventory, loading }: SellerInventoryProps) =>
                               ``,
                               `👉 ${url}`,
                             ].join("\n");
-                            window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
-                          }}
-                          className="p-1.5 rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-primary"
+                            return `https://web.whatsapp.com/send?text=${encodeURIComponent(text)}`;
+                          })()}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="p-1.5 rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-primary inline-flex"
                           title="Compartilhar via WhatsApp"
                         >
                           <Share2 className="h-4 w-4" />
-                        </button>
+                        </a>
                       </TableCell>
                     </TableRow>
                   ))
