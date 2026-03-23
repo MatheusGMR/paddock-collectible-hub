@@ -37,6 +37,10 @@ export const useNativeCameraPreview = () => {
         window.visualViewport?.height ?? window.innerHeight ?? document.documentElement.clientHeight
       );
 
+      // Use screen dimensions for true fullscreen (not viewport which may exclude safe areas)
+      const screenWidth = Math.round(window.screen.width * (window.devicePixelRatio || 1));
+      const screenHeight = Math.round(window.screen.height * (window.devicePixelRatio || 1));
+
       const options: CameraPreviewOptions = {
         position: "rear",
         toBack: true,
@@ -44,24 +48,21 @@ export const useNativeCameraPreview = () => {
         className: "camera-preview",
         disableAudio: true,
         storeToFile: false,
+        x: 0,
+        y: 0,
         width: viewportWidth,
         height: viewportHeight,
-        includeSafeAreaInsets: platform === "ios",
+        enableOpacity: true,
+        enableZoom: true,
         lockAndroidOrientation: platform === "android",
       } as any;
 
-      const startedBounds = await CameraPreview.start(options);
+      console.log("[CameraPreview] Starting with options:", JSON.stringify({ 
+        viewportWidth, viewportHeight, screenWidth, screenHeight, platform 
+      }));
 
-      // iOS plugin defaults to 4:3/top internally; force viewport ratio to avoid black blocks.
-      if (platform === "ios") {
-        const viewportAspectRatio = `${viewportHeight}:${viewportWidth}`;
-        try {
-          await CameraPreview.setAspectRatio({ aspectRatio: viewportAspectRatio, x: 0, y: 0 } as any);
-          await CameraPreview.setPreviewSize({ x: 0, y: 0, width: viewportWidth, height: viewportHeight } as any);
-        } catch (resizeError) {
-          console.warn("[CameraPreview] Could not force fullscreen preview on iOS:", resizeError);
-        }
-      }
+      const startedBounds = await CameraPreview.start(options);
+      console.log("[CameraPreview] Started bounds:", JSON.stringify(startedBounds));
 
       isStartedRef.current = true;
       console.log("[CameraPreview] Camera preview started successfully", startedBounds);
