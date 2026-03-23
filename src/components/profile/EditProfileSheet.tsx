@@ -29,6 +29,7 @@ interface EditProfileSheetProps {
   userId: string;
   onSave: (updates: Partial<ProfileData>) => Promise<void>;
   onSignOut: () => void;
+  isSeller?: boolean;
 }
 
 export const EditProfileSheet = ({ 
