@@ -14,6 +14,7 @@ import {
   FileText,
   Camera,
   Trash2,
+  Download,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
