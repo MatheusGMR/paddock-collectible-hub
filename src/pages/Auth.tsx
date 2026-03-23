@@ -68,8 +68,24 @@ const Auth = () => {
         navigate(returnUrl, { replace: true });
         return;
       }
-      // Always redirect to main app - sellers can access store from profile settings
-      navigate("/", { replace: true });
+      // On web, check if user is seller and redirect to seller dashboard
+      if (!Capacitor.isNativePlatform()) {
+        const checkSellerAndRedirect = async () => {
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("is_seller")
+            .eq("user_id", user.id)
+            .single();
+          if (profile?.is_seller) {
+            navigate("/seller", { replace: true });
+          } else {
+            navigate("/", { replace: true });
+          }
+        };
+        checkSellerAndRedirect();
+      } else {
+        navigate("/", { replace: true });
+      }
     }
   }, [user, authLoading, navigate]);
 
