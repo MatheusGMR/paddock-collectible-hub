@@ -325,6 +325,7 @@ export const SettingsSection = ({ onSignOut, isSeller }: SettingsSectionProps) =
             </button>
           )}
 
+          {isAdmin && (
             <button onClick={() => navigate("/admin")} className="w-full flex items-center justify-between p-4 hover:bg-muted/50 transition-colors">
               <div className="flex items-center gap-3">
                 <div className="h-10 w-10 rounded-full bg-amber-500/10 flex items-center justify-center">
