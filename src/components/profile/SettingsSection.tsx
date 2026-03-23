@@ -50,6 +50,7 @@ export const SettingsSection = ({ onSignOut, isSeller }: SettingsSectionProps) =
   const { isAdmin } = useAdmin();
   const { resetAllTips } = useGuidedTips();
   const { toast } = useToast();
+  const isMobile = useIsMobile();
   const navigate = useNavigate();
   
   const [nativeInfo, setNativeInfo] = useState<{ version: string; build: string } | null>(null);
