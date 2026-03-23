@@ -2429,7 +2429,7 @@ export const ScannerView = () => {
 
         {/* Close button - positioned below notch */}
         <button
-          onClick={handleClose}
+          onClick={handleXButton}
           className="absolute right-4 p-2 bg-background/50 backdrop-blur-sm rounded-full z-10"
           style={{ top: "calc(env(safe-area-inset-top, 0px) + 1rem)" }}
         >
