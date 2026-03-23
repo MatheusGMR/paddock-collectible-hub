@@ -45,7 +45,11 @@ const ShareStoreButton = ({ storeName, storeUrl }: { storeName: string; storeUrl
       `📦 Envio para todo o Brasil`,
       `💳 Pagamento seguro via Apple Pay, Google Pay e cartão`,
     ].join("\n");
-    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
+    const link = document.createElement("a");
+    link.href = `https://web.whatsapp.com/send?text=${encodeURIComponent(text)}`;
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+    link.click();
   };
 
   return (
