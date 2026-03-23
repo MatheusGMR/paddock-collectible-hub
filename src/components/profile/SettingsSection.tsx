@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { 
   Globe, 
   Bell, 
@@ -49,6 +50,7 @@ export const SettingsSection = ({ onSignOut, isSeller }: SettingsSectionProps) =
   const { isAdmin } = useAdmin();
   const { resetAllTips } = useGuidedTips();
   const { toast } = useToast();
+  const isMobile = useIsMobile();
   const navigate = useNavigate();
   
   const [nativeInfo, setNativeInfo] = useState<{ version: string; build: string } | null>(null);
@@ -311,7 +313,7 @@ export const SettingsSection = ({ onSignOut, isSeller }: SettingsSectionProps) =
           </button>
 
           {isSeller && (
-            <button onClick={() => navigate("/minha-loja")} className="w-full flex items-center justify-between p-4 hover:bg-muted/50 transition-colors">
+            <button onClick={() => navigate(isMobile ? "/minha-loja" : "/seller")} className="w-full flex items-center justify-between p-4 hover:bg-muted/50 transition-colors">
               <div className="flex items-center gap-3">
                 <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
                   <Store className="h-5 w-5 text-primary" />
