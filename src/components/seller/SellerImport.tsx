@@ -529,6 +529,7 @@ export const SellerImport = () => {
             <Download className="h-4 w-4" />
             Baixar modelo CSV
           </Button>
+        </div>
 
         <input
           ref={fileInputRef}
