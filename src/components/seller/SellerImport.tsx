@@ -507,6 +507,29 @@ export const SellerImport = () => {
           </Card>
         </div>
 
+        <div className="flex justify-center">
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2 text-muted-foreground"
+            onClick={() => {
+              const headers = "titulo,marca,modelo,ano,fabricante,escala,condicao,cor,preco,moeda,observacoes";
+              const example = "Ferrari F40 1992,Ferrari,F40,1992,Bburago,1/18,Mint,Vermelha,350,BRL,Com caixa original";
+              const csv = `${headers}\n${example}\n`;
+              const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8" });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement("a");
+              a.href = url;
+              a.download = "modelo-importacao-paddock.csv";
+              a.click();
+              URL.revokeObjectURL(url);
+              toast.success("Modelo baixado!");
+            }}
+          >
+            <Download className="h-4 w-4" />
+            Baixar modelo CSV
+          </Button>
+
         <input
           ref={fileInputRef}
           type="file"
