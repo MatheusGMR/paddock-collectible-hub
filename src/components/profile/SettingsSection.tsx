@@ -13,7 +13,8 @@ import {
   Shield,
   HelpCircle,
   RotateCcw,
-  Fingerprint
+  Fingerprint,
+  Store
 } from "lucide-react";
 import { useAdmin } from "@/hooks/useAdmin";
 import { Switch } from "@/components/ui/switch";
