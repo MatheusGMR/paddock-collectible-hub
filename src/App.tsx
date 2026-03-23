@@ -105,6 +105,7 @@ const SubscriptionFlow = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   // Show onboarding for new users - only check once
+  // On web, skip onboarding entirely for a streamlined experience
   useEffect(() => {
     // If onboarding is in progress, don't interrupt it
     if (isOnboardingInProgress) return;
@@ -115,18 +116,29 @@ const SubscriptionFlow = ({ children }: { children: React.ReactNode }) => {
     if (!authLoading && !subLoading && user) {
       hasCheckedRef.current = true;
       
+      // On web, skip onboarding carousel entirely
+      const isWeb = !Capacitor.isNativePlatform();
+      
       // Check if this specific user has completed onboarding before
       const alreadyCompleted = hasCompletedOnboardingBefore(user.id);
       
-      if (alreadyCompleted) {
-        // User already completed onboarding, don't show again
-        console.log("[Onboarding] User already completed onboarding before");
-        // Only mark guided tips as complete if user has active subscription/trial
+      if (alreadyCompleted || isWeb) {
+        // User already completed onboarding or is on web - skip
+        console.log("[Onboarding] Skipping onboarding (web or already completed)");
+        if (!alreadyCompleted) {
+          markUserOnboardingComplete(user.id);
+        }
         if (status === "trial" || status === "active") {
           markOnboardingComplete();
         }
+        // On web, if new user with no subscription, auto-start trial
+        if (isWeb && isNewUser && status === "none") {
+          startTrial().then((success) => {
+            if (success) markOnboardingComplete();
+          });
+        }
       } else if (isNewUser && status === "none") {
-        // New user who hasn't completed onboarding
+        // Native: New user who hasn't completed onboarding
         console.log("[Onboarding] Showing onboarding for new user");
         setIsOnboardingInProgress(true);
         setShowOnboarding(true);
@@ -137,7 +149,7 @@ const SubscriptionFlow = ({ children }: { children: React.ReactNode }) => {
         markOnboardingComplete();
       }
     }
-  }, [authLoading, subLoading, user, isNewUser, status, isOnboardingInProgress, markOnboardingComplete, hasCompletedOnboardingBefore, markUserOnboardingComplete]);
+  }, [authLoading, subLoading, user, isNewUser, status, isOnboardingInProgress, markOnboardingComplete, hasCompletedOnboardingBefore, markUserOnboardingComplete, startTrial]);
 
   // Reset onboarding check when user changes
   useEffect(() => {
