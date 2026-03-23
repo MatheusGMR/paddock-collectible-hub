@@ -40,6 +40,7 @@ declare const __WEB_BUILD_ID__: string;
 
 interface SettingsSectionProps {
   onSignOut: () => void;
+  isSeller?: boolean;
 }
 
 export const SettingsSection = ({ onSignOut }: SettingsSectionProps) => {
