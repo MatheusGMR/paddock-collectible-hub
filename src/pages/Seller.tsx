@@ -93,6 +93,7 @@ const SellerPage = () => {
     loading,
     saveSellerDetails,
     activateSeller,
+    loadInventory,
   } = useSellerData();
 
   useEffect(() => {
@@ -179,7 +180,7 @@ const SellerPage = () => {
             <Routes>
               <Route
                 index
-                element={<SellerInventory inventory={inventory} loading={false} />}
+                element={<SellerInventory inventory={inventory} loading={false} onRefresh={loadInventory} />}
               />
               <Route
                 path="financeiro"

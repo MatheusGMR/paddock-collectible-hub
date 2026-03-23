@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Package, Plus, Search, Eye, Share2, Upload } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -14,16 +14,19 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { EditListingSheet } from "./EditListingSheet";
 import type { InventoryData } from "@/hooks/useSellerData";
 
 interface SellerInventoryProps {
   inventory: InventoryData | null;
   loading: boolean;
+  onRefresh?: () => void;
 }
 
-export const SellerInventory = ({ inventory, loading }: SellerInventoryProps) => {
+export const SellerInventory = ({ inventory, loading, onRefresh }: SellerInventoryProps) => {
   const [search, setSearch] = useState("");
   const [tab, setTab] = useState("active");
+  const [editItem, setEditItem] = useState<any>(null);
   const navigate = useNavigate();
 
   if (loading) {
@@ -151,7 +154,11 @@ export const SellerInventory = ({ inventory, loading }: SellerInventoryProps) =>
                   </TableRow>
                 ) : (
                   filteredActive.map((item) => (
-                    <TableRow key={item.id}>
+                    <TableRow
+                      key={item.id}
+                      className="cursor-pointer hover:bg-muted/50"
+                      onClick={() => setEditItem(item)}
+                    >
                       <TableCell>
                         <div className="flex items-center gap-3">
                           <img
@@ -197,6 +204,7 @@ export const SellerInventory = ({ inventory, loading }: SellerInventoryProps) =>
                           rel="noopener noreferrer"
                           className="p-1.5 rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-primary inline-flex"
                           title="Compartilhar via WhatsApp"
+                          onClick={(e) => e.stopPropagation()}
                         >
                           <Share2 className="h-4 w-4" />
                         </a>
@@ -241,11 +249,7 @@ export const SellerInventory = ({ inventory, loading }: SellerInventoryProps) =>
                       <TableRow
                         key={item.id}
                         className="cursor-pointer hover:bg-muted/50"
-                        onClick={() => {
-                          if (item.sale_id) {
-                            navigate(`/seller/order/${item.sale_id}`);
-                          }
-                        }}
+                        onClick={() => setEditItem(item)}
                       >
                         <TableCell>
                           <div className="flex items-center gap-3">
@@ -284,6 +288,17 @@ export const SellerInventory = ({ inventory, loading }: SellerInventoryProps) =>
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Edit Sheet */}
+      <EditListingSheet
+        listing={editItem}
+        open={!!editItem}
+        onOpenChange={(open) => { if (!open) setEditItem(null); }}
+        onSaved={() => {
+          setEditItem(null);
+          onRefresh?.();
+        }}
+      />
     </div>
   );
 };
