@@ -13,7 +13,8 @@ import {
   Shield,
   HelpCircle,
   RotateCcw,
-  Fingerprint
+  Fingerprint,
+  Store
 } from "lucide-react";
 import { useAdmin } from "@/hooks/useAdmin";
 import { Switch } from "@/components/ui/switch";
@@ -39,9 +40,10 @@ declare const __WEB_BUILD_ID__: string;
 
 interface SettingsSectionProps {
   onSignOut: () => void;
+  isSeller?: boolean;
 }
 
-export const SettingsSection = ({ onSignOut }: SettingsSectionProps) => {
+export const SettingsSection = ({ onSignOut, isSeller }: SettingsSectionProps) => {
   const { user } = useAuth();
   const { status, daysLeft } = useSubscription();
   const { isAdmin } = useAdmin();
@@ -307,6 +309,21 @@ export const SettingsSection = ({ onSignOut }: SettingsSectionProps) => {
             </div>
             <ChevronRight className="h-5 w-5 text-muted-foreground" />
           </button>
+
+          {isSeller && (
+            <button onClick={() => navigate("/minha-loja")} className="w-full flex items-center justify-between p-4 hover:bg-muted/50 transition-colors">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                  <Store className="h-5 w-5 text-primary" />
+                </div>
+                <div className="text-left">
+                  <p className="text-foreground font-medium">Minha Loja</p>
+                  <p className="text-xs text-muted-foreground">Gerencie estoque, pedidos e finanças</p>
+                </div>
+              </div>
+              <ChevronRight className="h-5 w-5 text-muted-foreground" />
+            </button>
+          )}
 
           {isAdmin && (
             <button onClick={() => navigate("/admin")} className="w-full flex items-center justify-between p-4 hover:bg-muted/50 transition-colors">

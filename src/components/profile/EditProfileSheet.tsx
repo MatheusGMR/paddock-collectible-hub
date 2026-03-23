@@ -29,6 +29,7 @@ interface EditProfileSheetProps {
   userId: string;
   onSave: (updates: Partial<ProfileData>) => Promise<void>;
   onSignOut: () => void;
+  isSeller?: boolean;
 }
 
 export const EditProfileSheet = ({ 
@@ -38,6 +39,7 @@ export const EditProfileSheet = ({
   userId,
   onSave,
   onSignOut,
+  isSeller,
 }: EditProfileSheetProps) => {
   const { t } = useLanguage();
   const { toast } = useToast();
@@ -510,7 +512,7 @@ export const EditProfileSheet = ({
 
             {/* Settings Section */}
             <div className="mt-6 border-t border-border pt-6">
-              <SettingsSection onSignOut={onSignOut} />
+              <SettingsSection onSignOut={onSignOut} isSeller={isSeller} />
             </div>
           </div>
         </SheetContent>

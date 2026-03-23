@@ -11,6 +11,7 @@ export interface Profile {
   city: string | null;
   phone: string | null;
   show_collection_value: boolean;
+  is_seller: boolean;
   created_at: string;
   updated_at: string;
 }

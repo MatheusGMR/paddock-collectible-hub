@@ -68,20 +68,8 @@ const Auth = () => {
         navigate(returnUrl, { replace: true });
         return;
       }
-      // Check if user is a seller and redirect accordingly
-      const checkAndRedirect = async () => {
-        const { data } = await supabase
-          .from("profiles")
-          .select("is_seller")
-          .eq("user_id", user.id)
-          .single();
-        if (data?.is_seller) {
-          navigate("/seller", { replace: true });
-        } else {
-          navigate("/", { replace: true });
-        }
-      };
-      checkAndRedirect();
+      // Always redirect to main app - sellers can access store from profile settings
+      navigate("/", { replace: true });
     }
   }, [user, authLoading, navigate]);
 

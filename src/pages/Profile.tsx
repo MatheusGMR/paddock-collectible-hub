@@ -191,6 +191,7 @@ const ProfilePage = () => {
           userId={user.id}
           onSave={handleSaveProfile}
           onSignOut={handleSignOut}
+          isSeller={profile.is_seller}
         />
       )}
     </div>
