@@ -512,7 +512,7 @@ export const EditProfileSheet = ({
 
             {/* Settings Section */}
             <div className="mt-6 border-t border-border pt-6">
-              <SettingsSection onSignOut={onSignOut} />
+              <SettingsSection onSignOut={onSignOut} isSeller={isSeller} />
             </div>
           </div>
         </SheetContent>
