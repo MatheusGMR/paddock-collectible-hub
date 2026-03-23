@@ -1,4 +1,4 @@
-import { Package, DollarSign, User, Users, ArrowLeft, BarChart3, ClipboardList } from "lucide-react";
+import { Package, DollarSign, User, Users, BarChart3, ClipboardList, Car } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useNavigate } from "react-router-dom";
 import {
@@ -60,13 +60,13 @@ export const SellerSidebar = () => {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        <div className="mt-auto p-4 border-t border-border">
+        <div className="mt-auto p-4 border-t border-border space-y-2">
           <button
-            onClick={() => navigate("/profile")}
+            onClick={() => navigate("/")}
             className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors w-full"
           >
-            <ArrowLeft className="h-4 w-4" />
-            Voltar ao App
+            <Car className="h-4 w-4" />
+            Modo Colecionador
           </button>
         </div>
       </SidebarContent>
