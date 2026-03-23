@@ -2178,6 +2178,14 @@ export const ScannerView = () => {
 
   const hasResults = analysisResults.length > 0;
 
+  const handleXButton = useCallback(() => {
+    if (hasResults || capturedImage || realCarResult || imageQualityError) {
+      resetScan();
+    } else {
+      handleClose();
+    }
+  }, [hasResults, capturedImage, realCarResult, imageQualityError, resetScan, handleClose]);
+
   // Show real car results if available
   if (realCarResult && realCarResult.car && capturedImage) {
     return (
