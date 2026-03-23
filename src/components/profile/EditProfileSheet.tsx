@@ -39,6 +39,7 @@ export const EditProfileSheet = ({
   userId,
   onSave,
   onSignOut,
+  isSeller,
 }: EditProfileSheetProps) => {
   const { t } = useLanguage();
   const { toast } = useToast();
