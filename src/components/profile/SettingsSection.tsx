@@ -43,7 +43,7 @@ interface SettingsSectionProps {
   isSeller?: boolean;
 }
 
-export const SettingsSection = ({ onSignOut }: SettingsSectionProps) => {
+export const SettingsSection = ({ onSignOut, isSeller }: SettingsSectionProps) => {
   const { user } = useAuth();
   const { status, daysLeft } = useSubscription();
   const { isAdmin } = useAdmin();
