@@ -51,6 +51,24 @@ export const SellerInventory = ({ inventory, loading, onRefresh }: SellerInvento
   const formatPrice = (price: number, currency: string) =>
     new Intl.NumberFormat("pt-BR", { style: "currency", currency }).format(price);
 
+  const openWhatsAppShare = (text: string) => {
+    const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
+
+    if (window.self !== window.top) {
+      try {
+        window.top?.location.assign(url);
+        return;
+      } catch {
+        // fallback abaixo
+      }
+    }
+
+    const opened = window.open(url, "_blank", "noopener,noreferrer");
+    if (!opened) {
+      window.location.assign(url);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Stats Row */}
@@ -186,28 +204,27 @@ export const SellerInventory = ({ inventory, loading, onRefresh }: SellerInvento
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <a
-                          href={(() => {
+                        <button
+                          type="button"
+                          className="p-1.5 rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-primary inline-flex"
+                          title="Compartilhar via WhatsApp"
+                          onClick={(e) => {
+                            e.stopPropagation();
                             const url = `${window.location.origin}/listing/${item.id}`;
                             const text = [
                               `🏎️ *${item.title}*`,
                               `💰 *${formatPrice(item.price, item.currency)}*`,
-                              ``,
-                              `Miniatura disponível na Paddock!`,
-                              `Compre com segurança via Apple Pay, Google Pay ou cartão.`,
-                              ``,
+                              "",
+                              "Miniatura disponível na Paddock!",
+                              "Compre com segurança via Apple Pay, Google Pay ou cartão.",
+                              "",
                               `👉 ${url}`,
                             ].join("\n");
-                            return `https://wa.me/?text=${encodeURIComponent(text)}`;
-                          })()}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="p-1.5 rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-primary inline-flex"
-                          title="Compartilhar via WhatsApp"
-                          onClick={(e) => e.stopPropagation()}
+                            openWhatsAppShare(text);
+                          }}
                         >
                           <Share2 className="h-4 w-4" />
-                        </a>
+                        </button>
                       </TableCell>
                     </TableRow>
                   ))
