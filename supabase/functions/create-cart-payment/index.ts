@@ -95,7 +95,7 @@ serve(async (req) => {
 
     const lineItems = listings.map((listing) => ({
       price_data: {
-        currency: listing.currency.toLowerCase(),
+        currency: "brl",
         product_data: {
           name: listing.title,
           description: listing.description || undefined,
