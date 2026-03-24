@@ -336,6 +336,16 @@ const AppContent = () => {
     }
   })()).current;
 
+  // Support links opened as /?listing=<id> (used by WhatsApp OG redirect)
+  useEffect(() => {
+    if (location.pathname !== "/") return;
+
+    const listingId = new URLSearchParams(location.search).get("listing");
+    if (!listingId) return;
+
+    navigate(`/listing/${listingId}`, { replace: true });
+  }, [location.pathname, location.search, navigate]);
+
   // After splash completes, mark it as done
   const handleSplashComplete = () => {
     setShowSplash(false);
