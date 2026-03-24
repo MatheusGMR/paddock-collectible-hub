@@ -111,7 +111,7 @@ Deno.serve(async (req) => {
     `  <meta property="og:title" content="${safeAttr(ogTitle)}" />`,
     `  <meta property="og:description" content="${safeAttr(ogDescription)}" />`,
     imageMeta,
-    `  <meta property="og:url" content="${safeAttr(redirectUrl)}" />`,
+    `  <meta property="og:url" content="${safeAttr(canonicalUrl)}" />`,
     '  <meta property="og:site_name" content="Paddock" />',
     '  <meta name="twitter:card" content="summary_large_image" />',
     `  <meta name="twitter:title" content="${safeAttr(ogTitle)}" />`,
