@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Package, Plus, Search, Eye, Share2, Upload } from "lucide-react";
-import { shareViaWhatsApp } from "@/lib/shareWhatsApp";
+import { shareViaWhatsApp, getListingShareUrl } from "@/lib/shareWhatsApp";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -196,7 +196,7 @@ export const SellerInventory = ({ inventory, loading, onRefresh }: SellerInvento
                           title="Compartilhar via WhatsApp"
                           onClick={(e) => {
                             e.stopPropagation();
-                            const url = `${window.location.origin}/listing/${item.id}`;
+                            const url = getListingShareUrl(item.id);
                             const text = [
                               `🏎️ *${item.title}*`,
                               `💰 *${formatPrice(item.price, item.currency)}*`,
