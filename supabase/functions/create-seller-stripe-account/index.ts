@@ -161,6 +161,27 @@ serve(async (req) => {
   } catch (error) {
     console.error("Stripe Connect error:", error);
     const msg = error instanceof Error ? error.message : "Unknown error";
+
+    const requiresPlatformProfile =
+      msg.includes("complete your platform profile") ||
+      msg.includes("questionnaire") ||
+      msg.includes("use Connect and create live connected accounts");
+
+    if (requiresPlatformProfile) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          requires_platform_profile: true,
+          error:
+            "Você precisa concluir o perfil da plataforma no Stripe Connect antes de criar contas conectadas em produção.",
+        }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 200,
+        }
+      );
+    }
+
     return new Response(JSON.stringify({ error: msg }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 500,
