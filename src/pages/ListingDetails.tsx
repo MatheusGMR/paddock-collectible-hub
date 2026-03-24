@@ -409,6 +409,22 @@ export default function ListingDetails() {
             Este item já foi vendido e não está mais disponível.
           </p>
         </div>
+      ) : !user ? (
+        <div className="fixed bottom-0 left-0 right-0 border-t border-border bg-background/95 p-4 backdrop-blur space-y-2">
+          <Button
+            className="w-full"
+            size="lg"
+            onClick={() => {
+              sessionStorage.setItem("paddock_return_url", location.pathname);
+              navigate("/auth");
+            }}
+          >
+            {language === "pt-BR" ? "Entrar para comprar" : "Sign in to buy"}
+          </Button>
+          <p className="text-[11px] text-muted-foreground text-center leading-tight">
+            {language === "pt-BR" ? "Crie uma conta gratuita para comprar este item." : "Create a free account to purchase this item."}
+          </p>
+        </div>
       ) : (
         <div className="fixed bottom-0 left-0 right-0 border-t border-border bg-background/95 p-4 backdrop-blur space-y-2">
           <BuyButton
