@@ -140,19 +140,8 @@ serve(async (req) => {
 
     const session = await stripe.checkout.sessions.create(sessionParams);
 
-    // Record the sale with fee calculation
-    if (userId && listing.user_id) {
-      await supabaseAdmin.from("sales").insert({
-        listing_id: listing_id,
-        seller_id: listing.user_id,
-        buyer_id: userId,
-        sale_price: listing.price,
-        currency: listing.currency,
-        ...fees,
-        stripe_session_id: session.id,
-        status: "pending",
-      });
-    }
+    // Sale record is now created in confirm-payment after successful payment
+    // This prevents stale "pending" records from abandoned checkouts
 
     return new Response(JSON.stringify({ url: session.url }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
