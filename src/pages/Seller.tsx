@@ -110,7 +110,7 @@ const SellerPage = () => {
           .from("profiles")
           .select("is_seller")
           .eq("user_id", user.id)
-          .single();
+          .maybeSingle();
         if (data?.is_seller) {
           await activateSeller();
         }
