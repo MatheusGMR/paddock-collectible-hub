@@ -32,7 +32,7 @@ export const ShareMenu = ({ url, title, summary }: ShareMenuProps) => {
       name: "WhatsApp",
       icon: MessageCircle,
       color: "bg-green-500 hover:bg-green-600",
-      url: `https://wa.me/?text=${encodedText}%0A%0A${encodedUrl}`,
+      url: `https://api.whatsapp.com/send?text=${encodedText}%0A%0A${encodedUrl}`,
     },
     {
       name: "X (Twitter)",

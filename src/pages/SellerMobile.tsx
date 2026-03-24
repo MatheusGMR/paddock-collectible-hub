@@ -128,7 +128,7 @@ const SellerMobilePage = () => {
   const handleWhatsApp = () => {
     const name = sellerDetails?.business_name || "minha loja";
     const text = `🏁 *${name}* na Paddock\n\nMiniaturas exclusivas e colecionáveis.\n\n🔍 Catálogo: ${storeUrl}`;
-    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
+    window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, "_blank");
   };
 
   // Inner page back button
