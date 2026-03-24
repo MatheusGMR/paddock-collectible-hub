@@ -20,8 +20,8 @@ export const getListingShareUrl = (listingId: string): string => {
     return `${supabaseUrl}/functions/v1/og-listing?id=${encodedId}`;
   }
 
-  // Last-resort fallback
-  return `${window.location.origin}/listing/${listingId}`;
+  // Last-resort fallback — use direct listing URL
+  return `https://paddockonline.com/listing/${listingId}`;
 };
 
 /**
