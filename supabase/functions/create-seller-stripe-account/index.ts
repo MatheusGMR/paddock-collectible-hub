@@ -103,7 +103,7 @@ serve(async (req) => {
         },
         tos_acceptance: {
           date: Math.floor(Date.now() / 1000),
-          ip: req.headers.get("x-forwarded-for") || "0.0.0.0",
+          ip: (req.headers.get("x-forwarded-for") || "127.0.0.1").split(",")[0].trim(),
         },
       });
 
