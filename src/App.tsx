@@ -307,8 +307,14 @@ const SubscriptionFlow = ({ children }: { children: React.ReactNode }) => {
 
 // Component that handles splash → auth check → redirect
 const AppContent = () => {
-  const [showSplash, setShowSplash] = useState(true);
-  const [initialAuthChecked, setInitialAuthChecked] = useState(false);
+  const location = useLocation();
+  
+  // Skip splash for public-facing routes (listing, store, privacy)
+  const publicViewRoutes = ["/listing", "/store", "/privacy"];
+  const isPublicView = publicViewRoutes.some(r => location.pathname.startsWith(r));
+  
+  const [showSplash, setShowSplash] = useState(!isPublicView);
+  const [initialAuthChecked, setInitialAuthChecked] = useState(isPublicView);
   const { user, loading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
