@@ -194,7 +194,7 @@ export default function ListingDetails() {
             variant="ghost"
             size="icon"
             onClick={() => {
-              const url = `${window.location.origin}/listing/${listing.id}`;
+              const url = getListingShareUrl(listing.id);
               const rarityLabel = item?.rarity_tier ? ` \u2022 ${item.rarity_tier.charAt(0).toUpperCase() + item.rarity_tier.slice(1)}` : "";
               const sellerLabel = sellerProfile ? `\n\ud83c\udfea Vendido por *@${sellerProfile.username}*` : "";
               const lines = [
