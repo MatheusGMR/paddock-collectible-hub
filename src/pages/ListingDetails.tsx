@@ -64,7 +64,9 @@ const rarityColors: Record<string, string> = {
 export default function ListingDetails() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const { t, language } = useLanguage();
+  const { user } = useAuth();
   const [listing, setListing] = useState<ListingData | null>(null);
   const [item, setItem] = useState<ItemData | null>(null);
   const [sellerProfile, setSellerProfile] = useState<{ username: string; avatar_url: string | null; city: string | null } | null>(null);
