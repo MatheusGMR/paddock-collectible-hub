@@ -53,20 +53,7 @@ export const SellerInventory = ({ inventory, loading, onRefresh }: SellerInvento
 
   const openWhatsAppShare = (text: string) => {
     const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
-
-    if (window.self !== window.top) {
-      try {
-        window.top?.location.assign(url);
-        return;
-      } catch {
-        // fallback abaixo
-      }
-    }
-
-    const opened = window.open(url, "_blank", "noopener,noreferrer");
-    if (!opened) {
-      window.location.assign(url);
-    }
+    window.open(url, "_blank", "noopener,noreferrer");
   };
 
   return (
