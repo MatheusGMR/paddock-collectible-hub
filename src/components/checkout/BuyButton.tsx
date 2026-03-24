@@ -45,8 +45,8 @@ export const BuyButton = ({
       }
 
       if (data?.url) {
-        // Open Stripe Checkout in a new tab
-        window.open(data.url, "_blank", "noopener,noreferrer");
+        // Redirect to Stripe Checkout in the same tab
+        window.location.href = data.url;
       } else {
         throw new Error("No checkout URL returned");
       }
