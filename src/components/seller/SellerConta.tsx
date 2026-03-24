@@ -140,6 +140,15 @@ export const SellerConta = ({ sellerDetails, onSave, loading }: SellerContaProps
             });
             return;
           }
+
+          if (response.data?.requires_platform_profile) {
+            toast({
+              title: "Dados salvos com sucesso",
+              description: "Finalize o perfil da plataforma no Stripe Connect para ativar recebimentos.",
+            });
+            return;
+          }
+
           toast({ title: "Dados salvos e conta Stripe conectada!" });
           return;
         }
