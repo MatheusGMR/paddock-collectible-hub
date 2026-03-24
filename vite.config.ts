@@ -7,7 +7,7 @@ import { componentTagger } from "lovable-tagger";
 const WEB_BUILD_ID = new Date().toISOString().replace(/[-:.TZ]/g, '').slice(0, 14);
 
 export default defineConfig(({ mode }) => ({
-  base: './',
+  base: '/',
   define: {
     __WEB_BUILD_ID__: JSON.stringify(WEB_BUILD_ID),
   },
