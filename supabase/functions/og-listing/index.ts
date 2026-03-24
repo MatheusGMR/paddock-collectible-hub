@@ -2,8 +2,38 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
+
+// Known crawler user-agents that need OG meta tags
+const CRAWLER_PATTERNS = [
+  "whatsapp",
+  "facebookexternalhit",
+  "facebot",
+  "twitterbot",
+  "telegrambot",
+  "linkedinbot",
+  "slackbot",
+  "discordbot",
+  "googlebot",
+  "bingbot",
+  "yandexbot",
+  "applebot",
+  "pinterestbot",
+  "redditbot",
+  "embedly",
+  "showyoubot",
+  "outbrain",
+  "quora link preview",
+  "rogerbot",
+  "vkshare",
+  "w3c_validator",
+];
+
+function isCrawler(userAgent: string): boolean {
+  const ua = userAgent.toLowerCase();
+  return CRAWLER_PATTERNS.some((pattern) => ua.includes(pattern));
+}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -14,19 +44,28 @@ Deno.serve(async (req) => {
   const listingId = requestUrl.searchParams.get("id");
 
   if (!listingId) {
-    return new Response("Missing listing id", {
-      status: 400,
-      headers: corsHeaders,
-    });
+    return new Response("Missing listing id", { status: 400, headers: corsHeaders });
   }
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
   const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  const siteOrigin = (Deno.env.get("SITE_URL") || "https://paddockonline.com").replace(/\/$/, "");
+  const redirectUrl = `${siteOrigin}/listing/${listingId}`;
 
+  // For real browsers: just redirect immediately with 302
+  const userAgent = req.headers.get("user-agent") || "";
+  if (!isCrawler(userAgent)) {
+    return new Response(null, {
+      status: 302,
+      headers: { ...corsHeaders, Location: redirectUrl },
+    });
+  }
+
+  // For crawlers: serve OG meta tags
   if (!supabaseUrl || !supabaseKey) {
-    return new Response("Server configuration error", {
-      status: 500,
-      headers: corsHeaders,
+    return new Response(null, {
+      status: 302,
+      headers: { ...corsHeaders, Location: redirectUrl },
     });
   }
 
@@ -38,27 +77,27 @@ Deno.serve(async (req) => {
     .eq("id", listingId)
     .maybeSingle();
 
-  const title = listing?.title || "Miniatura na Paddock";
-  const rawDesc = listing?.description || listing?.title || "Veja este anuncio na Paddock";
-  // Clean description: take first line only, limit to 150 chars
+  if (!listing) {
+    return new Response(null, {
+      status: 302,
+      headers: { ...corsHeaders, Location: redirectUrl },
+    });
+  }
+
+  const title = listing.title || "Miniatura na Paddock";
+  const rawDesc = listing.description || listing.title || "Veja este anúncio na Paddock";
   const firstLine = rawDesc.split("\n")[0].trim();
   const ogDescription = firstLine.length > 150 ? firstLine.substring(0, 147) + "..." : firstLine;
-  const imageUrl = listing?.image_url || "";
-  const price = listing
-    ? new Intl.NumberFormat("pt-BR", {
-        style: "currency",
-        currency: listing.currency || "BRL",
-      }).format(listing.price)
-    : "";
+  const imageUrl = listing.image_url || "";
+  const price = new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: listing.currency || "BRL",
+  }).format(listing.price);
 
-  const ogTitle = price ? `${title} - ${price}` : title;
+  const ogTitle = `${title} - ${price}`;
 
-  const siteOrigin = (Deno.env.get("SITE_URL") || "https://paddock-collectible-hub.lovable.app").replace(/\/$/, "");
-  const redirectUrl = `${siteOrigin}/listing/${listingId}`;
-
-  // Build HTML manually to avoid escaping issues
   const imageMeta = imageUrl
-    ? `<meta property="og:image" content="${imageUrl}" />\n  <meta name="twitter:image" content="${imageUrl}" />`
+    ? `<meta property="og:image" content="${safeAttr(imageUrl)}" />\n  <meta name="twitter:image" content="${safeAttr(imageUrl)}" />`
     : "";
 
   const html = [
@@ -66,55 +105,34 @@ Deno.serve(async (req) => {
     '<html lang="pt-BR">',
     "<head>",
     '  <meta charset="utf-8" />',
-    '  <meta name="viewport" content="width=device-width,initial-scale=1" />',
     `  <title>${safeText(ogTitle)}</title>`,
-    "",
     '  <meta property="og:type" content="product" />',
     `  <meta property="og:title" content="${safeAttr(ogTitle)}" />`,
     `  <meta property="og:description" content="${safeAttr(ogDescription)}" />`,
     imageMeta,
     `  <meta property="og:url" content="${safeAttr(redirectUrl)}" />`,
     '  <meta property="og:site_name" content="Paddock" />',
-    "",
     '  <meta name="twitter:card" content="summary_large_image" />',
     `  <meta name="twitter:title" content="${safeAttr(ogTitle)}" />`,
     `  <meta name="twitter:description" content="${safeAttr(ogDescription)}" />`,
-    "",
-    `  <meta http-equiv="refresh" content="0;url=${safeAttr(redirectUrl)}" />`,
     "</head>",
-    "<body>",
-    `  <p>Redirecionando...</p>`,
-    `  <script>window.location.replace("${safeJS(redirectUrl)}");</script>`,
-    "</body>",
+    "<body></body>",
     "</html>",
   ].join("\n");
 
   return new Response(html, {
     headers: {
+      ...corsHeaders,
       "Content-Type": "text/html; charset=utf-8",
       "Cache-Control": "public, max-age=300",
     },
   });
 });
 
-/** Escape text content (between tags) */
 function safeText(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
-/** Escape for use inside HTML attribute values (already inside double quotes) */
 function safeAttr(s: string): string {
-  return s
-    .replace(/&/g, "&amp;")
-    .replace(/"/g, "&quot;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
-}
-
-/** Escape for use inside a JS string literal (already inside double quotes) */
-function safeJS(s: string): string {
-  return s
-    .replace(/\\/g, "\\\\")
-    .replace(/"/g, '\\"')
-    .replace(/\n/g, "\\n");
+  return s.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
