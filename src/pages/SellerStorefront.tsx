@@ -243,7 +243,7 @@ const SellerStorefront = () => {
       `📦 Envio para todo o Brasil`,
       `💳 Pagamento seguro via Apple Pay, Google Pay e cartão`,
     ].join("\n");
-    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
+    window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, "_blank");
   };
 
   const filteredListings = listings
