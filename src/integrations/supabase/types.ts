@@ -932,10 +932,17 @@ export type Database = {
       }
       profiles: {
         Row: {
+          address_complement: string | null
+          address_neighborhood: string | null
+          address_number: string | null
+          address_state: string | null
+          address_street: string | null
+          address_zip: string | null
           avatar_url: string | null
           bio: string | null
           city: string | null
           created_at: string
+          document_number: string | null
           id: string
           is_seller: boolean
           phone: string | null
@@ -945,10 +952,17 @@ export type Database = {
           username: string
         }
         Insert: {
+          address_complement?: string | null
+          address_neighborhood?: string | null
+          address_number?: string | null
+          address_state?: string | null
+          address_street?: string | null
+          address_zip?: string | null
           avatar_url?: string | null
           bio?: string | null
           city?: string | null
           created_at?: string
+          document_number?: string | null
           id?: string
           is_seller?: boolean
           phone?: string | null
@@ -958,10 +972,17 @@ export type Database = {
           username: string
         }
         Update: {
+          address_complement?: string | null
+          address_neighborhood?: string | null
+          address_number?: string | null
+          address_state?: string | null
+          address_street?: string | null
+          address_zip?: string | null
           avatar_url?: string | null
           bio?: string | null
           city?: string | null
           created_at?: string
+          document_number?: string | null
           id?: string
           is_seller?: boolean
           phone?: string | null
