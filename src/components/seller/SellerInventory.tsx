@@ -198,7 +198,7 @@ export const SellerInventory = ({ inventory, loading, onRefresh }: SellerInvento
                               ``,
                               `👉 ${url}`,
                             ].join("\n");
-                            return `https://web.whatsapp.com/send?text=${encodeURIComponent(text)}`;
+                            return `https://wa.me/?text=${encodeURIComponent(text)}`;
                           })()}
                           target="_blank"
                           rel="noopener noreferrer"
