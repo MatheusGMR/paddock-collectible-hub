@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { ArrowLeft, Shield, MapPin, Calendar, Star, TrendingUp, ChevronRight, Package, Users, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -10,6 +10,7 @@ import { SourceBadge } from "@/components/mercado/SourceBadge";
 import { IndexCard } from "@/components/index/IndexCard";
 import { supabase } from "@/integrations/supabase/client";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { formatPrice, getSourceByCode } from "@/data/marketplaceSources";
 import { getFollowCounts, getCollectionCount } from "@/lib/database";
 import { format } from "date-fns";
