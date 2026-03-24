@@ -1,6 +1,20 @@
 import { toast } from "sonner";
 
 /**
+ * Returns the OG-friendly URL for a listing.
+ * WhatsApp crawlers will hit this URL and get proper OG meta tags (image, title, etc.),
+ * then real users are redirected to the SPA listing page.
+ */
+export const getListingShareUrl = (listingId: string): string => {
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+  if (supabaseUrl) {
+    return `${supabaseUrl}/functions/v1/og-listing?id=${listingId}`;
+  }
+  // Fallback to direct SPA URL
+  return `${window.location.origin}/listing/${listingId}`;
+};
+
+/**
  * Compartilha texto via WhatsApp.
  * Tenta abrir o WhatsApp diretamente; se falhar (ex.: iframe),
  * copia o texto e mostra um toast com link manual.
