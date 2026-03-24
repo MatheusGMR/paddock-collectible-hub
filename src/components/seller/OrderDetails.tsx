@@ -11,7 +11,6 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { OrderTimeline, type ShippingStatus, SHIPPING_STEPS } from "./OrderTimeline";
-import { ShippingLabel } from "./ShippingLabel";
 
 interface SaleData {
   id: string;
@@ -59,13 +58,11 @@ export const OrderDetails = () => {
   const [sale, setSale] = useState<SaleData | null>(null);
   const [listing, setListing] = useState<ListingData | null>(null);
   const [buyerProfile, setBuyerProfile] = useState<{ username: string; city: string | null } | null>(null);
-  const [sellerName, setSellerName] = useState("Paddock Seller");
   const [loading, setLoading] = useState(true);
   const [advancing, setAdvancing] = useState(false);
-  const [showLabel, setShowLabel] = useState(false);
   const [takingPhoto, setTakingPhoto] = useState(false);
+  const [generatingLabel, setGeneratingLabel] = useState(false);
 
-  const labelRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const fetchOrder = useCallback(async () => {
@@ -80,16 +77,13 @@ export const OrderDetails = () => {
       if (error) throw error;
       setSale(saleData as unknown as SaleData);
 
-      // Fetch listing, buyer, seller in parallel
-      const [listingRes, buyerRes, sellerRes] = await Promise.all([
+      const [listingRes, buyerRes] = await Promise.all([
         supabase.from("listings").select("id, title, image_url, price, currency").eq("id", saleData.listing_id).single(),
         supabase.from("profiles").select("username, city").eq("user_id", saleData.buyer_id).single(),
-        supabase.from("seller_details").select("business_name").eq("user_id", user.id).single(),
       ]);
 
       if (listingRes.data) setListing(listingRes.data);
       if (buyerRes.data) setBuyerProfile(buyerRes.data);
-      if (sellerRes.data?.business_name) setSellerName(sellerRes.data.business_name);
     } catch (err) {
       console.error("Error fetching order:", err);
       toast({ variant: "destructive", title: "Erro ao carregar pedido" });
@@ -153,11 +147,41 @@ export const OrderDetails = () => {
     }
   };
 
-  const handlePrintLabel = () => {
-    setShowLabel(true);
-    setTimeout(() => {
-      window.print();
-    }, 300);
+  const handleGenerateLabel = async () => {
+    if (!sale) return;
+    setGeneratingLabel(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-shipping-label", {
+        body: { sale_id: sale.id },
+      });
+      if (error) throw error;
+      if (!data?.html) throw new Error("No label HTML returned");
+
+      // Open in new window for printing
+      const printWindow = window.open("", "_blank", "width=800,height=1100");
+      if (printWindow) {
+        printWindow.document.write(data.html);
+        printWindow.document.close();
+        printWindow.onload = () => {
+          setTimeout(() => printWindow.print(), 500);
+        };
+      } else {
+        // Fallback: download as HTML
+        const blob = new Blob([data.html], { type: "text/html" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `etiqueta-${sale.id.slice(0, 8)}.html`;
+        a.click();
+        URL.revokeObjectURL(url);
+        toast({ title: "Etiqueta baixada! Abra o arquivo para imprimir." });
+      }
+    } catch (err) {
+      console.error("Label generation error:", err);
+      toast({ variant: "destructive", title: "Erro ao gerar etiqueta" });
+    } finally {
+      setGeneratingLabel(false);
+    }
   };
 
   const formatPrice = (price: number, currency: string) =>
@@ -184,10 +208,8 @@ export const OrderDetails = () => {
     );
   }
 
-  const orderUrl = `${window.location.origin}/seller/order/${sale.id}`;
   const statusInfo = STATUS_LABELS[sale.shipping_status] || STATUS_LABELS.confirmed;
   const canAdvance = !!NEXT_STATUS[sale.shipping_status];
-  const needsPhotoForLabel = sale.shipping_status === "confirmed" && !sale.shipping_photo_url;
 
   return (
     <div className="space-y-6 max-w-2xl mx-auto">
@@ -212,7 +234,7 @@ export const OrderDetails = () => {
         </CardContent>
       </Card>
 
-      {/* Order Card */}
+      {/* Order Card with product image */}
       <Card className="border-border overflow-hidden">
         <div className="flex">
           <img
@@ -294,10 +316,22 @@ export const OrderDetails = () => {
                 </div>
 
                 {/* Generate label button */}
-                <Button onClick={handlePrintLabel} className="w-full gap-2" size="lg">
-                  <Printer className="h-5 w-5" />
-                  Gerar Etiqueta de Envio
+                <Button
+                  onClick={handleGenerateLabel}
+                  disabled={generatingLabel}
+                  className="w-full gap-2"
+                  size="lg"
+                >
+                  {generatingLabel ? (
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                  ) : (
+                    <Printer className="h-5 w-5" />
+                  )}
+                  Imprimir Etiqueta
                 </Button>
+                <p className="text-[11px] text-center text-muted-foreground">
+                  Etiqueta com dados do remetente, destinatário e declaração de conteúdo
+                </p>
               </div>
             )}
           </CardContent>
@@ -331,47 +365,6 @@ export const OrderDetails = () => {
             </p>
           </CardContent>
         </Card>
-      )}
-
-      {/* Printable label (hidden until print) */}
-      {showLabel && (
-        <div className="print:block hidden">
-          <ShippingLabel
-            ref={labelRef}
-            orderId={sale.id}
-            orderUrl={orderUrl}
-            buyerName={buyerProfile?.username || "Comprador"}
-            buyerCity={buyerProfile?.city || null}
-            items={[{
-              title: listing.title,
-              price: listing.price,
-              currency: listing.currency,
-              image_url: listing.image_url,
-            }]}
-            sellerName={sellerName}
-            trackingCode={sale.tracking_code}
-          />
-        </div>
-      )}
-
-      {/* Also show label preview on screen when toggled */}
-      {showLabel && (
-        <div className="print:hidden">
-          <ShippingLabel
-            orderId={sale.id}
-            orderUrl={orderUrl}
-            buyerName={buyerProfile?.username || "Comprador"}
-            buyerCity={buyerProfile?.city || null}
-            items={[{
-              title: listing.title,
-              price: listing.price,
-              currency: listing.currency,
-              image_url: listing.image_url,
-            }]}
-            sellerName={sellerName}
-            trackingCode={sale.tracking_code}
-          />
-        </div>
       )}
     </div>
   );
