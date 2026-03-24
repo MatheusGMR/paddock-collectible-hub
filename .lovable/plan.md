@@ -1,34 +1,27 @@
 
 
-## Plano: Botão X reinicia a câmera ao invés de fechar o scanner
+## Problem Analysis
 
-### Problema
-Atualmente, ao pressionar X após uma captura, o `handleClose` salva resultados pendentes e navega para `/`, saindo do scanner. O usuário quer que o X reinicie o processo de captura (reabra a câmera).
+The "Imprimir Etiqueta" button is hidden because of two sequential gates in `OrderDetails.tsx`:
 
-### Solução
+1. **Status gate (line 273)**: The entire "Pack & Go" card only renders when `sale.status === "completed"`. If the sale has any other status, the card is invisible.
+2. **Photo gate (line 280)**: Even when the card shows, the print button is hidden behind a mandatory photo step — only the "Abrir Câmera" button is visible until a photo is uploaded.
 
-**Arquivo: `src/components/scanner/ScannerView.tsx`**
+This makes it very hard to discover the print button.
 
-Modificar o comportamento do botão X conforme o estado:
+## Plan
 
-1. **Se há resultados/captura em andamento** (`hasResults || capturedImage`): o X chama `resetScan()` para limpar tudo e reabrir a câmera
-2. **Se está na tela inicial da câmera** (sem resultados): o X fecha o scanner e navega para `/` (comportamento atual do `handleClose`)
+### 1. Remove the photo requirement as a blocker for label generation
+Show both the photo upload option AND the "Imprimir Etiqueta" button side by side, instead of making the photo a prerequisite. The photo becomes optional (nice-to-have for record keeping).
 
-Isso significa alterar o `onClick` do botão X (linha ~2424) para chamar uma nova função que decide entre `resetScan` e `handleClose` baseado no estado atual:
+### 2. Always show the Pack & Go section for completed orders
+Keep the `sale.status === "completed"` check but also show it for any order that the seller can access (since SellerOrders already filters to completed sales only).
 
-```typescript
-const handleXButton = useCallback(() => {
-  if (hasResults || capturedImage || realCarResult || imageQualityError) {
-    resetScan();
-  } else {
-    handleClose();
-  }
-}, [hasResults, capturedImage, realCarResult, imageQualityError, resetScan, handleClose]);
-```
+### 3. Reorganize the Pack & Go card layout
+- Show the listing image prominently at the top of the order detail
+- Show "Imprimir Etiqueta" button always visible, not gated by photo
+- Move the optional photo capture to a secondary action below the label button
 
-O botão X usará `handleXButton` ao invés de `handleClose`.
-
-### Resultado
-- Após captura/análise, X = reinicia câmera para nova captura
-- Na tela da câmera (sem resultados), X = sai do scanner
+### Files to modify
+- **`src/components/seller/OrderDetails.tsx`**: Restructure the Pack & Go section to show the print button without requiring a photo first. Keep photo upload as an optional secondary action.
 
