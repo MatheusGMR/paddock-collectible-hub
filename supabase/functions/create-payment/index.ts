@@ -105,7 +105,7 @@ serve(async (req) => {
       line_items: [
         {
           price_data: {
-            currency: listing.currency.toLowerCase(),
+            currency: "brl",
             product_data: {
               name: listing.title,
               description: listing.description || undefined,
