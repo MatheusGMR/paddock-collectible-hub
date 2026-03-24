@@ -269,19 +269,43 @@ export const OrderDetails = () => {
         )}
       </Card>
 
-      {/* Pack & Go: Photo + Label section */}
-      {sale.status === "completed" && (
+      {/* Pack & Go: Label + optional photo */}
+      {(sale.status === "completed" || sale.status === "paid_out") && (
         <Card className="border-border">
           <CardHeader className="pb-3">
             <CardTitle className="text-base">Pack & Go — Etiqueta de Envio</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {/* Step 1: Take photo */}
-            {!sale.shipping_photo_url ? (
-              <div className="text-center space-y-3">
-                <p className="text-sm text-muted-foreground">
-                  Tire uma foto do produto embalado antes de gerar a etiqueta.
-                </p>
+            {/* Primary action: Generate label */}
+            <Button
+              onClick={handleGenerateLabel}
+              disabled={generatingLabel}
+              className="w-full gap-2"
+              size="lg"
+            >
+              {generatingLabel ? (
+                <Loader2 className="h-5 w-5 animate-spin" />
+              ) : (
+                <Printer className="h-5 w-5" />
+              )}
+              Imprimir Etiqueta e Declaração
+            </Button>
+            <p className="text-[11px] text-center text-muted-foreground">
+              Etiqueta com dados do remetente, destinatário e declaração de conteúdo
+            </p>
+
+            {/* Optional: shipping photo */}
+            {sale.shipping_photo_url ? (
+              <div className="rounded-lg overflow-hidden border border-border">
+                <img
+                  src={sale.shipping_photo_url}
+                  alt="Produto embalado"
+                  className="w-full h-40 object-cover"
+                />
+              </div>
+            ) : (
+              <div className="text-center pt-2 border-t border-border">
+                <p className="text-xs text-muted-foreground mb-2">Opcional: foto do produto embalado</p>
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -291,47 +315,19 @@ export const OrderDetails = () => {
                   className="hidden"
                 />
                 <Button
+                  variant="outline"
+                  size="sm"
                   onClick={() => fileInputRef.current?.click()}
                   disabled={takingPhoto}
                   className="gap-2"
-                  size="lg"
                 >
                   {takingPhoto ? (
-                    <Loader2 className="h-5 w-5 animate-spin" />
+                    <Loader2 className="h-4 w-4 animate-spin" />
                   ) : (
-                    <Camera className="h-5 w-5" />
+                    <Camera className="h-4 w-4" />
                   )}
-                  Abrir Câmera
+                  Tirar Foto
                 </Button>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {/* Photo preview */}
-                <div className="rounded-lg overflow-hidden border border-border">
-                  <img
-                    src={sale.shipping_photo_url}
-                    alt="Produto embalado"
-                    className="w-full h-40 object-cover"
-                  />
-                </div>
-
-                {/* Generate label button */}
-                <Button
-                  onClick={handleGenerateLabel}
-                  disabled={generatingLabel}
-                  className="w-full gap-2"
-                  size="lg"
-                >
-                  {generatingLabel ? (
-                    <Loader2 className="h-5 w-5 animate-spin" />
-                  ) : (
-                    <Printer className="h-5 w-5" />
-                  )}
-                  Imprimir Etiqueta
-                </Button>
-                <p className="text-[11px] text-center text-muted-foreground">
-                  Etiqueta com dados do remetente, destinatário e declaração de conteúdo
-                </p>
               </div>
             )}
           </CardContent>
