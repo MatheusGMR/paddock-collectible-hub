@@ -50,7 +50,8 @@ Deno.serve(async (req) => {
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
   const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   const siteOrigin = (Deno.env.get("SITE_URL") || "https://paddockonline.com").replace(/\/$/, "");
-  const redirectUrl = `${siteOrigin}/listing/${listingId}`;
+  const canonicalUrl = `${siteOrigin}/listing/${listingId}`;
+  const redirectUrl = `${siteOrigin}/?listing=${encodeURIComponent(listingId)}`;
 
   // For real browsers: just redirect immediately with 302
   const userAgent = req.headers.get("user-agent") || "";
