@@ -308,6 +308,8 @@ const SubscriptionFlow = ({ children }: { children: React.ReactNode }) => {
 // Component that handles splash → auth check → redirect
 const AppContent = () => {
   const location = useLocation();
+  const { user, loading } = useAuth();
+  const navigate = useNavigate();
   
   // Skip splash for public-facing routes (listing, store, privacy)
   const publicViewRoutes = ["/listing", "/store", "/privacy"];
@@ -315,9 +317,6 @@ const AppContent = () => {
   
   const [showSplash, setShowSplash] = useState(!isPublicView);
   const [initialAuthChecked, setInitialAuthChecked] = useState(isPublicView);
-  const { user, loading } = useAuth();
-  const navigate = useNavigate();
-  const location = useLocation();
 
   // If we just returned from an OAuth provider, the URL can contain callback params.
   // We must NOT redirect away (and drop query/hash) before the auth client exchanges them.
