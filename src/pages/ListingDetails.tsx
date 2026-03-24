@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { ArrowLeft, Shield, MapPin, Calendar, Star, TrendingUp, ChevronRight, Package, Users, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -10,6 +10,7 @@ import { SourceBadge } from "@/components/mercado/SourceBadge";
 import { IndexCard } from "@/components/index/IndexCard";
 import { supabase } from "@/integrations/supabase/client";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { formatPrice, getSourceByCode } from "@/data/marketplaceSources";
 import { getFollowCounts, getCollectionCount } from "@/lib/database";
 import { format } from "date-fns";
@@ -63,7 +64,9 @@ const rarityColors: Record<string, string> = {
 export default function ListingDetails() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const { t, language } = useLanguage();
+  const { user } = useAuth();
   const [listing, setListing] = useState<ListingData | null>(null);
   const [item, setItem] = useState<ItemData | null>(null);
   const [sellerProfile, setSellerProfile] = useState<{ username: string; avatar_url: string | null; city: string | null } | null>(null);
@@ -404,6 +407,22 @@ export default function ListingDetails() {
           </Badge>
           <p className="text-xs text-muted-foreground mt-2">
             Este item já foi vendido e não está mais disponível.
+          </p>
+        </div>
+      ) : !user ? (
+        <div className="fixed bottom-0 left-0 right-0 border-t border-border bg-background/95 p-4 backdrop-blur space-y-2">
+          <Button
+            className="w-full"
+            size="lg"
+            onClick={() => {
+              sessionStorage.setItem("paddock_return_url", location.pathname);
+              navigate("/auth");
+            }}
+          >
+            {language === "pt-BR" ? "Entrar para comprar" : "Sign in to buy"}
+          </Button>
+          <p className="text-[11px] text-muted-foreground text-center leading-tight">
+            {language === "pt-BR" ? "Crie uma conta gratuita para comprar este item." : "Create a free account to purchase this item."}
           </p>
         </div>
       ) : (
