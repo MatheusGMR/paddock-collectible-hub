@@ -6,11 +6,21 @@ import { toast } from "sonner";
  * then real users are redirected to the SPA listing page.
  */
 export const getListingShareUrl = (listingId: string): string => {
+  const encodedId = encodeURIComponent(listingId);
+  const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-  if (supabaseUrl) {
-    return `${supabaseUrl}/functions/v1/og-listing?id=${listingId}`;
+
+  // Prefer project-id based URL (most robust across domains/environments)
+  if (projectId) {
+    return `https://${projectId}.supabase.co/functions/v1/og-listing?id=${encodedId}`;
   }
-  // Fallback to direct SPA URL
+
+  // Fallback to URL variable when available
+  if (supabaseUrl) {
+    return `${supabaseUrl}/functions/v1/og-listing?id=${encodedId}`;
+  }
+
+  // Last-resort fallback
   return `${window.location.origin}/listing/${listingId}`;
 };
 
