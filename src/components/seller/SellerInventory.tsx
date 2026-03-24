@@ -207,7 +207,7 @@ export const SellerInventory = ({ inventory, loading, onRefresh }: SellerInvento
                               "",
                               `👉 ${url}`,
                             ].join("\n");
-                            openWhatsAppShare(text);
+                            shareViaWhatsApp(text);
                           }}
                         >
                           <Share2 className="h-4 w-4" />

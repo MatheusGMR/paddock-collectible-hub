@@ -204,7 +204,7 @@ export default function ListingDetails() {
                 `Compre agora com seguran\u00e7a na Paddock:`,
                 `\ud83d\udc49 ${url}`,
               ].filter(Boolean).join("\n");
-              window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(lines)}`, "_blank");
+              shareViaWhatsApp(lines);
             }}
             title="Compartilhar via WhatsApp"
           >
