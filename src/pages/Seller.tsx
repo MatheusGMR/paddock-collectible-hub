@@ -14,6 +14,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { Loader2, Store, ArrowLeft, Share2, Copy, MessageCircle } from "lucide-react";
+import { shareViaWhatsApp } from "@/lib/shareWhatsApp";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -45,7 +46,7 @@ const ShareStoreButton = ({ storeName, storeUrl }: { storeName: string; storeUrl
       `📦 Envio para todo o Brasil`,
       `💳 Pagamento seguro via Apple Pay, Google Pay e cartão`,
     ].join("\n");
-    window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, "_blank", "noopener,noreferrer");
+    shareViaWhatsApp(text);
   };
 
   return (

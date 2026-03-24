@@ -19,6 +19,7 @@ import { SellerImport } from "@/components/seller/SellerImport";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { shareViaWhatsApp } from "@/lib/shareWhatsApp";
 
 type SellerTab = "menu" | "estoque" | "pedidos" | "analytics" | "financeiro" | "conta" | "clientes" | "importar";
 
@@ -128,7 +129,7 @@ const SellerMobilePage = () => {
   const handleWhatsApp = () => {
     const name = sellerDetails?.business_name || "minha loja";
     const text = `🏁 *${name}* na Paddock\n\nMiniaturas exclusivas e colecionáveis.\n\n🔍 Catálogo: ${storeUrl}`;
-    window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, "_blank");
+    shareViaWhatsApp(text);
   };
 
   // Inner page back button

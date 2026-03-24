@@ -16,6 +16,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { trackListingEvent } from "@/lib/api/listingEvents";
+import { shareViaWhatsApp } from "@/lib/shareWhatsApp";
 
 interface ListingData {
   id: string;
@@ -204,7 +205,7 @@ export default function ListingDetails() {
                 `Compre agora com seguran\u00e7a na Paddock:`,
                 `\ud83d\udc49 ${url}`,
               ].filter(Boolean).join("\n");
-              window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(lines)}`, "_blank");
+              shareViaWhatsApp(lines);
             }}
             title="Compartilhar via WhatsApp"
           >

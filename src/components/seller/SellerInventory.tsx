@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Package, Plus, Search, Eye, Share2, Upload } from "lucide-react";
+import { shareViaWhatsApp } from "@/lib/shareWhatsApp";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -51,9 +52,8 @@ export const SellerInventory = ({ inventory, loading, onRefresh }: SellerInvento
   const formatPrice = (price: number, currency: string) =>
     new Intl.NumberFormat("pt-BR", { style: "currency", currency }).format(price);
 
-  const openWhatsAppShare = (text: string) => {
-    window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, "_blank", "noopener,noreferrer");
-  };
+
+
 
   return (
     <div className="space-y-6">
@@ -206,7 +206,7 @@ export const SellerInventory = ({ inventory, loading, onRefresh }: SellerInvento
                               "",
                               `👉 ${url}`,
                             ].join("\n");
-                            openWhatsAppShare(text);
+                            shareViaWhatsApp(text);
                           }}
                         >
                           <Share2 className="h-4 w-4" />

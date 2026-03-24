@@ -29,6 +29,7 @@ import { isFollowing, followUser, unfollowUser, getFollowCounts } from "@/lib/da
 import { MessagesSheet } from "@/components/messages/MessagesSheet";
 import { getOrCreateConversation } from "@/lib/api/messages";
 import { trackInteraction } from "@/lib/analytics";
+import { shareViaWhatsApp } from "@/lib/shareWhatsApp";
 import paddockWordmark from "@/assets/paddock-wordmark-new.png";
 
 interface SellerProfile {
@@ -243,7 +244,7 @@ const SellerStorefront = () => {
       `📦 Envio para todo o Brasil`,
       `💳 Pagamento seguro via Apple Pay, Google Pay e cartão`,
     ].join("\n");
-    window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, "_blank");
+    shareViaWhatsApp(text);
   };
 
   const filteredListings = listings
