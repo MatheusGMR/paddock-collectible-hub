@@ -196,7 +196,7 @@ export const SellerInventory = ({ inventory, loading, onRefresh }: SellerInvento
                           title="Compartilhar via WhatsApp"
                           onClick={(e) => {
                             e.stopPropagation();
-                            const url = `${window.location.origin}/listing/${item.id}`;
+                            const url = getListingShareUrl(item.id);
                             const text = [
                               `🏎️ *${item.title}*`,
                               `💰 *${formatPrice(item.price, item.currency)}*`,
