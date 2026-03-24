@@ -52,9 +52,8 @@ export const SellerInventory = ({ inventory, loading, onRefresh }: SellerInvento
   const formatPrice = (price: number, currency: string) =>
     new Intl.NumberFormat("pt-BR", { style: "currency", currency }).format(price);
 
-  const openWhatsAppShare = (text: string) => {
-    window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, "_blank", "noopener,noreferrer");
-  };
+
+
 
   return (
     <div className="space-y-6">

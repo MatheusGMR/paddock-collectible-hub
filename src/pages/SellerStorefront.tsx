@@ -29,6 +29,7 @@ import { isFollowing, followUser, unfollowUser, getFollowCounts } from "@/lib/da
 import { MessagesSheet } from "@/components/messages/MessagesSheet";
 import { getOrCreateConversation } from "@/lib/api/messages";
 import { trackInteraction } from "@/lib/analytics";
+import { shareViaWhatsApp } from "@/lib/shareWhatsApp";
 import paddockWordmark from "@/assets/paddock-wordmark-new.png";
 
 interface SellerProfile {
