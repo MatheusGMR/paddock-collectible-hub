@@ -1736,14 +1736,15 @@ export const ScannerView = () => {
       // Handle image file
       const reader = new FileReader();
       reader.onloadend = async () => {
-        const imageBase64 = reader.result as string;
-        setCapturedImage(imageBase64);
+        const rawBase64 = reader.result as string;
+        setCapturedImage(rawBase64);
         setIsScanning(true);
         
-        // Track scan event
         trackEvent("scan_initiated", { source: "gallery_image" });
 
         try {
+          // Downscale for faster upload & AI processing
+          const imageBase64 = await downscaleBase64(rawBase64, 800, 0.70);
           const { data, error } = await supabase.functions.invoke("analyze-collectible", {
             body: { imageBase64, skipML: true },
           });
