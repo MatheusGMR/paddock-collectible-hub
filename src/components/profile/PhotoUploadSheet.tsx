@@ -534,8 +534,8 @@ export const PhotoUploadSheet = ({
           {phase === "retry-failed" && (
             <div className="flex-1 overflow-y-auto p-4">
               <div className="text-center mb-6">
-                <div className="w-16 h-16 rounded-full bg-amber-500/20 flex items-center justify-center mx-auto mb-3">
-                  <AlertCircle className="h-8 w-8 text-amber-500" />
+                <div className="w-16 h-16 rounded-full bg-destructive/20 flex items-center justify-center mx-auto mb-3">
+                  <AlertCircle className="h-8 w-8 text-destructive" />
                 </div>
                 <h3 className="text-lg font-semibold text-foreground">
                   {failedMediaIndices.length} {failedMediaIndices.length === 1 ? "imagem não identificada" : "imagens não identificadas"}
