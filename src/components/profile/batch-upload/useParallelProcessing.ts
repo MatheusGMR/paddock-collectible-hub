@@ -9,6 +9,28 @@ import {
   PARALLEL_PROCESSING_LIMIT,
 } from "./types";
 
+/** Downscale a base64 image to reduce payload size before API call */
+function downscaleBase64(base64: string, maxDim = 800, quality = 0.70): Promise<string> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      let { width, height } = img;
+      if (width <= maxDim && height <= maxDim) { resolve(base64); return; }
+      const ratio = Math.min(maxDim / width, maxDim / height);
+      width = Math.round(width * ratio);
+      height = Math.round(height * ratio);
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext("2d")!;
+      ctx.drawImage(img, 0, 0, width, height);
+      resolve(canvas.toDataURL("image/jpeg", quality));
+    };
+    img.onerror = () => resolve(base64);
+    img.src = base64;
+  });
+}
+
 interface UseParallelProcessingProps {
   userId: string | undefined;
   onProgress: (current: number, total: number) => void;
@@ -25,8 +47,11 @@ export function useParallelProcessing({
 
   const analyzeMedia = useCallback(
     async (mediaBase64: string, isVideo: boolean): Promise<AnalysisResult[]> => {
+      // Downscale image to reduce payload and speed up transfer
+      const optimizedBase64 = isVideo ? mediaBase64 : await downscaleBase64(mediaBase64, 800, 0.70);
+
       const { data, error } = await supabase.functions.invoke("analyze-collectible", {
-        body: { imageBase64: mediaBase64 },
+        body: { imageBase64: optimizedBase64, skipML: true },
       });
 
       if (error) throw error;
