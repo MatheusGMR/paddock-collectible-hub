@@ -15,31 +15,46 @@ export const useNativeCameraPreview = () => {
   const isNative = Capacitor.isNativePlatform();
   const isStartedRef = useRef(false);
 
+  const getPreviewSize = useCallback(() => {
+    const width = Math.round(window.innerWidth || document.documentElement.clientWidth || 390);
+    const height = Math.round(window.innerHeight || document.documentElement.clientHeight || 844);
+
+    return {
+      width,
+      height,
+      platform: Capacitor.getPlatform(),
+    };
+  }, []);
+
   const start = useCallback(async (): Promise<boolean> => {
     if (!isNative) {
       console.log("[CameraPreview] Not on native platform, skipping");
       return false;
     }
 
-    if (isStartedRef.current) {
-      console.log("[CameraPreview] Already started, skipping");
-      return true;
-    }
-
     try {
       console.log("[CameraPreview] Starting camera preview...");
 
-      const platform = Capacitor.getPlatform();
-      const viewportWidth = Math.round(
-        window.visualViewport?.width ?? window.innerWidth ?? document.documentElement.clientWidth
-      );
-      const viewportHeight = Math.round(
-        window.visualViewport?.height ?? window.innerHeight ?? document.documentElement.clientHeight
-      );
+      // Always do a hard restart to avoid stale native sessions after capture/reset
+      if (isStartedRef.current) {
+        console.log("[CameraPreview] Restarting existing preview session...");
+        try {
+          await CameraPreview.stop();
+        } catch (stopError) {
+          console.warn("[CameraPreview] Stop before restart failed:", stopError);
+        }
+        isStartedRef.current = false;
+        await new Promise((resolve) => setTimeout(resolve, 80));
+      }
 
-      // Use screen dimensions for true fullscreen (not viewport which may exclude safe areas)
-      const screenWidth = Math.round(window.screen.width * (window.devicePixelRatio || 1));
-      const screenHeight = Math.round(window.screen.height * (window.devicePixelRatio || 1));
+      const { width, height, platform } = getPreviewSize();
+
+      const container = document.getElementById("camera-preview-container");
+      if (container) {
+        container.style.display = "";
+        container.style.width = "100vw";
+        container.style.height = "100dvh";
+      }
 
       const options: CameraPreviewOptions = {
         position: "rear",
@@ -50,16 +65,14 @@ export const useNativeCameraPreview = () => {
         storeToFile: false,
         x: 0,
         y: 0,
-        width: viewportWidth,
-        height: viewportHeight,
+        width,
+        height,
         enableOpacity: true,
         enableZoom: true,
         lockAndroidOrientation: platform === "android",
       } as any;
 
-      console.log("[CameraPreview] Starting with options:", JSON.stringify({ 
-        viewportWidth, viewportHeight, screenWidth, screenHeight, platform 
-      }));
+      console.log("[CameraPreview] Starting with options:", JSON.stringify({ width, height, platform }));
 
       const startedBounds = await CameraPreview.start(options);
       console.log("[CameraPreview] Started bounds:", JSON.stringify(startedBounds));
@@ -72,7 +85,7 @@ export const useNativeCameraPreview = () => {
       isStartedRef.current = false;
       return false;
     }
-  }, [isNative]);
+  }, [getPreviewSize, isNative]);
 
   const stop = useCallback(async (): Promise<void> => {
     if (!isNative) return;
@@ -106,20 +119,20 @@ export const useNativeCameraPreview = () => {
 
     try {
       console.log("[CameraPreview] Capturing photo...");
-      
+
       const options: CameraPreviewPictureOptions = {
         quality: 90,
       };
-      
+
       const result = await CameraPreview.capture(options);
-      
+
       if (!result.value) {
         console.error("[CameraPreview] No image data returned");
         return null;
       }
 
       console.log("[CameraPreview] Photo captured successfully");
-      
+
       return {
         base64Image: `data:image/jpeg;base64,${result.value}`,
       };
@@ -158,15 +171,18 @@ export const useNativeCameraPreview = () => {
     }
   }, [isNative]);
 
-  return useMemo(() => ({
-    isNative,
-    start,
-    stop,
-    capture,
-    flip,
-    setFocus,
-    get isStarted() {
-      return isStartedRef.current;
-    },
-  }), [isNative, start, stop, capture, flip, setFocus]);
+  return useMemo(
+    () => ({
+      isNative,
+      start,
+      stop,
+      capture,
+      flip,
+      setFocus,
+      get isStarted() {
+        return isStartedRef.current;
+      },
+    }),
+    [isNative, start, stop, capture, flip, setFocus]
+  );
 };
