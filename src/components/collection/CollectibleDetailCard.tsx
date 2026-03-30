@@ -165,7 +165,7 @@ export const CollectibleDetailCard = ({ item, open, onOpenChange, onDelete }: Co
                       </div>
                     )}
                     <img
-                      src={item.image_url || "/placeholder.svg"}
+                      src={resolvedImageUrl}
                       alt={`${data.real_car_brand} ${data.real_car_model}`}
                       className={cn("w-full h-full object-contain transition-opacity", imageLoaded ? "opacity-100" : "opacity-0")}
                       onLoad={(e) => {
