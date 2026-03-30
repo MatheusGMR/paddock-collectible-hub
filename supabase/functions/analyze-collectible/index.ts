@@ -239,9 +239,8 @@ serve(async (req) => {
 
     const fetchAndParse = async (model: string, attempt: number, reason: string) => {
       const isFallback = model === FALLBACK_MODEL;
-      // Primary (gpt-4o-mini): use "low" for speed (~2-3s). Fallback (gpt-4o): use "auto" for quality.
       const imageDetail = isFallback ? "auto" : "low";
-      const maxTokens = isFallback ? 3072 : 2048;
+      const maxTokens = isFallback ? 2560 : 1536;
       const systemPrompt = isFallback ? dynamicPrompt + FALLBACK_PROMPT_EXTRA : dynamicPrompt;
 
       const messages = [
