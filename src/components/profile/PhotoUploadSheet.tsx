@@ -575,7 +575,7 @@ export const PhotoUploadSheet = ({
                       )}
                       {!isReplaced && (
                         <div className="absolute inset-0 bg-background/60 flex flex-col items-center justify-center gap-2">
-                          <AlertCircle className="h-6 w-6 text-amber-500" />
+                          <AlertCircle className="h-6 w-6 text-destructive" />
                           <span className="text-xs text-foreground font-medium">
                             Não identificado
                           </span>
