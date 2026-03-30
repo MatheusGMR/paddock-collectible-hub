@@ -2120,21 +2120,57 @@ export const ScannerView = () => {
     setRealCarResult(null);
     setDetectedType(null);
     setZoomLevel(1);
+    hasOpenedNativeCameraRef.current = false;
+
     // Clear any pending saved results
     scannerPersistence.clearResult();
     if (videoPreviewUrl) {
       URL.revokeObjectURL(videoPreviewUrl);
       setVideoPreviewUrl(null);
     }
-    
+
+    // HARD TEARDOWN: fully reset camera session before restart to avoid stale/black preview
+    try {
+      await cameraPreview.stop();
+    } catch (error) {
+      console.warn("[Scanner] resetScan: cameraPreview.stop failed", error);
+    }
+
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+    }
+
+    if (videoRef.current) {
+      try {
+        videoRef.current.pause();
+      } catch {}
+      videoRef.current.srcObject = null;
+      try {
+        videoRef.current.load();
+      } catch {}
+    }
+
+    setUseCameraPreview(false);
+    setUseNativeFallback(false);
+    setCameraActive(false);
+
     // Restart camera - use camera-preview on native platforms
     if (Capacitor.isNativePlatform()) {
-      // Re-show the native camera container
-      const container = document.getElementById('camera-preview-container');
-      if (container) container.style.display = '';
+      const container = document.getElementById("camera-preview-container");
+      if (container) {
+        container.style.display = "";
+        container.style.width = "100vw";
+        container.style.height = "100dvh";
+      }
+
+      // Small delay gives native layer time to release previous session
+      await new Promise((resolve) => setTimeout(resolve, 120));
+
       const started = await cameraPreview.start();
       if (started) {
         setUseCameraPreview(true);
+        setUseNativeFallback(false);
         setCameraActive(true);
         setIsInitializing(false);
       } else {
