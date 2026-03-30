@@ -2094,8 +2094,8 @@ export const ScannerView = () => {
           music_suggestion: result.musicSuggestion || null,
           music_selection_reason: result.musicSelectionReason || null,
           real_car_photos: result.realCarPhotos || null,
-          estimated_value_min: result.marketValue?.min || null,
-          estimated_value_max: result.marketValue?.max || null,
+          estimated_value_min: result.marketValue?.min ?? null,
+          estimated_value_max: result.marketValue?.max ?? null,
         },
         imageUrl
       );
