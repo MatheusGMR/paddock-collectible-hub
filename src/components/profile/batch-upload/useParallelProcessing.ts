@@ -47,8 +47,11 @@ export function useParallelProcessing({
 
   const analyzeMedia = useCallback(
     async (mediaBase64: string, isVideo: boolean): Promise<AnalysisResult[]> => {
+      // Downscale image to reduce payload and speed up transfer
+      const optimizedBase64 = isVideo ? mediaBase64 : await downscaleBase64(mediaBase64, 800, 0.70);
+
       const { data, error } = await supabase.functions.invoke("analyze-collectible", {
-        body: { imageBase64: mediaBase64 },
+        body: { imageBase64: optimizedBase64, skipML: true },
       });
 
       if (error) throw error;
