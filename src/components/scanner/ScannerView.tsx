@@ -200,6 +200,16 @@ function normalizeMultiCarAnalysisResponse(raw: MultiCarAnalysisResponse): Multi
       const brand = realCar.brand || item.brand || item.real_car_brand || 'Desconhecido';
       const model = realCar.model || item.model || item.real_car_model || 'Desconhecido';
       
+      // Normalize marketValue from various possible AI response shapes
+      const rawMV = item.marketValue || item.market_value || item.valor_mercado || {};
+      const marketValue = (rawMV.min != null && rawMV.max != null) ? {
+        min: Number(rawMV.min),
+        max: Number(rawMV.max),
+        currency: rawMV.currency || 'BRL',
+        source: rawMV.source || '',
+        confidence: rawMV.confidence || 'low',
+      } : undefined;
+
       return {
         ...item,
         realCar: {
@@ -218,6 +228,7 @@ function normalizeMultiCarAnalysisResponse(raw: MultiCarAnalysisResponse): Multi
           color: collectible.color || item.color || '',
           notes: collectible.notes || '',
         },
+        marketValue,
       };
     });
 
@@ -1995,8 +2006,8 @@ export const ScannerView = () => {
           music_suggestion: result.musicSuggestion || null,
           music_selection_reason: result.musicSelectionReason || null,
           real_car_photos: result.realCarPhotos || null,
-          estimated_value_min: result.marketValue?.min || null,
-          estimated_value_max: result.marketValue?.max || null,
+          estimated_value_min: result.marketValue?.min ?? null,
+          estimated_value_max: result.marketValue?.max ?? null,
         },
         imageUrl
       );
@@ -2083,8 +2094,8 @@ export const ScannerView = () => {
           music_suggestion: result.musicSuggestion || null,
           music_selection_reason: result.musicSelectionReason || null,
           real_car_photos: result.realCarPhotos || null,
-          estimated_value_min: result.marketValue?.min || null,
-          estimated_value_max: result.marketValue?.max || null,
+          estimated_value_min: result.marketValue?.min ?? null,
+          estimated_value_max: result.marketValue?.max ?? null,
         },
         imageUrl
       );

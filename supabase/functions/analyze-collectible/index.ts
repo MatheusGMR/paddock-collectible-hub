@@ -356,6 +356,14 @@ serve(async (req) => {
       r.count = r.count || r.items.length;
       r.identified = r.identified !== false && r.items.length > 0;
       r.detectedType = r.detectedType || "collectible";
+      // Normalize marketValue on each item
+      for (const it of r.items) {
+        if (!it.marketValue && (it.market_value || it.valor_mercado)) {
+          it.marketValue = it.market_value || it.valor_mercado;
+          delete it.market_value;
+          delete it.valor_mercado;
+        }
+      }
     } else if (r.car && typeof r.car === "object") {
       r.identified = r.identified !== false;
       r.detectedType = "real_car";
