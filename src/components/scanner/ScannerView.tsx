@@ -1083,31 +1083,35 @@ export const ScannerView = () => {
         return;
       }
       
-      const imageBase64 = result.base64Image;
-      console.log(`[Scanner] Camera-preview captured. base64 length: ${imageBase64.length}, starts with: ${imageBase64.substring(0, 30)}`);
-      const imageForDisplay = isBase64DataUri(imageBase64)
-        ? imageBase64
-        : `data:image/jpeg;base64,${imageBase64}`;
-      
-      // 2. IMMEDIATELY stop camera and show captured image (freeze the frame)
-      await cameraPreview.stop();
-      // Force a synchronous style update to exit transparent mode before setting state
-      const container = document.getElementById('camera-preview-container');
-      if (container) container.style.display = 'none';
-      setUseCameraPreview(false);
-      setCameraActive(false);
-      setCapturedImage(imageForDisplay);
+      const rawBase64 = result.base64Image;
+      const imageForDisplay = isBase64DataUri(rawBase64)
+        ? rawBase64
+        : `data:image/jpeg;base64,${rawBase64}`;
 
-      // 3. Now start the scanning/analysis phase
+      // 2. IMMEDIATELY: stop camera, show captured image, AND fire API call — all in parallel
+      // This overlaps camera teardown (~120ms) with image downscaling and network round-trip
+      const stopCameraPromise = (async () => {
+        await cameraPreview.stop();
+        const container = document.getElementById('camera-preview-container');
+        if (container) container.style.display = 'none';
+        setUseCameraPreview(false);
+        setCameraActive(false);
+      })();
+
+      setCapturedImage(imageForDisplay);
       setIsScanning(true);
-      
-      // Track scan event
       trackEvent("scan_initiated", { source: "camera_preview" });
 
-      // Analyze the captured image
-      const { data, error } = await supabase.functions.invoke("analyze-collectible", {
+      // Downscale in parallel with camera teardown (800px, 0.70 quality — same as web)
+      const imageBase64 = await downscaleBase64(imageForDisplay, 800, 0.70);
+
+      // Fire API call — don't wait for camera stop
+      const analyzePromise = supabase.functions.invoke("analyze-collectible", {
         body: { imageBase64, skipML: true },
       });
+
+      // Wait for both camera stop and API response
+      const [, { data, error }] = await Promise.all([stopCameraPromise, analyzePromise]);
 
       if (error) throw error;
 

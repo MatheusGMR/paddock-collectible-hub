@@ -215,7 +215,11 @@ serve(async (req) => {
     const PRIMARY_MODEL = "gpt-4o-mini";
     const FALLBACK_MODEL = "gpt-4o";
 
-    const stripFences = (s: string) => s.replace(/```json\n?|\n?```/g, "").trim();
+    const stripFences = (s: string) => {
+      const i = s.indexOf('{');
+      const j = s.lastIndexOf('}');
+      return i >= 0 && j > i ? s.substring(i, j + 1) : s.trim();
+    };
 
     // deno-lint-ignore no-explicit-any
     const shouldRetry = (r: any): boolean => {
