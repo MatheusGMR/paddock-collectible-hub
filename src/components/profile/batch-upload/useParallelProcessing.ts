@@ -9,6 +9,28 @@ import {
   PARALLEL_PROCESSING_LIMIT,
 } from "./types";
 
+/** Downscale a base64 image to reduce payload size before API call */
+function downscaleBase64(base64: string, maxDim = 800, quality = 0.70): Promise<string> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      let { width, height } = img;
+      if (width <= maxDim && height <= maxDim) { resolve(base64); return; }
+      const ratio = Math.min(maxDim / width, maxDim / height);
+      width = Math.round(width * ratio);
+      height = Math.round(height * ratio);
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext("2d")!;
+      ctx.drawImage(img, 0, 0, width, height);
+      resolve(canvas.toDataURL("image/jpeg", quality));
+    };
+    img.onerror = () => resolve(base64);
+    img.src = base64;
+  });
+}
+
 interface UseParallelProcessingProps {
   userId: string | undefined;
   onProgress: (current: number, total: number) => void;
