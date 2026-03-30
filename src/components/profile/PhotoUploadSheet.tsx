@@ -283,16 +283,20 @@ export const PhotoUploadSheet = ({
 
   // Allow closing at any time - save state for later resumption
   const handleSheetClose = useCallback(() => {
+    // Block closing during processing to prevent data loss
+    if (isProcessing) {
+      toast({
+        title: "Processando...",
+        description: "Aguarde a conclusão da análise",
+      });
+      return;
+    }
     // Always save results if we have any
     if (consolidatedResults.length > 0) {
       saveResults(consolidatedResults);
     }
-    // Cancel processing if ongoing (will be resumed when sheet reopens)
-    if (isProcessing) {
-      cancelProcessing();
-    }
     onOpenChange(false);
-  }, [consolidatedResults, isProcessing, saveResults, cancelProcessing, onOpenChange]);
+  }, [consolidatedResults, isProcessing, saveResults, onOpenChange, toast]);
 
   return (
     <Sheet
