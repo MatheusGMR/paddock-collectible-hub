@@ -136,28 +136,40 @@ export const PhotoUploadSheet = ({
     setPhase("processing");
     setProgress({ current: 0, total: newMedia.length });
 
-    // Start parallel processing
-    const processedQueue = await processQueue(newMedia);
-    setMediaQueue(processedQueue);
+    try {
+      // Start parallel processing
+      const processedQueue = await processQueue(newMedia);
+      setMediaQueue(processedQueue);
 
-    // Consolidate all results
-    const consolidated: ConsolidatedResult[] = [];
-    processedQueue.forEach((media, mediaIndex) => {
-      if (media.status === "success" && media.results) {
-        media.results.forEach((result) => {
-          consolidated.push({
-            ...result,
-            mediaId: media.id,
-            mediaIndex,
-            isSelected: !result.isDuplicate, // Auto-select non-duplicates
+      // Consolidate all results
+      const consolidated: ConsolidatedResult[] = [];
+      processedQueue.forEach((media, mediaIndex) => {
+        if (media.status === "success" && media.results) {
+          media.results.forEach((result) => {
+            consolidated.push({
+              ...result,
+              mediaId: media.id,
+              mediaIndex,
+              isSelected: !result.isDuplicate,
+            });
           });
-        });
-      }
-    });
+        }
+      });
 
-    setConsolidatedResults(consolidated);
-    saveResults(consolidated);
-    setPhase("reviewing");
+      setConsolidatedResults(consolidated);
+      if (consolidated.length > 0) {
+        saveResults(consolidated);
+      }
+      setPhase("reviewing");
+    } catch (error) {
+      console.error("[BatchUpload] Processing failed:", error);
+      toast({
+        title: t.common.error,
+        description: "Falha no processamento. Tente novamente.",
+        variant: "destructive",
+      });
+      setPhase("selecting");
+    }
   };
 
   // Individual item add handler for carousel view
