@@ -422,33 +422,24 @@ export const ScannerView = () => {
       return;
     }
     
-    // OPTIMIZATION: Delay photo enrichment by 500ms to let UI render first
-    // This makes the scanner feel much faster as results appear immediately
+    // OPTIMIZATION: Delay photo enrichment by 200ms to let UI render first
     enrichTimeoutRef.current = setTimeout(async () => {
-      console.log("[Scanner] Enriching results with real car photos (lazy)...");
-      
       try {
         const enrichedResults = await enrichResultsWithPhotos(analysisResults);
-        
-        // Mark as enriched
         enrichedResultsRef.current.add(resultsKey);
-        
-        // Only update if we actually got new photos
         const hasNewPhotos = enrichedResults.some(
           (r, i) => 
             r.realCarPhotos && 
             r.realCarPhotos.length > 0 && 
             (!analysisResults[i].realCarPhotos || analysisResults[i].realCarPhotos.length === 0)
         );
-        
         if (hasNewPhotos) {
-          console.log("[Scanner] Photos enriched, updating results");
           setAnalysisResults(enrichedResults);
         }
       } catch (err) {
         console.error("[Scanner] Failed to enrich photos:", err);
       }
-    }, 500); // 500ms delay for lazy loading
+    }, 200);
     
     return () => {
       if (enrichTimeoutRef.current) {
