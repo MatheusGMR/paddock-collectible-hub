@@ -107,6 +107,17 @@ export const CollectibleDetailCard = ({ item, open, onOpenChange, onDelete }: Co
     setImageLoaded(false);
     setImageFailed(false);
   }, [item?.id]);
+
+  // Resolve the best available image: captured photo > real car photo > placeholder
+  const resolvedImageUrl = (() => {
+    const captured = item?.image_url;
+    if (captured && captured.startsWith("http") && captured.length > 20) return captured;
+    if (captured && captured.startsWith("data:image/") && captured.length > 100) return captured;
+    // Fallback to first real car photo
+    const realPhotos = item?.item?.real_car_photos;
+    if (realPhotos && realPhotos.length > 0 && typeof realPhotos[0] === "string") return realPhotos[0];
+    return "/placeholder.svg";
+  })();
   
   if (!item?.item) return null;
   
@@ -154,7 +165,7 @@ export const CollectibleDetailCard = ({ item, open, onOpenChange, onDelete }: Co
                       </div>
                     )}
                     <img
-                      src={item.image_url || "/placeholder.svg"}
+                      src={resolvedImageUrl}
                       alt={`${data.real_car_brand} ${data.real_car_model}`}
                       className={cn("w-full h-full object-contain transition-opacity", imageLoaded ? "opacity-100" : "opacity-0")}
                       onLoad={(e) => {
