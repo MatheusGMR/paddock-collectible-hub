@@ -66,13 +66,11 @@ export const IndexRanking = ({ items, loading }: IndexRankingProps) => {
         ))}
       </div>
 
-      {selectedItem?.item?.index_breakdown && (
-        <IndexBreakdown
-          open={breakdownOpen}
-          onOpenChange={setBreakdownOpen}
-          score={selectedItem.item.price_index || 0}
-          tier={selectedItem.item.rarity_tier || "common"}
-          breakdown={selectedItem.item.index_breakdown}
+      {selectedItem && (
+        <CollectibleDetailCard
+          item={selectedItem}
+          open={detailOpen}
+          onOpenChange={setDetailOpen}
         />
       )}
     </>
