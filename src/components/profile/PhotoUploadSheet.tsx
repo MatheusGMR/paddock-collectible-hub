@@ -136,28 +136,40 @@ export const PhotoUploadSheet = ({
     setPhase("processing");
     setProgress({ current: 0, total: newMedia.length });
 
-    // Start parallel processing
-    const processedQueue = await processQueue(newMedia);
-    setMediaQueue(processedQueue);
+    try {
+      // Start parallel processing
+      const processedQueue = await processQueue(newMedia);
+      setMediaQueue(processedQueue);
 
-    // Consolidate all results
-    const consolidated: ConsolidatedResult[] = [];
-    processedQueue.forEach((media, mediaIndex) => {
-      if (media.status === "success" && media.results) {
-        media.results.forEach((result) => {
-          consolidated.push({
-            ...result,
-            mediaId: media.id,
-            mediaIndex,
-            isSelected: !result.isDuplicate, // Auto-select non-duplicates
+      // Consolidate all results
+      const consolidated: ConsolidatedResult[] = [];
+      processedQueue.forEach((media, mediaIndex) => {
+        if (media.status === "success" && media.results) {
+          media.results.forEach((result) => {
+            consolidated.push({
+              ...result,
+              mediaId: media.id,
+              mediaIndex,
+              isSelected: !result.isDuplicate,
+            });
           });
-        });
-      }
-    });
+        }
+      });
 
-    setConsolidatedResults(consolidated);
-    saveResults(consolidated);
-    setPhase("reviewing");
+      setConsolidatedResults(consolidated);
+      if (consolidated.length > 0) {
+        saveResults(consolidated);
+      }
+      setPhase("reviewing");
+    } catch (error) {
+      console.error("[BatchUpload] Processing failed:", error);
+      toast({
+        title: t.common.error,
+        description: "Falha no processamento. Tente novamente.",
+        variant: "destructive",
+      });
+      setPhase("selecting");
+    }
   };
 
   // Individual item add handler for carousel view
@@ -271,16 +283,20 @@ export const PhotoUploadSheet = ({
 
   // Allow closing at any time - save state for later resumption
   const handleSheetClose = useCallback(() => {
+    // Block closing during processing to prevent data loss
+    if (isProcessing) {
+      toast({
+        title: "Processando...",
+        description: "Aguarde a conclusão da análise",
+      });
+      return;
+    }
     // Always save results if we have any
     if (consolidatedResults.length > 0) {
       saveResults(consolidatedResults);
     }
-    // Cancel processing if ongoing (will be resumed when sheet reopens)
-    if (isProcessing) {
-      cancelProcessing();
-    }
     onOpenChange(false);
-  }, [consolidatedResults, isProcessing, saveResults, cancelProcessing, onOpenChange]);
+  }, [consolidatedResults, isProcessing, saveResults, onOpenChange, toast]);
 
   return (
     <Sheet
