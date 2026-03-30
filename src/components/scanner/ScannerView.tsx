@@ -32,6 +32,30 @@ import { Capacitor } from "@capacitor/core";
 import { Camera as CapacitorCamera } from "@capacitor/camera";
 
 // OPTIMIZATION: Process items with cropping and duplicate check in parallel
+/**
+ * Downscale a base64 image to maxDim px on the longest side.
+ * Returns a JPEG data URI. Runs synchronously on a canvas (fast).
+ */
+function downscaleBase64(base64: string, maxDim = 800, quality = 0.70): Promise<string> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      let w = img.width;
+      let h = img.height;
+      if (w <= maxDim && h <= maxDim) { resolve(base64); return; }
+      const scale = maxDim / Math.max(w, h);
+      w = Math.round(w * scale);
+      h = Math.round(h * scale);
+      const c = document.createElement("canvas");
+      c.width = w; c.height = h;
+      c.getContext("2d")!.drawImage(img, 0, 0, w, h);
+      resolve(c.toDataURL("image/jpeg", quality));
+    };
+    img.onerror = () => resolve(base64); // fallback to original
+    img.src = base64;
+  });
+}
+
 async function processItemsOptimized(
   items: AnalysisResult[],
   imageBase64: string,
@@ -398,33 +422,24 @@ export const ScannerView = () => {
       return;
     }
     
-    // OPTIMIZATION: Delay photo enrichment by 500ms to let UI render first
-    // This makes the scanner feel much faster as results appear immediately
+    // OPTIMIZATION: Delay photo enrichment by 200ms to let UI render first
     enrichTimeoutRef.current = setTimeout(async () => {
-      console.log("[Scanner] Enriching results with real car photos (lazy)...");
-      
       try {
         const enrichedResults = await enrichResultsWithPhotos(analysisResults);
-        
-        // Mark as enriched
         enrichedResultsRef.current.add(resultsKey);
-        
-        // Only update if we actually got new photos
         const hasNewPhotos = enrichedResults.some(
           (r, i) => 
             r.realCarPhotos && 
             r.realCarPhotos.length > 0 && 
             (!analysisResults[i].realCarPhotos || analysisResults[i].realCarPhotos.length === 0)
         );
-        
         if (hasNewPhotos) {
-          console.log("[Scanner] Photos enriched, updating results");
           setAnalysisResults(enrichedResults);
         }
       } catch (err) {
         console.error("[Scanner] Failed to enrich photos:", err);
       }
-    }, 500); // 500ms delay for lazy loading
+    }, 200);
     
     return () => {
       if (enrichTimeoutRef.current) {
@@ -1059,31 +1074,35 @@ export const ScannerView = () => {
         return;
       }
       
-      const imageBase64 = result.base64Image;
-      console.log(`[Scanner] Camera-preview captured. base64 length: ${imageBase64.length}, starts with: ${imageBase64.substring(0, 30)}`);
-      const imageForDisplay = isBase64DataUri(imageBase64)
-        ? imageBase64
-        : `data:image/jpeg;base64,${imageBase64}`;
-      
-      // 2. IMMEDIATELY stop camera and show captured image (freeze the frame)
-      await cameraPreview.stop();
-      // Force a synchronous style update to exit transparent mode before setting state
-      const container = document.getElementById('camera-preview-container');
-      if (container) container.style.display = 'none';
-      setUseCameraPreview(false);
-      setCameraActive(false);
-      setCapturedImage(imageForDisplay);
+      const rawBase64 = result.base64Image;
+      const imageForDisplay = isBase64DataUri(rawBase64)
+        ? rawBase64
+        : `data:image/jpeg;base64,${rawBase64}`;
 
-      // 3. Now start the scanning/analysis phase
+      // 2. IMMEDIATELY: stop camera, show captured image, AND fire API call — all in parallel
+      // This overlaps camera teardown (~120ms) with image downscaling and network round-trip
+      const stopCameraPromise = (async () => {
+        await cameraPreview.stop();
+        const container = document.getElementById('camera-preview-container');
+        if (container) container.style.display = 'none';
+        setUseCameraPreview(false);
+        setCameraActive(false);
+      })();
+
+      setCapturedImage(imageForDisplay);
       setIsScanning(true);
-      
-      // Track scan event
       trackEvent("scan_initiated", { source: "camera_preview" });
 
-      // Analyze the captured image
-      const { data, error } = await supabase.functions.invoke("analyze-collectible", {
+      // Downscale in parallel with camera teardown (800px, 0.70 quality — same as web)
+      const imageBase64 = await downscaleBase64(imageForDisplay, 800, 0.70);
+
+      // Fire API call — don't wait for camera stop
+      const analyzePromise = supabase.functions.invoke("analyze-collectible", {
         body: { imageBase64, skipML: true },
       });
+
+      // Wait for both camera stop and API response
+      const [, { data, error }] = await Promise.all([stopCameraPromise, analyzePromise]);
 
       if (error) throw error;
 
@@ -1717,14 +1736,15 @@ export const ScannerView = () => {
       // Handle image file
       const reader = new FileReader();
       reader.onloadend = async () => {
-        const imageBase64 = reader.result as string;
-        setCapturedImage(imageBase64);
+        const rawBase64 = reader.result as string;
+        setCapturedImage(rawBase64);
         setIsScanning(true);
         
-        // Track scan event
         trackEvent("scan_initiated", { source: "gallery_image" });
 
         try {
+          // Downscale for faster upload & AI processing
+          const imageBase64 = await downscaleBase64(rawBase64, 800, 0.70);
           const { data, error } = await supabase.functions.invoke("analyze-collectible", {
             body: { imageBase64, skipML: true },
           });

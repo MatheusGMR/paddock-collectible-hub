@@ -215,7 +215,11 @@ serve(async (req) => {
     const PRIMARY_MODEL = "gpt-4o-mini";
     const FALLBACK_MODEL = "gpt-4o";
 
-    const stripFences = (s: string) => s.replace(/```json\n?|\n?```/g, "").trim();
+    const stripFences = (s: string) => {
+      const i = s.indexOf('{');
+      const j = s.lastIndexOf('}');
+      return i >= 0 && j > i ? s.substring(i, j + 1) : s.trim();
+    };
 
     // deno-lint-ignore no-explicit-any
     const shouldRetry = (r: any): boolean => {
@@ -235,9 +239,8 @@ serve(async (req) => {
 
     const fetchAndParse = async (model: string, attempt: number, reason: string) => {
       const isFallback = model === FALLBACK_MODEL;
-      // Primary (gpt-4o-mini): use "low" for speed (~2-3s). Fallback (gpt-4o): use "auto" for quality.
       const imageDetail = isFallback ? "auto" : "low";
-      const maxTokens = isFallback ? 3072 : 2048;
+      const maxTokens = isFallback ? 2560 : 1536;
       const systemPrompt = isFallback ? dynamicPrompt + FALLBACK_PROMPT_EXTRA : dynamicPrompt;
 
       const messages = [
