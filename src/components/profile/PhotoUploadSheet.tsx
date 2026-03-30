@@ -560,7 +560,7 @@ export const PhotoUploadSheet = ({
                     <div
                       key={media.id}
                       className={`relative rounded-xl overflow-hidden border-2 ${
-                        isReplaced ? "border-primary" : "border-amber-500/50"
+                        isReplaced ? "border-primary" : "border-destructive/50"
                       }`}
                     >
                       <img
