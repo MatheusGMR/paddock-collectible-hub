@@ -4,6 +4,7 @@ import { IndexBreakdown } from "./IndexBreakdown";
 import { PriceIndexBreakdown } from "@/lib/priceIndex";
 import { Loader2 } from "lucide-react";
 import { CollectionItemWithIndex } from "@/lib/database";
+import { CollectibleDetailCard } from "@/components/collection/CollectibleDetailCard";
 
 interface IndexRankingProps {
   items: CollectionItemWithIndex[];
@@ -12,7 +13,7 @@ interface IndexRankingProps {
 
 export const IndexRanking = ({ items, loading }: IndexRankingProps) => {
   const [selectedItem, setSelectedItem] = useState<CollectionItemWithIndex | null>(null);
-  const [breakdownOpen, setBreakdownOpen] = useState(false);
+  const [detailOpen, setDetailOpen] = useState(false);
 
   // Filter items that have a price index and sort by score
   const rankedItems = items
@@ -21,7 +22,7 @@ export const IndexRanking = ({ items, loading }: IndexRankingProps) => {
 
   const handleItemClick = (item: CollectionItemWithIndex) => {
     setSelectedItem(item);
-    setBreakdownOpen(true);
+    setDetailOpen(true);
   };
 
   if (loading) {

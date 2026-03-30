@@ -81,6 +81,8 @@ export interface CollectionItemWithIndex {
     music_suggestion?: string | null;
     music_selection_reason?: string | null;
     real_car_photos?: string[] | null;
+    estimated_value_min?: number | null;
+    estimated_value_max?: number | null;
   } | null;
 }
 
