@@ -32,6 +32,30 @@ import { Capacitor } from "@capacitor/core";
 import { Camera as CapacitorCamera } from "@capacitor/camera";
 
 // OPTIMIZATION: Process items with cropping and duplicate check in parallel
+/**
+ * Downscale a base64 image to maxDim px on the longest side.
+ * Returns a JPEG data URI. Runs synchronously on a canvas (fast).
+ */
+function downscaleBase64(base64: string, maxDim = 800, quality = 0.70): Promise<string> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      let w = img.width;
+      let h = img.height;
+      if (w <= maxDim && h <= maxDim) { resolve(base64); return; }
+      const scale = maxDim / Math.max(w, h);
+      w = Math.round(w * scale);
+      h = Math.round(h * scale);
+      const c = document.createElement("canvas");
+      c.width = w; c.height = h;
+      c.getContext("2d")!.drawImage(img, 0, 0, w, h);
+      resolve(c.toDataURL("image/jpeg", quality));
+    };
+    img.onerror = () => resolve(base64); // fallback to original
+    img.src = base64;
+  });
+}
+
 async function processItemsOptimized(
   items: AnalysisResult[],
   imageBase64: string,
