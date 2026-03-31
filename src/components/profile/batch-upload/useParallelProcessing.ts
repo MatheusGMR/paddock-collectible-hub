@@ -43,7 +43,73 @@ export function useParallelProcessing({
   onMediaUpdate,
 }: UseParallelProcessingProps) {
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isCounting, setIsCounting] = useState(false);
   const abortRef = useRef(false);
+
+  /** Quick count: detect number of vehicles per image (fast & cheap) */
+  const quickCountQueue = useCallback(
+    async (queue: QueuedMedia[]): Promise<QueuedMedia[]> => {
+      setIsCounting(true);
+      abortRef.current = false;
+
+      const results: QueuedMedia[] = [...queue];
+
+      for (let i = 0; i < queue.length; i += PARALLEL_PROCESSING_LIMIT) {
+        if (abortRef.current) break;
+
+        const chunk = queue.slice(i, i + PARALLEL_PROCESSING_LIMIT);
+        const chunkIndices = chunk.map((_, idx) => i + idx);
+
+        // Mark as counting
+        chunkIndices.forEach((idx) => {
+          results[idx] = { ...results[idx], status: "counting" };
+          onMediaUpdate(results[idx]);
+        });
+
+        const chunkResults = await Promise.all(
+          chunk.map(async (media) => {
+            try {
+              const optimized = media.isVideo
+                ? media.base64
+                : await downscaleBase64(media.base64, 800, 0.70);
+
+              const { data, error } = await supabase.functions.invoke("analyze-collectible", {
+                body: { imageBase64: optimized, countOnly: true },
+              });
+
+              if (error) throw error;
+
+              return {
+                ...media,
+                status: "counted" as const,
+                vehicleCount: data?.count || 0,
+                detectedVehicles: Array.isArray(data?.vehicles) ? data.vehicles : [],
+              };
+            } catch (err) {
+              console.error("[QuickCount] Error:", err);
+              return {
+                ...media,
+                status: "counted" as const,
+                vehicleCount: 0,
+                detectedVehicles: [],
+              };
+            }
+          })
+        );
+
+        chunkResults.forEach((result, chunkIdx) => {
+          const globalIdx = i + chunkIdx;
+          results[globalIdx] = result;
+          onMediaUpdate(result);
+          onProgress(globalIdx + 1, queue.length);
+        });
+      }
+
+      setIsCounting(false);
+      return results;
+    },
+    [onProgress, onMediaUpdate]
+  );
 
   const analyzeMedia = useCallback(
     async (mediaBase64: string, isVideo: boolean): Promise<AnalysisResult[]> => {
@@ -199,7 +265,9 @@ export function useParallelProcessing({
 
   return {
     isProcessing,
+    isCounting,
     processQueue,
+    quickCountQueue,
     cancelProcessing,
   };
 }
