@@ -163,7 +163,7 @@ serve(async (req) => {
   const startTime = Date.now();
 
   try {
-    const { imageBase64, skipML, countOnly, vehicleCount, skipVehicleDetectionValidation } = await req.json();
+    const { imageBase64, skipML, countOnly, vehicleCount, skipVehicleDetectionValidation, skipFallback } = await req.json();
     if (!imageBase64) return new Response(JSON.stringify({ error: "Image required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
     const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
