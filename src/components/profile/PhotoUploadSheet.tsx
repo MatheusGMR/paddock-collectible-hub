@@ -207,7 +207,15 @@ export const PhotoUploadSheet = ({
   const runFullAnalysis = async (media: QueuedMedia[]) => {
     try {
       const processedQueue = await processQueue(media);
-      setMediaQueue(processedQueue);
+      setMediaQueue((prev) => {
+        // Merge processed results back into full queue
+        const updated = [...prev];
+        processedQueue.forEach((processed) => {
+          const idx = updated.findIndex((m) => m.id === processed.id);
+          if (idx !== -1) updated[idx] = processed;
+        });
+        return updated;
+      });
 
       const { consolidated, failed } = consolidateResults(processedQueue);
 
@@ -216,18 +224,25 @@ export const PhotoUploadSheet = ({
 
       if (failed.length > 0) {
         setPhase("retry-failed");
-      } else {
-        if (consolidated.length > 0) saveResults(consolidated);
+      } else if (consolidated.length > 0) {
+        saveResults(consolidated);
         setPhase("reviewing");
+      } else {
+        // All failed with no results - show retry screen instead of resetting
+        setPhase("retry-failed");
       }
     } catch (error) {
       console.error("[BatchUpload] Processing failed:", error);
+      // Never reset to selecting - show retry screen so user can try again
+      const { consolidated, failed } = consolidateResults(media);
+      setConsolidatedResults(consolidated);
+      setFailedMediaIndices(failed.length > 0 ? failed : media.map((_, i) => i));
+      setPhase("retry-failed");
       toast({
         title: t.common.error,
-        description: "Falha no processamento. Tente novamente.",
+        description: "Falha no processamento. Você pode substituir as imagens e tentar novamente.",
         variant: "destructive",
       });
-      setPhase("selecting");
     }
   };
 

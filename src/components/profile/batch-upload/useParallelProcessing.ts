@@ -214,11 +214,11 @@ export function useParallelProcessing({
           results,
         };
       } catch (error) {
-        console.error("Analysis error:", error);
+        console.error("[BatchProcessing] Analysis error for media:", media.id, error);
         return {
           ...media,
           status: "error",
-          error: "Falha na análise",
+          error: error instanceof Error ? error.message : "Falha na análise",
         };
       }
     },
@@ -246,16 +246,27 @@ export function useParallelProcessing({
           onMediaUpdate(results[idx]);
         });
 
-        // Process chunk in parallel
-        const chunkResults = await Promise.all(
+        // Process chunk in parallel using allSettled to never lose partial results
+        const chunkSettled = await Promise.allSettled(
           chunk.map((media) => processMediaItem(media))
         );
 
-        // Update results
-        chunkResults.forEach((result, chunkIdx) => {
+        // Update results - handle both fulfilled and rejected
+        chunkSettled.forEach((settled, chunkIdx) => {
           const globalIdx = i + chunkIdx;
-          results[globalIdx] = result;
-          onMediaUpdate(result);
+          if (settled.status === "fulfilled") {
+            results[globalIdx] = settled.value;
+            onMediaUpdate(settled.value);
+          } else {
+            // Even if Promise itself rejected (shouldn't happen, but safety net)
+            const errorMedia: QueuedMedia = {
+              ...results[globalIdx],
+              status: "error",
+              error: String(settled.reason ?? "Falha inesperada"),
+            };
+            results[globalIdx] = errorMedia;
+            onMediaUpdate(errorMedia);
+          }
           processedCount++;
           onProgress(processedCount, queue.length);
         });
