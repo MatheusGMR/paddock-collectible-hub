@@ -151,9 +151,9 @@ export function BatchCarouselView({
           {addedCount} {t.scanner.itemsAdded}
         </p>
         <div className="flex gap-3 w-full max-w-xs">
-          <Button onClick={onScanAgain} variant="outline" className="flex-1">
+          <Button onClick={onSkipAll} variant="outline" className="flex-1">
             <RotateCcw className="h-4 w-4 mr-2" />
-            {t.scanner.scanAgain}
+            Novo upload
           </Button>
           <Button onClick={onComplete} className="flex-1">
             {t.scanner.viewCollection}
