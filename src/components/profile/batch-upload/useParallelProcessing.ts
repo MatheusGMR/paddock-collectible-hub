@@ -133,78 +133,79 @@ export function useParallelProcessing({
           },
         });
 
-      if (error) throw error;
+        if (error) throw error;
 
-      // Normalize response - sometimes AI returns items but count=0
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const raw = data as any;
-      const items: AnalysisResult[] = Array.isArray(raw?.items) ? raw.items : [];
-      const count = typeof raw?.count === "number" && raw.count > 0 ? raw.count : items.length;
-      const identified = Boolean(raw?.identified) || items.length > 0;
-      const responseType = raw?.detectedType || "collectible";
+        // Normalize response - sometimes AI returns items but count=0
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const raw = data as any;
+        const items: AnalysisResult[] = Array.isArray(raw?.items) ? raw.items : [];
+        const count = typeof raw?.count === "number" && raw.count > 0 ? raw.count : items.length;
+        const identified = Boolean(raw?.identified) || items.length > 0;
+        const responseType = raw?.detectedType || "collectible";
 
-      console.log("[BatchProcessing] Response:", { identified, count, itemsLength: items.length, responseType });
+        console.log("[BatchProcessing] Response:", { identified, count, itemsLength: items.length, responseType });
 
-      // For real cars, return empty (handled separately in dedicated flow)
-      if (responseType === "real_car") {
-        console.log("[BatchProcessing] Real car detected, skipping");
-        return [];
-      }
+        // For real cars, return empty (handled separately in dedicated flow)
+        if (responseType === "real_car") {
+          console.log("[BatchProcessing] Real car detected, skipping");
+          return [];
+        }
 
-      // Only skip if truly unidentified AND no items
-      if (!identified && items.length === 0) {
-        console.log("[BatchProcessing] Not identified and no items");
-        return [];
-      }
+        // Only skip if truly unidentified AND no items
+        if (!identified && items.length === 0) {
+          console.log("[BatchProcessing] Not identified and no items");
+          return [];
+        }
 
-      // Crop individual car images (only for images, not videos)
-      const itemsWithCrops = await Promise.all(
-        items.map(async (item) => {
-          if (!isVideo && item.boundingBox && mediaBase64) {
-            try {
-              const croppedImage = await cropImageByBoundingBox(
-                mediaBase64,
-                item.boundingBox as BoundingBox
-              );
-              console.log("[BatchProcessing] Cropped image for", item.realCar?.brand, item.realCar?.model);
-              return { ...item, croppedImage };
-            } catch (error) {
-              console.error("[BatchProcessing] Failed to crop image:", error);
-              // Fallback to original image
-              return { ...item, croppedImage: mediaBase64 };
+        // Crop individual car images (only for images, not videos)
+        const itemsWithCrops = await Promise.all(
+          items.map(async (item) => {
+            if (!isVideo && item.boundingBox && mediaBase64) {
+              try {
+                const croppedImage = await cropImageByBoundingBox(
+                  mediaBase64,
+                  item.boundingBox as BoundingBox
+                );
+                console.log("[BatchProcessing] Cropped image for", item.realCar?.brand, item.realCar?.model);
+                return { ...item, croppedImage };
+              } catch (error) {
+                console.error("[BatchProcessing] Failed to crop image:", error);
+                return { ...item, croppedImage: mediaBase64 };
+              }
             }
-          }
-          // For videos or items without bounding box, use original
-          return { ...item, croppedImage: isVideo ? undefined : mediaBase64 };
-        })
-      );
+            return { ...item, croppedImage: isVideo ? undefined : mediaBase64 };
+          })
+        );
 
-      // Check for duplicates
-      const itemsWithDuplicateCheck = await Promise.all(
-        itemsWithCrops.map(async (item) => {
-          if (userId) {
-            try {
-              const duplicate = await checkDuplicateInCollection(
-                userId,
-                item.realCar.brand,
-                item.realCar.model,
-                item.collectible?.color
-              );
-              return {
-                ...item,
-                isDuplicate: duplicate.isDuplicate,
-                existingItemImage: duplicate.existingItemImage,
-              };
-            } catch (error) {
-              console.error("Failed to check duplicate:", error);
-              return item;
+        // Check for duplicates
+        const itemsWithDuplicateCheck = await Promise.all(
+          itemsWithCrops.map(async (item) => {
+            if (userId) {
+              try {
+                const duplicate = await checkDuplicateInCollection(
+                  userId,
+                  item.realCar.brand,
+                  item.realCar.model,
+                  item.collectible?.color
+                );
+                return {
+                  ...item,
+                  isDuplicate: duplicate.isDuplicate,
+                  existingItemImage: duplicate.existingItemImage,
+                };
+              } catch (error) {
+                console.error("Failed to check duplicate:", error);
+                return item;
+              }
             }
-          }
-          return item;
-        })
-      );
+            return item;
+          })
+        );
 
-      return itemsWithDuplicateCheck;
+        return itemsWithDuplicateCheck;
+      } finally {
+        clearTimeout(timeout);
+      }
     },
     [userId]
   );
