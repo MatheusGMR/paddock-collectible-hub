@@ -709,8 +709,8 @@ export const ScannerView = () => {
         const stream = await navigator.mediaDevices.getUserMedia({
           video: {
             facingMode: "environment",
-            width: { ideal: 1280 },
-            height: { ideal: 720 }
+            width: { ideal: 1080 },
+            height: { ideal: 1920 }
           },
           audio: false
         });
@@ -2279,16 +2279,16 @@ export const ScannerView = () => {
   }
 
   return (
-    <div className={`fixed inset-0 z-50 flex flex-col ${useCameraPreview && !capturedImage && !hasResults ? 'native-camera-mode' : 'bg-background'}`} style={{ height: '100vh', minHeight: '100dvh' }}>
+    <div className={`fixed inset-0 z-50 flex flex-col ${useCameraPreview && !capturedImage && !hasResults ? 'native-camera-mode' : 'bg-background'}`} style={{ height: '100dvh', minHeight: '-webkit-fill-available' }}>
       {/* Camera-preview container - native layer renders behind WebView */}
       {/* IMPORTANT: this container must exist BEFORE CameraPreview.start() runs (parent option) */}
       {Capacitor.isNativePlatform() && (
-        <div id="camera-preview-container" className="fixed inset-0 z-0 w-screen" style={{ width: '100vw', height: '100vh', minHeight: '100dvh' }} />
+        <div id="camera-preview-container" className="fixed inset-0 z-0" style={{ width: '100vw', height: '100dvh' }} />
       )}
       
       {/* Camera/Preview View */}
       <div
-        className={`scanner-camera-layer relative flex-1 overflow-hidden select-none ${
+        className={`scanner-camera-layer absolute inset-0 overflow-hidden select-none ${
           useCameraPreview && !capturedImage && !hasResults ? 'bg-transparent' : 'bg-black'
         }`}
         style={{ WebkitUserSelect: 'none', WebkitTouchCallout: 'none' } as React.CSSProperties}
@@ -2537,7 +2537,7 @@ export const ScannerView = () => {
         />
       ) : !videoPreviewUrl && (
         /* Floating controls overlay - no bottom panel */
-        <div className="absolute bottom-0 left-0 right-0 pb-8 safe-bottom">
+        <div className="absolute bottom-0 left-0 right-0 pb-8 safe-bottom z-20">
           <div className="flex flex-col items-center gap-3">
             {cameraError ? (
               <div className="bg-black/60 backdrop-blur-md rounded-2xl p-5 mx-6 max-w-sm">
