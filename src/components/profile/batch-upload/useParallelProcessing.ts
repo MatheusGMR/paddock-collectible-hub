@@ -6,6 +6,7 @@ import {
   QueuedMedia,
   AnalysisResult,
   PARALLEL_PROCESSING_LIMIT,
+  DetectedVehicle,
 } from "./types";
 
 /** Downscale a base64 image to reduce payload size before API call */
