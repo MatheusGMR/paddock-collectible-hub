@@ -1104,8 +1104,8 @@ export const ScannerView = () => {
       setIsScanning(true);
       trackEvent("scan_initiated", { source: "camera_preview" });
 
-      // Downscale in parallel with camera teardown (800px, 0.70 quality — same as web)
-      const imageBase64 = await downscaleBase64(imageForDisplay, 800, 0.70);
+      // Downscale in parallel with camera teardown (640px, 0.55 quality for speed)
+      const imageBase64 = await downscaleBase64(imageForDisplay);
 
       // Fire API call — don't wait for camera stop
       const analyzePromise = supabase.functions.invoke("analyze-collectible", {
