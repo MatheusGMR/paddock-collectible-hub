@@ -243,6 +243,19 @@ export function BatchCarouselView({
             </div>
           )}
 
+          {/* Market Value */}
+          {result.marketValue && result.marketValue.min > 0 && (
+            <div className="rounded-xl border border-border/50 bg-card/80 p-4 space-y-1">
+              <div className="flex items-center gap-2 mb-2">
+                <TrendingUp className="h-4 w-4 text-primary" />
+                <span className="text-sm font-semibold text-foreground">Valor de Mercado</span>
+              </div>
+              <p className="text-xl font-bold text-foreground text-center">
+                {formatBRL(result.marketValue.min)} – {formatBRL(result.marketValue.max)}
+              </p>
+            </div>
+          )}
+
           {/* Collapsible Sections */}
           <div className="space-y-3">
             {/* Real Car Data */}
