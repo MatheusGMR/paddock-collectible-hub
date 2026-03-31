@@ -235,9 +235,10 @@ Conte CADA carro separado individualmente. Máximo 10.`;
     }
     // ── END QUICK COUNT MODE ──
 
+    // Auth check — lightweight, no supabase client needed if skipML
     const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
-    // Auth check and ML enhancements in parallel
+    // Auth and ML in parallel — skip ML RPCs when skipML=true (saves ~300ms)
     const authPromise = (async () => {
       const auth = req.headers.get("authorization");
       if (auth) try { return (await sb.auth.getUser(auth.replace("Bearer ", ""))).data.user?.id || null; } catch {}
