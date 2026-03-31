@@ -24,6 +24,7 @@ export interface AnalysisResult {
     notes: string;
   };
   priceIndex?: PriceIndex;
+  marketValue?: { min: number; max: number; currency: string; source: string; confidence: 'high' | 'medium' | 'low' };
   musicSuggestion?: string;
   musicSelectionReason?: string;
   musicListeningTip?: string;
