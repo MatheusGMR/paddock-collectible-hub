@@ -265,7 +265,9 @@ export function useParallelProcessing({
 
   return {
     isProcessing,
+    isCounting,
     processQueue,
+    quickCountQueue,
     cancelProcessing,
   };
 }
