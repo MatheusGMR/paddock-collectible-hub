@@ -1,9 +1,73 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { Check, Plus, Eye, ChevronLeft, ChevronRight, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { QueuedMedia, DetectedVehicle } from "./types";
+
+/** Renders an image with properly positioned bounding boxes that respect object-contain */
+function ImageWithBoxes({
+  src,
+  alt,
+  detectedVehicles,
+}: {
+  src: string;
+  alt: string;
+  detectedVehicles?: DetectedVehicle[];
+}) {
+  const imgRef = useRef<HTMLImageElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [imgRect, setImgRect] = useState<{ ox: number; oy: number; rw: number; rh: number } | null>(null);
+
+  const calcRect = useCallback(() => {
+    const img = imgRef.current;
+    if (!img || !img.naturalWidth) return;
+    const cw = img.clientWidth;
+    const ch = img.clientHeight;
+    const nw = img.naturalWidth;
+    const nh = img.naturalHeight;
+    const scale = Math.min(cw / nw, ch / nh);
+    const rw = nw * scale;
+    const rh = nh * scale;
+    const ox = (cw - rw) / 2;
+    const oy = (ch - rh) / 2;
+    setImgRect({ ox, oy, rw, rh });
+  }, []);
+
+  useEffect(() => {
+    calcRect();
+    window.addEventListener("resize", calcRect);
+    return () => window.removeEventListener("resize", calcRect);
+  }, [calcRect]);
+
+  return (
+    <div ref={containerRef} className="flex-1 relative mx-4 mb-3 rounded-xl overflow-hidden bg-muted">
+      <img
+        ref={imgRef}
+        src={src}
+        alt={alt}
+        className="w-full h-full object-contain"
+        onLoad={calcRect}
+      />
+      {imgRect && detectedVehicles?.map((vehicle, vIdx) => (
+        <div
+          key={vIdx}
+          className="absolute border-2 border-primary rounded-lg pointer-events-none"
+          style={{
+            left: imgRect.ox + (vehicle.boundingBox.x / 100) * imgRect.rw,
+            top: imgRect.oy + (vehicle.boundingBox.y / 100) * imgRect.rh,
+            width: (vehicle.boundingBox.width / 100) * imgRect.rw,
+            height: (vehicle.boundingBox.height / 100) * imgRect.rh,
+          }}
+        >
+          <div className="absolute -top-5 left-0 bg-primary text-primary-foreground text-[10px] px-1.5 py-0.5 rounded-t-md whitespace-nowrap">
+            {vehicle.label}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 interface BatchConfirmGridProps {
   mediaQueue: QueuedMedia[];
@@ -21,6 +85,9 @@ export function BatchConfirmGrid({
   const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
   const totalVehicles = mediaQueue.reduce((sum, m) => sum + (m.vehicleCount || 0), 0);
   const allCounted = mediaQueue.every((m) => m.status === "counted");
+  // Allow advancing if user manually adjusted any count (even if auto-detection returned 0)
+  const hasManualAdjustments = mediaQueue.some((m) => m.manuallyAdjusted && (m.vehicleCount || 0) > 0);
+  const canConfirm = allCounted && (totalVehicles > 0 || hasManualAdjustments);
 
   const selectedMedia = selectedImageIndex !== null ? mediaQueue[selectedImageIndex] : null;
 
@@ -63,30 +130,11 @@ export function BatchConfirmGrid({
           </div>
 
           {/* Image with bounding boxes */}
-          <div className="flex-1 relative mx-4 mb-3 rounded-xl overflow-hidden bg-muted">
-            <img
-              src={selectedMedia.base64}
-              alt={`Foto ${selectedImageIndex + 1}`}
-              className="w-full h-full object-contain"
-            />
-            {/* Bounding box overlays */}
-            {selectedMedia.detectedVehicles?.map((vehicle, vIdx) => (
-              <div
-                key={vIdx}
-                className="absolute border-2 border-primary rounded-lg pointer-events-none"
-                style={{
-                  left: `${vehicle.boundingBox.x}%`,
-                  top: `${vehicle.boundingBox.y}%`,
-                  width: `${vehicle.boundingBox.width}%`,
-                  height: `${vehicle.boundingBox.height}%`,
-                }}
-              >
-                <div className="absolute -top-5 left-0 bg-primary text-primary-foreground text-[10px] px-1.5 py-0.5 rounded-t-md whitespace-nowrap">
-                  {vehicle.label}
-                </div>
-              </div>
-            ))}
-          </div>
+          <ImageWithBoxes
+            src={selectedMedia.base64}
+            alt={`Foto ${selectedImageIndex + 1}`}
+            detectedVehicles={selectedMedia.detectedVehicles}
+          />
 
           {/* Count adjustment */}
           <div className="px-4 pb-4">
@@ -231,7 +279,7 @@ export function BatchConfirmGrid({
           <div className="px-4 py-3 border-t border-border">
             <Button
               onClick={onConfirm}
-              disabled={!allCounted || totalVehicles === 0}
+              disabled={!canConfirm}
               className="w-full"
             >
               {totalVehicles > 0
