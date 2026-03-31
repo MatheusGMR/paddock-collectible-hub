@@ -66,30 +66,11 @@ export function BatchConfirmGrid({
           </div>
 
           {/* Image with bounding boxes */}
-          <div className="flex-1 relative mx-4 mb-3 rounded-xl overflow-hidden bg-muted">
-            <img
-              src={selectedMedia.base64}
-              alt={`Foto ${selectedImageIndex + 1}`}
-              className="w-full h-full object-contain"
-            />
-            {/* Bounding box overlays */}
-            {selectedMedia.detectedVehicles?.map((vehicle, vIdx) => (
-              <div
-                key={vIdx}
-                className="absolute border-2 border-primary rounded-lg pointer-events-none"
-                style={{
-                  left: `${vehicle.boundingBox.x}%`,
-                  top: `${vehicle.boundingBox.y}%`,
-                  width: `${vehicle.boundingBox.width}%`,
-                  height: `${vehicle.boundingBox.height}%`,
-                }}
-              >
-                <div className="absolute -top-5 left-0 bg-primary text-primary-foreground text-[10px] px-1.5 py-0.5 rounded-t-md whitespace-nowrap">
-                  {vehicle.label}
-                </div>
-              </div>
-            ))}
-          </div>
+          <ImageWithBoxes
+            src={selectedMedia.base64}
+            alt={`Foto ${selectedImageIndex + 1}`}
+            detectedVehicles={selectedMedia.detectedVehicles}
+          />
 
           {/* Count adjustment */}
           <div className="px-4 pb-4">
