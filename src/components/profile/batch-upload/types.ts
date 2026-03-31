@@ -88,6 +88,7 @@ export interface QueuedMedia {
   // Quick count data
   vehicleCount?: number;
   detectedVehicles?: DetectedVehicle[];
+  manuallyAdjusted?: boolean;
 }
 
 export interface DetectedVehicle {
