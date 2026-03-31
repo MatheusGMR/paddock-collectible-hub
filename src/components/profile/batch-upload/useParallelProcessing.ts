@@ -9,7 +9,7 @@ import {
 } from "./types";
 
 /** Downscale a base64 image to reduce payload size before API call */
-function downscaleBase64(base64: string, maxDim = 800, quality = 0.70): Promise<string> {
+function downscaleBase64(base64: string, maxDim = 640, quality = 0.55): Promise<string> {
   return new Promise((resolve) => {
     const img = new Image();
     img.onload = () => {
