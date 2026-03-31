@@ -36,7 +36,7 @@ import { Camera as CapacitorCamera } from "@capacitor/camera";
  * Downscale a base64 image to maxDim px on the longest side.
  * Returns a JPEG data URI. Runs synchronously on a canvas (fast).
  */
-function downscaleBase64(base64: string, maxDim = 800, quality = 0.70): Promise<string> {
+function downscaleBase64(base64: string, maxDim = 640, quality = 0.55): Promise<string> {
   return new Promise((resolve) => {
     const img = new Image();
     img.onload = () => {
