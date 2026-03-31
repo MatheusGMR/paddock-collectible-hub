@@ -2283,7 +2283,7 @@ export const ScannerView = () => {
       {/* Camera-preview container - native layer renders behind WebView */}
       {/* IMPORTANT: this container must exist BEFORE CameraPreview.start() runs (parent option) */}
       {Capacitor.isNativePlatform() && (
-        <div id="camera-preview-container" className="fixed inset-0 z-0" style={{ width: '100vw', height: '100dvh' }} />
+        <div id="camera-preview-container" className="fixed inset-0 z-0" style={{ width: '100vw', height: '100dvh', top: 0, left: 0 }} />
       )}
       
       {/* Camera/Preview View */}
