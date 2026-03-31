@@ -16,13 +16,24 @@ export const useNativeCameraPreview = () => {
   const isStartedRef = useRef(false);
 
   const getPreviewSize = useCallback(() => {
-    const width = Math.round(window.innerWidth || document.documentElement.clientWidth || 390);
-    const height = Math.round(window.innerHeight || document.documentElement.clientHeight || 844);
+    const platform = Capacitor.getPlatform();
+    // On iOS, window.innerHeight may exclude safe area insets.
+    // Use screen dimensions to ensure the camera preview covers the entire display including safe areas.
+    const width = Math.round(
+      platform === "ios"
+        ? Math.max(window.innerWidth, screen.width, document.documentElement.clientWidth || 390)
+        : window.innerWidth || document.documentElement.clientWidth || 390
+    );
+    const height = Math.round(
+      platform === "ios"
+        ? Math.max(window.innerHeight, screen.height, document.documentElement.clientHeight || 844)
+        : window.innerHeight || document.documentElement.clientHeight || 844
+    );
 
     return {
       width,
       height,
-      platform: Capacitor.getPlatform(),
+      platform,
     };
   }, []);
 
