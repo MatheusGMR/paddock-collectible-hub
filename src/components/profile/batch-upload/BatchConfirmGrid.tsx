@@ -215,7 +215,7 @@ export function BatchConfirmGrid({
           <div className="px-4 py-3 border-t border-border">
             <Button
               onClick={onConfirm}
-              disabled={!allCounted || totalVehicles === 0}
+              disabled={!canConfirm}
               className="w-full"
             >
               {totalVehicles > 0
