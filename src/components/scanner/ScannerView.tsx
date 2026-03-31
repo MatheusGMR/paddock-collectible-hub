@@ -2376,8 +2376,8 @@ export const ScannerView = () => {
           autoPlay
           playsInline
           muted
-          style={{ transform: `scale(${zoomLevel})`, transformOrigin: 'center center', width: '100%', height: '100%' }}
-          className={`absolute inset-0 object-cover transition-opacity duration-200 ${
+          style={{ transform: `scale(${zoomLevel})`, transformOrigin: 'center center' }}
+          className={`absolute top-0 left-0 w-full h-full object-cover transition-opacity duration-200 ${
             cameraActive && !useCameraPreview && !capturedImage && !videoPreviewUrl ? 'opacity-100' : 'opacity-0 pointer-events-none'
           }`}
         />
