@@ -163,8 +163,71 @@ serve(async (req) => {
   const startTime = Date.now();
 
   try {
-    const { imageBase64, skipML } = await req.json();
+    const { imageBase64, skipML, countOnly } = await req.json();
     if (!imageBase64) return new Response(JSON.stringify({ error: "Image required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+
+    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+    if (!OPENAI_API_KEY) throw new Error("OPENAI_API_KEY not configured");
+
+    // ── QUICK COUNT MODE ──
+    // Returns only the number of vehicles and their bounding boxes (fast & cheap)
+    if (countOnly) {
+      const countPrompt = `Conte quantos veículos (miniaturas diecast OU carros reais) estão visíveis na imagem.
+Para cada veículo encontrado, forneça:
+- boundingBox: {x, y, width, height} em porcentagem (0-100) da imagem
+- label: descrição curta (ex: "Hot Wheels vermelho", "Matchbox azul")
+
+Responda APENAS em JSON:
+{"count": N, "vehicles": [{"boundingBox": {"x":N,"y":N,"width":N,"height":N}, "label": "..."}]}
+
+Se NENHUM veículo: {"count": 0, "vehicles": []}
+Conte CADA carro separado individualmente. Máximo 10.`;
+
+      const countRes = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${OPENAI_API_KEY}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "gpt-4o-mini",
+          messages: [
+            { role: "system", content: countPrompt },
+            { role: "user", content: [
+              { type: "text", text: "Conte os veículos na imagem." },
+              { type: "image_url", image_url: { url: imageBase64, detail: "low" } }
+            ] }
+          ],
+          max_tokens: 512,
+          response_format: { type: "json_object" },
+        }),
+      });
+
+      if (!countRes.ok) {
+        const errText = await countRes.text();
+        console.error("[CountOnly] Error:", countRes.status, errText);
+        return new Response(JSON.stringify({ count: 0, vehicles: [], error: "Count failed" }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const countData = await countRes.json();
+      const countContent = countData.choices?.[0]?.message?.content;
+      try {
+        const stripFencesLocal = (s: string) => {
+          const i = s.indexOf('{');
+          const j = s.lastIndexOf('}');
+          return i >= 0 && j > i ? s.substring(i, j + 1) : s.trim();
+        };
+        const parsed = JSON.parse(stripFencesLocal(countContent || "{}"));
+        return new Response(JSON.stringify({
+          count: parsed.count || 0,
+          vehicles: Array.isArray(parsed.vehicles) ? parsed.vehicles : [],
+        }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      } catch {
+        return new Response(JSON.stringify({ count: 0, vehicles: [] }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    }
+    // ── END QUICK COUNT MODE ──
 
     const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
     if (!OPENAI_API_KEY) throw new Error("OPENAI_API_KEY not configured");
