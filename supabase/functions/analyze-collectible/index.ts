@@ -173,9 +173,15 @@ serve(async (req) => {
     // Returns only the number of vehicles and their bounding boxes (fast & cheap)
     if (countOnly) {
       const countPrompt = `Conte quantos veículos (miniaturas diecast OU carros reais) estão visíveis na imagem.
-Para cada veículo encontrado, forneça:
-- boundingBox: {x, y, width, height} em porcentagem (0-100) da imagem
+Para cada veículo encontrado, forneça o boundingBox PRECISO:
+- boundingBox: {x, y, width, height} em porcentagem (0-100) da imagem total
+  - x: coordenada X do CANTO SUPERIOR ESQUERDO do veículo (% da largura)
+  - y: coordenada Y do CANTO SUPERIOR ESQUERDO do veículo (% da altura)
+  - width: largura do veículo (% da largura da imagem)
+  - height: altura do veículo (% da altura da imagem)
 - label: descrição curta (ex: "Hot Wheels vermelho", "Matchbox azul")
+
+IMPORTANTE: O boundingBox deve envolver APENAS o corpo do veículo, centralizado sobre ele. Seja preciso.
 
 Responda APENAS em JSON:
 {"count": N, "vehicles": [{"boundingBox": {"x":N,"y":N,"width":N,"height":N}, "label": "..."}]}
@@ -191,11 +197,11 @@ Conte CADA carro separado individualmente. Máximo 10.`;
           messages: [
             { role: "system", content: countPrompt },
             { role: "user", content: [
-              { type: "text", text: "Conte os veículos na imagem." },
-              { type: "image_url", image_url: { url: imageBase64, detail: "low" } }
+              { type: "text", text: "Conte os veículos na imagem e forneça boundingBox preciso para cada um." },
+              { type: "image_url", image_url: { url: imageBase64, detail: "auto" } }
             ] }
           ],
-          max_tokens: 512,
+          max_tokens: 800,
           response_format: { type: "json_object" },
         }),
       });
