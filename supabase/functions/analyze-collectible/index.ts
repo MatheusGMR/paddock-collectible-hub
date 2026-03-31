@@ -388,6 +388,9 @@ Conte CADA carro separado individualmente. Máximo 10.`;
     if (!primary.ok) {
       if ("httpResponse" in primary) return primary.httpResponse;
       console.error("[AI] Primary failed:", primary.error);
+      if (skipFallback) {
+        throw primary.error || new Error("Primary model failed");
+      }
       const fallback = await fetchAndParse(FALLBACK_MODEL, 2, "primary_failed");
       if (!fallback.ok) {
         if ("httpResponse" in fallback) return fallback.httpResponse;
@@ -396,12 +399,12 @@ Conte CADA carro separado individualmente. Máximo 10.`;
       result = fallback.parsed;
     } else {
       result = primary.parsed;
-      if (shouldRetry(result)) {
+      // Skip expensive fallback when caller opts out (batch/upload mode)
+      if (!skipFallback && shouldRetry(result)) {
         const fallback = await fetchAndParse(FALLBACK_MODEL, 2, "not_identified");
         if (!fallback.ok) {
           if ("httpResponse" in fallback) return fallback.httpResponse;
         } else {
-          // Always prefer fallback result (gpt-4o, higher quality) when primary failed shouldRetry
           result = fallback.parsed;
         }
       }
