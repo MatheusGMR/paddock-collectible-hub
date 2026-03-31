@@ -112,58 +112,68 @@ const Index = () => {
   const filteredNews = useMemo(() => {
     if (feedFilter === "posts_only") return [];
     if (feedFilter === "all") return newsArticles;
-    // feedFilter matches a news category
     return newsArticles.filter((a) => a.category === feedFilter);
   }, [newsArticles, feedFilter]);
+
+  // Whether to show posts based on filter
+  const showPosts = feedFilter === "all" || feedFilter === "posts_only";
 
   // Build unified feed: interleave 1 news every 3 posts (or after fewer if not enough posts)
   const unifiedFeed: FeedItem[] = useMemo(() => {
     const items: FeedItem[] = [];
+    const visiblePosts = showPosts ? posts : [];
     let newsIndex = 0;
-    const curiosityPosition = curiosityAsPost && posts.length > 0
-      ? Math.min(5, posts.length)
-      : -1;
-    const hash = curiosity?.id?.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) || 0;
-    const actualCuriosityPos = curiosityPosition > 0 ? (hash % curiosityPosition) + 1 : -1;
 
-    // If no posts, show news directly
-    if (posts.length === 0) {
+    // Category-only mode: show only news from that category
+    if (!showPosts) {
       if (curiosityAsPost) {
         items.push({ type: "post", data: curiosityAsPost });
       }
-      // Show available news articles
       filteredNews.forEach(article => {
         items.push({ type: "news", data: article });
       });
       return items;
     }
 
-    for (let i = 0; i < posts.length; i++) {
-      items.push({ type: "post", data: posts[i] });
+    const curiosityPosition = curiosityAsPost && visiblePosts.length > 0
+      ? Math.min(5, visiblePosts.length)
+      : -1;
+    const hash = curiosity?.id?.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) || 0;
+    const actualCuriosityPos = curiosityPosition > 0 ? (hash % curiosityPosition) + 1 : -1;
 
-      // Insert curiosity at calculated position
+    // If no posts, show news directly
+    if (visiblePosts.length === 0) {
+      if (curiosityAsPost) {
+        items.push({ type: "post", data: curiosityAsPost });
+      }
+      filteredNews.forEach(article => {
+        items.push({ type: "news", data: article });
+      });
+      return items;
+    }
+
+    for (let i = 0; i < visiblePosts.length; i++) {
+      items.push({ type: "post", data: visiblePosts[i] });
+
       if (i + 1 === actualCuriosityPos && curiosityAsPost) {
         items.push({ type: "post", data: curiosityAsPost });
       }
 
-      // Insert news every 3 posts, but also after posts 1-2 if we have few posts
-      const shouldInsertNews = (i + 1) % 3 === 0 || (posts.length < 3 && i === posts.length - 1);
+      const shouldInsertNews = (i + 1) % 3 === 0 || (visiblePosts.length < 3 && i === visiblePosts.length - 1);
       if (shouldInsertNews && newsIndex < filteredNews.length) {
         items.push({ type: "news", data: filteredNews[newsIndex] });
         newsIndex++;
       }
     }
 
-    // If there are remaining news articles, append them spaced out
     while (newsIndex < filteredNews.length) {
       items.push({ type: "news", data: filteredNews[newsIndex] });
       newsIndex++;
-      // Stop after a reasonable amount so feed doesn't become all news
-      if (newsIndex >= Math.max(5, Math.ceil(posts.length / 2))) break;
+      if (newsIndex >= Math.max(5, Math.ceil(visiblePosts.length / 2))) break;
     }
 
     return items;
-  }, [posts, filteredNews, curiosityAsPost, curiosity?.id]);
+  }, [posts, filteredNews, curiosityAsPost, curiosity?.id, showPosts]);
 
   return (
     <div ref={containerRef} className="min-h-screen">
