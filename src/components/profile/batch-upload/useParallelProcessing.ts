@@ -135,21 +135,57 @@ export function useParallelProcessing({
 
         if (error) throw error;
 
-        // Normalize response - sometimes AI returns items but count=0
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const raw = data as any;
-        const items: AnalysisResult[] = Array.isArray(raw?.items) ? raw.items : [];
-        const count = typeof raw?.count === "number" && raw.count > 0 ? raw.count : items.length;
-        const identified = Boolean(raw?.identified) || items.length > 0;
+        const rawItems: any[] = Array.isArray(raw?.items) ? raw.items : [];
         const responseType = raw?.detectedType || "collectible";
 
-        console.log("[BatchProcessing] Response:", { identified, count, itemsLength: items.length, responseType });
+        console.log("[BatchProcessing] Response:", { identified: raw?.identified, count: raw?.count, itemsLength: rawItems.length, responseType });
 
         // For real cars, return empty (handled separately in dedicated flow)
         if (responseType === "real_car") {
           console.log("[BatchProcessing] Real car detected, skipping");
           return [];
         }
+
+        // Normalize items from various AI response shapes
+        const items: AnalysisResult[] = rawItems
+          .filter((item: any) => item != null && typeof item === 'object')
+          .map((item: any) => {
+            const realCar = item.realCar || item.real_car || item.car || {};
+            const collectible = item.collectible || {};
+            const rawMV = item.marketValue || item.market_value || {};
+            const marketValue = (rawMV.min != null && rawMV.max != null) ? {
+              min: Number(rawMV.min),
+              max: Number(rawMV.max),
+              currency: rawMV.currency || 'BRL',
+              source: rawMV.source || '',
+              confidence: rawMV.confidence || 'low',
+            } : undefined;
+
+            return {
+              ...item,
+              realCar: {
+                brand: realCar.brand || item.brand || 'Desconhecido',
+                model: realCar.model || item.model || 'Desconhecido',
+                year: realCar.year || item.year || '',
+                historicalFact: realCar.historicalFact || realCar.historical_fact || '',
+              },
+              collectible: {
+                manufacturer: collectible.manufacturer || '',
+                scale: collectible.scale || '',
+                estimatedYear: collectible.estimatedYear || collectible.estimated_year || collectible.year || '',
+                origin: collectible.origin || '',
+                series: collectible.series || '',
+                condition: collectible.condition || '',
+                color: collectible.color || item.color || '',
+                notes: collectible.notes || '',
+              },
+              marketValue,
+            } as AnalysisResult;
+          });
+
+        const identified = Boolean(raw?.identified) || items.length > 0;
 
         // Only skip if truly unidentified AND no items
         if (!identified && items.length === 0) {
