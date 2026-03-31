@@ -167,7 +167,7 @@ export const CollectibleDetailCard = ({ item, open, onOpenChange, onDelete }: Co
                     <img
                       src={resolvedImageUrl}
                       alt={`${data.real_car_brand} ${data.real_car_model}`}
-                      className={cn("w-full h-full object-contain transition-opacity", imageLoaded ? "opacity-100" : "opacity-0")}
+                      className={cn("w-full h-full object-cover object-center transition-opacity", imageLoaded ? "opacity-100" : "opacity-0")}
                       onLoad={(e) => {
                         const img = e.currentTarget;
                         // Detect corrupt/empty base64 images (tiny natural dimensions)

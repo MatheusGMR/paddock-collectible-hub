@@ -203,12 +203,12 @@ export function BatchCarouselView({
         )}
 
         <div className="p-4 space-y-4">
-          {/* Hero image - ALWAYS use cropped image with object-contain for consistent display */}
-          <div className="relative w-full aspect-square rounded-2xl overflow-hidden bg-black">
+          {/* Hero image - centered with object-cover for full display */}
+          <div className="relative w-full aspect-[4/3] rounded-2xl overflow-hidden bg-muted">
             <img
-              src={result.croppedImage}
+              src={result.croppedImage || result.realCarPhotos?.[0] || ''}
               alt={`${result.realCar.brand} ${result.realCar.model}`}
-              className="w-full h-full object-contain"
+              className="w-full h-full object-cover object-center"
             />
             {/* Car badge */}
             <div className="absolute top-3 left-3 flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/60 backdrop-blur-sm">
