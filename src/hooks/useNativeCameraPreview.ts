@@ -64,7 +64,12 @@ export const useNativeCameraPreview = () => {
       if (container) {
         container.style.display = "";
         container.style.width = "100vw";
-        container.style.height = "100dvh";
+        container.style.height = "100vh";
+        container.style.minHeight = "100dvh";
+        // Ensure it covers safe areas on iOS
+        container.style.position = "fixed";
+        container.style.top = "0";
+        container.style.left = "0";
       }
 
       const options: CameraPreviewOptions = {
