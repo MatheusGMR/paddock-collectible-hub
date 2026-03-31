@@ -197,11 +197,11 @@ Conte CADA carro separado individualmente. Máximo 10.`;
           messages: [
             { role: "system", content: countPrompt },
             { role: "user", content: [
-              { type: "text", text: "Conte os veículos na imagem e forneça boundingBox preciso para cada um." },
-              { type: "image_url", image_url: { url: imageBase64, detail: "auto" } }
+              { type: "text", text: "Conte os veículos e forneça boundingBox." },
+              { type: "image_url", image_url: { url: imageBase64, detail: "low" } }
             ] }
           ],
-          max_tokens: 800,
+          max_tokens: 400,
           response_format: { type: "json_object" },
         }),
       });
