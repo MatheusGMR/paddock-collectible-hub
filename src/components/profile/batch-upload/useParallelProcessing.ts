@@ -117,7 +117,7 @@ export function useParallelProcessing({
       confirmedVehicleCount?: number,
     ): Promise<AnalysisResult[]> => {
       // Downscale image to reduce payload and speed up transfer
-      const optimizedBase64 = isVideo ? mediaBase64 : await downscaleBase64(mediaBase64, 800, 0.70);
+      const optimizedBase64 = isVideo ? mediaBase64 : await downscaleBase64(mediaBase64);
 
       // Wrap in timeout to prevent hanging requests
       const controller = new AbortController();
