@@ -426,7 +426,7 @@ Conte CADA carro separado individualmente. Máximo 10.`;
     
     // Ensure required fields
     if (r.items && Array.isArray(r.items)) {
-      r.count = confirmedCount ?? r.count || r.items.length;
+      r.count = confirmedCount ?? r.count ?? r.items.length;
       r.identified = r.identified !== false && r.items.length > 0;
       r.detectedType = r.detectedType || "collectible";
       // Normalize marketValue on each item
