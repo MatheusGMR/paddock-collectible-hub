@@ -151,7 +151,7 @@ export const CollectibleDetailCard = ({ item, open, onOpenChange, onDelete }: Co
           <ScrollArea className="flex-1 px-4">
             <div className="py-4 space-y-4">
               {/* Hero Image - square format with object-contain to show full vehicle */}
-              <div className="relative aspect-square rounded-xl overflow-hidden bg-gradient-to-b from-muted to-muted/50">
+              <div className="relative aspect-[4/3] rounded-xl overflow-hidden bg-gradient-to-b from-muted to-muted/50">
                 {imageFailed ? (
                   <div className="w-full h-full flex flex-col items-center justify-center">
                     <ImageOff className="h-12 w-12 text-muted-foreground/40 mb-2" />
