@@ -2288,10 +2288,10 @@ export const ScannerView = () => {
       
       {/* Camera/Preview View */}
       <div
-        className={`scanner-camera-layer absolute inset-0 overflow-hidden select-none ${
+        className={`scanner-camera-layer fixed inset-0 overflow-hidden select-none ${
           useCameraPreview && !capturedImage && !hasResults ? 'bg-transparent' : 'bg-black'
         }`}
-        style={{ WebkitUserSelect: 'none', WebkitTouchCallout: 'none' } as React.CSSProperties}
+        style={{ width: '100vw', height: '100dvh', top: 0, left: 0, WebkitUserSelect: 'none', WebkitTouchCallout: 'none' } as React.CSSProperties}
         onTouchStart={(e) => {
           e.preventDefault();
           touchMoved.current = false;
