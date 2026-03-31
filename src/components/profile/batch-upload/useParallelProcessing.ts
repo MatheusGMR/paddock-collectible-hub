@@ -9,7 +9,7 @@ import {
 } from "./types";
 
 /** Downscale a base64 image to reduce payload size before API call */
-function downscaleBase64(base64: string, maxDim = 800, quality = 0.70): Promise<string> {
+function downscaleBase64(base64: string, maxDim = 640, quality = 0.55): Promise<string> {
   return new Promise((resolve) => {
     const img = new Image();
     img.onload = () => {
@@ -70,7 +70,7 @@ export function useParallelProcessing({
             try {
               const optimized = media.isVideo
                 ? media.base64
-                : await downscaleBase64(media.base64, 800, 0.70);
+                : await downscaleBase64(media.base64);
 
               const { data, error } = await supabase.functions.invoke("analyze-collectible", {
                 body: { imageBase64: optimized, countOnly: true },
@@ -117,7 +117,7 @@ export function useParallelProcessing({
       confirmedVehicleCount?: number,
     ): Promise<AnalysisResult[]> => {
       // Downscale image to reduce payload and speed up transfer
-      const optimizedBase64 = isVideo ? mediaBase64 : await downscaleBase64(mediaBase64, 800, 0.70);
+      const optimizedBase64 = isVideo ? mediaBase64 : await downscaleBase64(mediaBase64);
 
       // Wrap in timeout to prevent hanging requests
       const controller = new AbortController();
@@ -315,7 +315,7 @@ export function useParallelProcessing({
 
         // Small delay between chunks to avoid rate limiting
         if (i + PARALLEL_PROCESSING_LIMIT < queue.length && !abortRef.current) {
-          await new Promise((r) => setTimeout(r, 500));
+          await new Promise((r) => setTimeout(r, 200));
         }
       }
 

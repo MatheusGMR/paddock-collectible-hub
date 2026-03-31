@@ -197,11 +197,11 @@ Conte CADA carro separado individualmente. Máximo 10.`;
           messages: [
             { role: "system", content: countPrompt },
             { role: "user", content: [
-              { type: "text", text: "Conte os veículos na imagem e forneça boundingBox preciso para cada um." },
-              { type: "image_url", image_url: { url: imageBase64, detail: "auto" } }
+              { type: "text", text: "Conte os veículos e forneça boundingBox." },
+              { type: "image_url", image_url: { url: imageBase64, detail: "low" } }
             ] }
           ],
-          max_tokens: 800,
+          max_tokens: 400,
           response_format: { type: "json_object" },
         }),
       });
@@ -235,9 +235,10 @@ Conte CADA carro separado individualmente. Máximo 10.`;
     }
     // ── END QUICK COUNT MODE ──
 
+    // Auth check — lightweight, no supabase client needed if skipML
     const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
-    // Auth check and ML enhancements in parallel
+    // Auth and ML in parallel — skip ML RPCs when skipML=true (saves ~300ms)
     const authPromise = (async () => {
       const auth = req.headers.get("authorization");
       if (auth) try { return (await sb.auth.getUser(auth.replace("Bearer ", ""))).data.user?.id || null; } catch {}
@@ -318,8 +319,8 @@ Conte CADA carro separado individualmente. Máximo 10.`;
 
     const fetchAndParse = async (model: string, attempt: number, reason: string) => {
       const isFallback = model === FALLBACK_MODEL;
-      const imageDetail = isFallback ? "auto" : "low";
-      const maxTokens = isFallback ? 2560 : 1536;
+      const imageDetail = "low"; // Always use low detail for speed — quality is sufficient for diecast/cars
+      const maxTokens = isFallback ? 1536 : 1024;
       const systemPrompt = isFallback ? dynamicPrompt + FALLBACK_PROMPT_EXTRA : dynamicPrompt;
 
       const messages = [

@@ -36,7 +36,7 @@ import { Camera as CapacitorCamera } from "@capacitor/camera";
  * Downscale a base64 image to maxDim px on the longest side.
  * Returns a JPEG data URI. Runs synchronously on a canvas (fast).
  */
-function downscaleBase64(base64: string, maxDim = 800, quality = 0.70): Promise<string> {
+function downscaleBase64(base64: string, maxDim = 640, quality = 0.55): Promise<string> {
   return new Promise((resolve) => {
     const img = new Image();
     img.onload = () => {
@@ -1104,8 +1104,8 @@ export const ScannerView = () => {
       setIsScanning(true);
       trackEvent("scan_initiated", { source: "camera_preview" });
 
-      // Downscale in parallel with camera teardown (800px, 0.70 quality — same as web)
-      const imageBase64 = await downscaleBase64(imageForDisplay, 800, 0.70);
+      // Downscale in parallel with camera teardown (640px, 0.55 quality for speed)
+      const imageBase64 = await downscaleBase64(imageForDisplay);
 
       // Fire API call — don't wait for camera stop
       const analyzePromise = supabase.functions.invoke("analyze-collectible", {
@@ -1755,7 +1755,7 @@ export const ScannerView = () => {
 
         try {
           // Downscale for faster upload & AI processing
-          const imageBase64 = await downscaleBase64(rawBase64, 800, 0.70);
+          const imageBase64 = await downscaleBase64(rawBase64);
           const { data, error } = await supabase.functions.invoke("analyze-collectible", {
             body: { imageBase64, skipML: true },
           });
