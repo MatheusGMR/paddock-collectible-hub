@@ -21,6 +21,9 @@ export function BatchConfirmGrid({
   const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
   const totalVehicles = mediaQueue.reduce((sum, m) => sum + (m.vehicleCount || 0), 0);
   const allCounted = mediaQueue.every((m) => m.status === "counted");
+  // Allow advancing if user manually adjusted any count (even if auto-detection returned 0)
+  const hasManualAdjustments = mediaQueue.some((m) => m.manuallyAdjusted && (m.vehicleCount || 0) > 0);
+  const canConfirm = allCounted && (totalVehicles > 0 || hasManualAdjustments);
 
   const selectedMedia = selectedImageIndex !== null ? mediaQueue[selectedImageIndex] : null;
 
