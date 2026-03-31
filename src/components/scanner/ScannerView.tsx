@@ -1512,7 +1512,7 @@ export const ScannerView = () => {
       trackEvent("scan_initiated", { source: "native_gallery" });
 
       const { data, error } = await supabase.functions.invoke("analyze-collectible", {
-        body: { imageBase64, skipML: true },
+        body: { imageBase64, skipML: true, skipFallback: true },
       });
 
       if (error) throw error;
