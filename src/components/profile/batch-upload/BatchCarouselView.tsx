@@ -249,7 +249,7 @@ export function BatchCarouselView({
                   <img
                     src={displayImage}
                     alt={`${result.realCar.brand} ${result.realCar.model}`}
-                    className="w-full h-full object-cover object-center"
+                    className="w-full h-full object-contain object-center bg-muted"
                   />
                   <div className="absolute top-3 left-3 flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/60 backdrop-blur-sm">
                     <Car className="h-3.5 w-3.5 text-primary" />

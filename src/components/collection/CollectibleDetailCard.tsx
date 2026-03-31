@@ -151,7 +151,7 @@ export const CollectibleDetailCard = ({ item, open, onOpenChange, onDelete }: Co
           <ScrollArea className="flex-1 px-4">
             <div className="py-4 space-y-4">
               {/* Hero Image - square format with object-contain to show full vehicle */}
-              <div className="relative aspect-[4/3] rounded-xl overflow-hidden bg-gradient-to-b from-muted to-muted/50">
+              <div className="relative aspect-[4/3] rounded-xl overflow-hidden bg-muted">
                 {imageFailed ? (
                   <div className="w-full h-full flex flex-col items-center justify-center">
                     <ImageOff className="h-12 w-12 text-muted-foreground/40 mb-2" />
@@ -167,10 +167,12 @@ export const CollectibleDetailCard = ({ item, open, onOpenChange, onDelete }: Co
                     <img
                       src={resolvedImageUrl}
                       alt={`${data.real_car_brand} ${data.real_car_model}`}
-                      className={cn("w-full h-full object-cover object-center transition-opacity", imageLoaded ? "opacity-100" : "opacity-0")}
+                      className={cn(
+                        "w-full h-full object-contain object-center transition-opacity",
+                        imageLoaded ? "opacity-100" : "opacity-0"
+                      )}
                       onLoad={(e) => {
                         const img = e.currentTarget;
-                        // Detect corrupt/empty base64 images (tiny natural dimensions)
                         if (img.naturalWidth < 10 || img.naturalHeight < 10) {
                           setImageFailed(true);
                         } else {
