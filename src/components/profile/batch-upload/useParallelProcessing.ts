@@ -10,7 +10,7 @@ import {
 } from "./types";
 
 /** Downscale a base64 image to reduce payload size before API call */
-function downscaleBase64(base64: string, maxDim = 640, quality = 0.55): Promise<string> {
+function downscaleBase64(base64: string, maxDim = 512, quality = 0.50): Promise<string> {
   return new Promise((resolve) => {
     const img = new Image();
     img.onload = () => {
@@ -192,6 +192,7 @@ export function useParallelProcessing({
           body: {
             imageBase64: optimizedBase64,
             skipML: true,
+            skipFallback: true,
             vehicleCount: options?.confirmedCount,
             skipVehicleDetectionValidation: Boolean(options?.confirmedCount && options.confirmedCount > 0),
             detectedVehicles: options?.hints,
