@@ -192,6 +192,7 @@ export function useParallelProcessing({
           body: {
             imageBase64: optimizedBase64,
             skipML: true,
+            skipFallback: true,
             vehicleCount: options?.confirmedCount,
             skipVehicleDetectionValidation: Boolean(options?.confirmedCount && options.confirmedCount > 0),
             detectedVehicles: options?.hints,
