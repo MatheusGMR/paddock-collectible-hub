@@ -5,6 +5,70 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { QueuedMedia, DetectedVehicle } from "./types";
 
+/** Renders an image with properly positioned bounding boxes that respect object-contain */
+function ImageWithBoxes({
+  src,
+  alt,
+  detectedVehicles,
+}: {
+  src: string;
+  alt: string;
+  detectedVehicles?: DetectedVehicle[];
+}) {
+  const imgRef = useRef<HTMLImageElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [imgRect, setImgRect] = useState<{ ox: number; oy: number; rw: number; rh: number } | null>(null);
+
+  const calcRect = useCallback(() => {
+    const img = imgRef.current;
+    if (!img || !img.naturalWidth) return;
+    const cw = img.clientWidth;
+    const ch = img.clientHeight;
+    const nw = img.naturalWidth;
+    const nh = img.naturalHeight;
+    const scale = Math.min(cw / nw, ch / nh);
+    const rw = nw * scale;
+    const rh = nh * scale;
+    const ox = (cw - rw) / 2;
+    const oy = (ch - rh) / 2;
+    setImgRect({ ox, oy, rw, rh });
+  }, []);
+
+  useEffect(() => {
+    calcRect();
+    window.addEventListener("resize", calcRect);
+    return () => window.removeEventListener("resize", calcRect);
+  }, [calcRect]);
+
+  return (
+    <div ref={containerRef} className="flex-1 relative mx-4 mb-3 rounded-xl overflow-hidden bg-muted">
+      <img
+        ref={imgRef}
+        src={src}
+        alt={alt}
+        className="w-full h-full object-contain"
+        onLoad={calcRect}
+      />
+      {imgRect && detectedVehicles?.map((vehicle, vIdx) => (
+        <div
+          key={vIdx}
+          className="absolute border-2 border-primary rounded-lg pointer-events-none"
+          style={{
+            left: imgRect.ox + (vehicle.boundingBox.x / 100) * imgRect.rw,
+            top: imgRect.oy + (vehicle.boundingBox.y / 100) * imgRect.rh,
+            width: (vehicle.boundingBox.width / 100) * imgRect.rw,
+            height: (vehicle.boundingBox.height / 100) * imgRect.rh,
+          }}
+        >
+          <div className="absolute -top-5 left-0 bg-primary text-primary-foreground text-[10px] px-1.5 py-0.5 rounded-t-md whitespace-nowrap">
+            {vehicle.label}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 interface BatchConfirmGridProps {
   mediaQueue: QueuedMedia[];
   onConfirm: () => void;
