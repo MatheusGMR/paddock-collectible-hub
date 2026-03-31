@@ -82,9 +82,17 @@ export interface QueuedMedia {
   id: string;
   base64: string;
   isVideo: boolean;
-  status: "pending" | "analyzing" | "success" | "error";
+  status: "pending" | "counting" | "counted" | "analyzing" | "success" | "error";
   results?: AnalysisResult[];
   error?: string;
+  // Quick count data
+  vehicleCount?: number;
+  detectedVehicles?: DetectedVehicle[];
+}
+
+export interface DetectedVehicle {
+  boundingBox: { x: number; y: number; width: number; height: number };
+  label: string;
 }
 
 export interface ConsolidatedResult extends AnalysisResult {
