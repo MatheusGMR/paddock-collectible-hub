@@ -2288,7 +2288,7 @@ export const ScannerView = () => {
       
       {/* Camera/Preview View */}
       <div
-        className={`scanner-camera-layer relative flex-1 overflow-hidden select-none ${
+        className={`scanner-camera-layer absolute inset-0 overflow-hidden select-none ${
           useCameraPreview && !capturedImage && !hasResults ? 'bg-transparent' : 'bg-black'
         }`}
         style={{ WebkitUserSelect: 'none', WebkitTouchCallout: 'none' } as React.CSSProperties}
