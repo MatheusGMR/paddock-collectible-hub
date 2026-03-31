@@ -116,133 +116,211 @@ export function useParallelProcessing({
       mediaBase64: string,
       isVideo: boolean,
       confirmedVehicleCount?: number,
+      detectedVehicles?: DetectedVehicle[],
     ): Promise<AnalysisResult[]> => {
-      // Downscale image to reduce payload and speed up transfer
-      const optimizedBase64 = isVideo ? mediaBase64 : await downscaleBase64(mediaBase64);
+      const normalizedHints = Array.isArray(detectedVehicles)
+        ? detectedVehicles
+            .filter(
+              (vehicle) =>
+                vehicle?.boundingBox &&
+                vehicle.boundingBox.width > 0 &&
+                vehicle.boundingBox.height > 0
+            )
+            .slice(0, 10)
+        : [];
 
-      // Wrap in timeout to prevent hanging requests
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 90_000); // 90s timeout
+      const normalizeItemsFromResponse = (raw: any): AnalysisResult[] => {
+        const rawItems: any[] = Array.isArray(raw?.items) ? raw.items : [];
 
-      try {
+        return rawItems
+          .filter((item: any) => item != null && typeof item === "object")
+          .map((item: any) => {
+            const realCar = item.realCar || item.real_car || item.car || {};
+            const collectible = item.collectible || {};
+            const rawMV = item.marketValue || item.market_value || {};
+            const marketValue = rawMV.min != null && rawMV.max != null
+              ? {
+                  min: Number(rawMV.min),
+                  max: Number(rawMV.max),
+                  currency: rawMV.currency || "BRL",
+                  source: rawMV.source || "",
+                  confidence: rawMV.confidence || "low",
+                }
+              : undefined;
+
+            return {
+              ...item,
+              realCar: {
+                brand: realCar.brand || item.brand || "Desconhecido",
+                model: realCar.model || item.model || "Desconhecido",
+                year: realCar.year || item.year || "",
+                historicalFact: realCar.historicalFact || realCar.historical_fact || "",
+              },
+              collectible: {
+                manufacturer: collectible.manufacturer || "",
+                scale: collectible.scale || "",
+                estimatedYear: collectible.estimatedYear || collectible.estimated_year || collectible.year || "",
+                origin: collectible.origin || "",
+                series: collectible.series || "",
+                condition: collectible.condition || "",
+                color: collectible.color || item.color || "",
+                notes: collectible.notes || "",
+              },
+              marketValue,
+            } as AnalysisResult;
+          });
+      };
+
+      const invokeRemoteAnalysis = async (
+        sourceBase64: string,
+        options?: {
+          confirmedCount?: number;
+          hints?: DetectedVehicle[];
+          maxDim?: number;
+          quality?: number;
+        }
+      ): Promise<AnalysisResult[]> => {
+        const optimizedBase64 = isVideo
+          ? sourceBase64
+          : await downscaleBase64(
+              sourceBase64,
+              options?.maxDim ?? 640,
+              options?.quality ?? 0.55
+            );
+
         const { data, error } = await supabase.functions.invoke("analyze-collectible", {
           body: {
             imageBase64: optimizedBase64,
             skipML: true,
-            vehicleCount: confirmedVehicleCount,
-            skipVehicleDetectionValidation: Boolean(confirmedVehicleCount && confirmedVehicleCount > 0),
+            vehicleCount: options?.confirmedCount,
+            skipVehicleDetectionValidation: Boolean(options?.confirmedCount && options.confirmedCount > 0),
+            detectedVehicles: options?.hints,
           },
         });
 
         if (error) throw error;
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const raw = data as any;
-        const rawItems: any[] = Array.isArray(raw?.items) ? raw.items : [];
         const responseType = raw?.detectedType || "collectible";
 
-        console.log("[BatchProcessing] Response:", { identified: raw?.identified, count: raw?.count, itemsLength: rawItems.length, responseType });
+        console.log("[BatchProcessing] Response:", {
+          identified: raw?.identified,
+          count: raw?.count,
+          itemsLength: Array.isArray(raw?.items) ? raw.items.length : 0,
+          responseType,
+          hintsLength: options?.hints?.length || 0,
+        });
 
-        // For real cars, return empty (handled separately in dedicated flow)
         if (responseType === "real_car") {
           console.log("[BatchProcessing] Real car detected, skipping");
           return [];
         }
 
-        // Normalize items from various AI response shapes
-        const items: AnalysisResult[] = rawItems
-          .filter((item: any) => item != null && typeof item === 'object')
-          .map((item: any) => {
-            const realCar = item.realCar || item.real_car || item.car || {};
-            const collectible = item.collectible || {};
-            const rawMV = item.marketValue || item.market_value || {};
-            const marketValue = (rawMV.min != null && rawMV.max != null) ? {
-              min: Number(rawMV.min),
-              max: Number(rawMV.max),
-              currency: rawMV.currency || 'BRL',
-              source: rawMV.source || '',
-              confidence: rawMV.confidence || 'low',
-            } : undefined;
-
-            return {
-              ...item,
-              realCar: {
-                brand: realCar.brand || item.brand || 'Desconhecido',
-                model: realCar.model || item.model || 'Desconhecido',
-                year: realCar.year || item.year || '',
-                historicalFact: realCar.historicalFact || realCar.historical_fact || '',
-              },
-              collectible: {
-                manufacturer: collectible.manufacturer || '',
-                scale: collectible.scale || '',
-                estimatedYear: collectible.estimatedYear || collectible.estimated_year || collectible.year || '',
-                origin: collectible.origin || '',
-                series: collectible.series || '',
-                condition: collectible.condition || '',
-                color: collectible.color || item.color || '',
-                notes: collectible.notes || '',
-              },
-              marketValue,
-            } as AnalysisResult;
-          });
-
+        const items = normalizeItemsFromResponse(raw);
         const identified = Boolean(raw?.identified) || items.length > 0;
 
-        // Only skip if truly unidentified AND no items
         if (!identified && items.length === 0) {
           console.log("[BatchProcessing] Not identified and no items");
           return [];
         }
 
-        // Crop individual car images (only for images, not videos)
-        const itemsWithCrops = await Promise.all(
-          items.map(async (item) => {
-            if (!isVideo && item.boundingBox && mediaBase64) {
-              try {
-                const croppedImage = await cropImageByBoundingBox(
-                  mediaBase64,
-                  item.boundingBox as BoundingBox
-                );
-                console.log("[BatchProcessing] Cropped image for", item.realCar?.brand, item.realCar?.model);
-                return { ...item, croppedImage };
-              } catch (error) {
-                console.error("[BatchProcessing] Failed to crop image:", error);
-                return { ...item, croppedImage: mediaBase64 };
-              }
-            }
-            return { ...item, croppedImage: isVideo ? undefined : mediaBase64 };
+        return items;
+      };
+
+      let items = await invokeRemoteAnalysis(mediaBase64, confirmedVehicleCount && confirmedVehicleCount > 0
+        ? {
+            confirmedCount: confirmedVehicleCount,
+            hints: normalizedHints,
+            maxDim: 900,
+            quality: 0.72,
+          }
+        : undefined);
+
+      if (
+        items.length === 0 &&
+        !isVideo &&
+        confirmedVehicleCount &&
+        confirmedVehicleCount > 0 &&
+        normalizedHints.length > 0
+      ) {
+        console.log("[BatchProcessing] Full-image analysis failed, retrying with per-vehicle crops");
+
+        const cropCandidates = normalizedHints.slice(0, confirmedVehicleCount);
+        const croppedSettled = await Promise.allSettled(
+          cropCandidates.map(async (vehicle, index) => {
+            const croppedBase64 = await cropImageByBoundingBox(
+              mediaBase64,
+              vehicle.boundingBox as BoundingBox
+            );
+            const [item] = await invokeRemoteAnalysis(croppedBase64, {
+              maxDim: 900,
+              quality: 0.78,
+            });
+
+            if (!item) return null;
+
+            return {
+              ...item,
+              boundingBox: item.boundingBox || vehicle.boundingBox,
+              photoIndex: index,
+            } as AnalysisResult;
           })
         );
 
-        // Check for duplicates
-        const itemsWithDuplicateCheck = await Promise.all(
-          itemsWithCrops.map(async (item) => {
-            if (userId) {
-              try {
-                const duplicate = await checkDuplicateInCollection(
-                  userId,
-                  item.realCar.brand,
-                  item.realCar.model,
-                  item.collectible?.color
-                );
-                return {
-                  ...item,
-                  isDuplicate: duplicate.isDuplicate,
-                  existingItemImage: duplicate.existingItemImage,
-                };
-              } catch (error) {
-                console.error("Failed to check duplicate:", error);
-                return item;
-              }
-            }
-            return item;
-          })
+        const recoveredItems = croppedSettled.flatMap((result) =>
+          result.status === "fulfilled" && result.value ? [result.value] : []
         );
 
-        return itemsWithDuplicateCheck;
-      } finally {
-        clearTimeout(timeout);
+        if (recoveredItems.length > 0) {
+          console.log("[BatchProcessing] Recovery via crops succeeded:", recoveredItems.length);
+          items = recoveredItems;
+        }
       }
+
+      const itemsWithCrops = await Promise.all(
+        items.map(async (item) => {
+          if (!isVideo && item.boundingBox && mediaBase64) {
+            try {
+              const croppedImage = await cropImageByBoundingBox(
+                mediaBase64,
+                item.boundingBox as BoundingBox
+              );
+              console.log("[BatchProcessing] Cropped image for", item.realCar?.brand, item.realCar?.model);
+              return { ...item, croppedImage };
+            } catch (error) {
+              console.error("[BatchProcessing] Failed to crop image:", error);
+              return { ...item, croppedImage: mediaBase64 };
+            }
+          }
+          return { ...item, croppedImage: isVideo ? undefined : mediaBase64 };
+        })
+      );
+
+      const itemsWithDuplicateCheck = await Promise.all(
+        itemsWithCrops.map(async (item) => {
+          if (userId) {
+            try {
+              const duplicate = await checkDuplicateInCollection(
+                userId,
+                item.realCar.brand,
+                item.realCar.model,
+                item.collectible?.color
+              );
+              return {
+                ...item,
+                isDuplicate: duplicate.isDuplicate,
+                existingItemImage: duplicate.existingItemImage,
+              };
+            } catch (error) {
+              console.error("Failed to check duplicate:", error);
+              return item;
+            }
+          }
+          return item;
+        })
+      );
+
+      return itemsWithDuplicateCheck;
     },
     [userId]
   );
