@@ -119,14 +119,19 @@ export function useParallelProcessing({
       // Downscale image to reduce payload and speed up transfer
       const optimizedBase64 = isVideo ? mediaBase64 : await downscaleBase64(mediaBase64, 800, 0.70);
 
-      const { data, error } = await supabase.functions.invoke("analyze-collectible", {
-        body: {
-          imageBase64: optimizedBase64,
-          skipML: true,
-          vehicleCount: confirmedVehicleCount,
-          skipVehicleDetectionValidation: Boolean(confirmedVehicleCount && confirmedVehicleCount > 0),
-        },
-      });
+      // Wrap in timeout to prevent hanging requests
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 90_000); // 90s timeout
+
+      try {
+        const { data, error } = await supabase.functions.invoke("analyze-collectible", {
+          body: {
+            imageBase64: optimizedBase64,
+            skipML: true,
+            vehicleCount: confirmedVehicleCount,
+            skipVehicleDetectionValidation: Boolean(confirmedVehicleCount && confirmedVehicleCount > 0),
+          },
+        });
 
       if (error) throw error;
 
