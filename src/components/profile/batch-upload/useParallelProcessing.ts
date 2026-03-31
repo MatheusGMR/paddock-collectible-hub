@@ -328,7 +328,12 @@ export function useParallelProcessing({
   const processMediaItem = useCallback(
     async (media: QueuedMedia): Promise<QueuedMedia> => {
       try {
-        const results = await analyzeMedia(media.base64, media.isVideo, media.vehicleCount);
+        const results = await analyzeMedia(
+          media.base64,
+          media.isVideo,
+          media.vehicleCount,
+          media.detectedVehicles
+        );
         return {
           ...media,
           status: "success",
