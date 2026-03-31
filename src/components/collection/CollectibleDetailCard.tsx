@@ -111,8 +111,8 @@ export const CollectibleDetailCard = ({ item, open, onOpenChange, onDelete }: Co
   // Resolve the best available image: captured photo > real car photo > placeholder
   const resolvedImageUrl = (() => {
     const captured = item?.image_url;
-    if (captured && captured.startsWith("http") && captured.length > 20) return captured;
-    if (captured && captured.startsWith("data:image/") && captured.length > 100) return captured;
+    // Accept any non-empty string that looks like a valid image source
+    if (captured && captured.trim().length > 0 && captured !== "/placeholder.svg") return captured;
     // Fallback to first real car photo
     const realPhotos = item?.item?.real_car_photos;
     if (realPhotos && realPhotos.length > 0 && typeof realPhotos[0] === "string") return realPhotos[0];
