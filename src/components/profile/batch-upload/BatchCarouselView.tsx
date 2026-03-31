@@ -1,9 +1,10 @@
 import { useState, useCallback } from "react";
-import { Check, Plus, RotateCcw, ChevronLeft, ChevronRight, Loader2, CheckCircle2, SkipForward, AlertTriangle, Car, Package, History, ChevronDown, ChevronUp } from "lucide-react";
+import { Check, Plus, RotateCcw, ChevronLeft, ChevronRight, Loader2, CheckCircle2, SkipForward, AlertTriangle, Car, Package, History, ChevronDown, ChevronUp, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { IndexBadge } from "@/components/index/IndexBadge";
+import { formatBRL } from "@/lib/priceIndex";
 import { cn } from "@/lib/utils";
 import { ConsolidatedResult } from "./types";
 import { MusicPlayer } from "@/components/scanner/MusicPlayer";
