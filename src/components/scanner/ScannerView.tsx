@@ -2279,11 +2279,11 @@ export const ScannerView = () => {
   }
 
   return (
-    <div className={`fixed inset-0 z-50 flex flex-col ${useCameraPreview && !capturedImage && !hasResults ? 'native-camera-mode' : 'bg-background'}`} style={{ height: '100dvh', minHeight: '-webkit-fill-available' }}>
+    <div className={`fixed inset-0 z-50 flex flex-col ${useCameraPreview && !capturedImage && !hasResults ? 'native-camera-mode' : 'bg-black'}`} style={{ height: '100dvh', width: '100vw', minHeight: '-webkit-fill-available', top: 0, left: 0 }}>
       {/* Camera-preview container - native layer renders behind WebView */}
       {/* IMPORTANT: this container must exist BEFORE CameraPreview.start() runs (parent option) */}
       {Capacitor.isNativePlatform() && (
-        <div id="camera-preview-container" className="fixed inset-0 z-0" style={{ width: '100vw', height: '100dvh' }} />
+        <div id="camera-preview-container" className="fixed inset-0 z-0" style={{ width: '100vw', height: '100dvh', top: 0, left: 0 }} />
       )}
       
       {/* Camera/Preview View */}
@@ -2376,8 +2376,8 @@ export const ScannerView = () => {
           autoPlay
           playsInline
           muted
-          style={{ transform: `scale(${zoomLevel})`, transformOrigin: 'center center' }}
-          className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-200 ${
+          style={{ transform: `scale(${zoomLevel})`, transformOrigin: 'center center', width: '100%', height: '100%' }}
+          className={`absolute inset-0 object-cover transition-opacity duration-200 ${
             cameraActive && !useCameraPreview && !capturedImage && !videoPreviewUrl ? 'opacity-100' : 'opacity-0 pointer-events-none'
           }`}
         />

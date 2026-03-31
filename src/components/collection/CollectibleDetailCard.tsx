@@ -111,8 +111,8 @@ export const CollectibleDetailCard = ({ item, open, onOpenChange, onDelete }: Co
   // Resolve the best available image: captured photo > real car photo > placeholder
   const resolvedImageUrl = (() => {
     const captured = item?.image_url;
-    if (captured && captured.startsWith("http") && captured.length > 20) return captured;
-    if (captured && captured.startsWith("data:image/") && captured.length > 100) return captured;
+    // Accept any non-empty string that looks like a valid image source
+    if (captured && captured.trim().length > 0 && captured !== "/placeholder.svg") return captured;
     // Fallback to first real car photo
     const realPhotos = item?.item?.real_car_photos;
     if (realPhotos && realPhotos.length > 0 && typeof realPhotos[0] === "string") return realPhotos[0];
@@ -151,7 +151,7 @@ export const CollectibleDetailCard = ({ item, open, onOpenChange, onDelete }: Co
           <ScrollArea className="flex-1 px-4">
             <div className="py-4 space-y-4">
               {/* Hero Image - square format with object-contain to show full vehicle */}
-              <div className="relative aspect-square rounded-xl overflow-hidden bg-gradient-to-b from-muted to-muted/50">
+              <div className="relative aspect-[4/3] rounded-xl overflow-hidden bg-gradient-to-b from-muted to-muted/50">
                 {imageFailed ? (
                   <div className="w-full h-full flex flex-col items-center justify-center">
                     <ImageOff className="h-12 w-12 text-muted-foreground/40 mb-2" />
@@ -167,7 +167,7 @@ export const CollectibleDetailCard = ({ item, open, onOpenChange, onDelete }: Co
                     <img
                       src={resolvedImageUrl}
                       alt={`${data.real_car_brand} ${data.real_car_model}`}
-                      className={cn("w-full h-full object-contain transition-opacity", imageLoaded ? "opacity-100" : "opacity-0")}
+                      className={cn("w-full h-full object-cover object-center transition-opacity", imageLoaded ? "opacity-100" : "opacity-0")}
                       onLoad={(e) => {
                         const img = e.currentTarget;
                         // Detect corrupt/empty base64 images (tiny natural dimensions)

@@ -1,9 +1,10 @@
 import { useState, useCallback } from "react";
-import { Check, Plus, RotateCcw, ChevronLeft, ChevronRight, Loader2, CheckCircle2, SkipForward, AlertTriangle, Car, Package, History, ChevronDown, ChevronUp } from "lucide-react";
+import { Check, Plus, RotateCcw, ChevronLeft, ChevronRight, Loader2, CheckCircle2, SkipForward, AlertTriangle, Car, Package, History, ChevronDown, ChevronUp, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { IndexBadge } from "@/components/index/IndexBadge";
+import { formatBRL } from "@/lib/priceIndex";
 import { cn } from "@/lib/utils";
 import { ConsolidatedResult } from "./types";
 import { MusicPlayer } from "@/components/scanner/MusicPlayer";
@@ -203,12 +204,12 @@ export function BatchCarouselView({
         )}
 
         <div className="p-4 space-y-4">
-          {/* Hero image - ALWAYS use cropped image with object-contain for consistent display */}
-          <div className="relative w-full aspect-square rounded-2xl overflow-hidden bg-black">
+          {/* Hero image - centered with object-cover for full display */}
+          <div className="relative w-full aspect-[4/3] rounded-2xl overflow-hidden bg-muted">
             <img
-              src={result.croppedImage}
+              src={result.croppedImage || result.realCarPhotos?.[0] || ''}
               alt={`${result.realCar.brand} ${result.realCar.model}`}
-              className="w-full h-full object-contain"
+              className="w-full h-full object-cover object-center"
             />
             {/* Car badge */}
             <div className="absolute top-3 left-3 flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/60 backdrop-blur-sm">
@@ -239,6 +240,19 @@ export function BatchCarouselView({
                 score={result.priceIndex.score}
                 tier={result.priceIndex.tier}
               />
+            </div>
+          )}
+
+          {/* Market Value */}
+          {result.marketValue && result.marketValue.min > 0 && (
+            <div className="rounded-xl border border-border/50 bg-card/80 p-4 space-y-1">
+              <div className="flex items-center gap-2 mb-2">
+                <TrendingUp className="h-4 w-4 text-primary" />
+                <span className="text-sm font-semibold text-foreground">Valor de Mercado</span>
+              </div>
+              <p className="text-xl font-bold text-foreground text-center">
+                {formatBRL(result.marketValue.min)} – {formatBRL(result.marketValue.max)}
+              </p>
             </div>
           )}
 
