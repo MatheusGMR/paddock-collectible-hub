@@ -2537,7 +2537,7 @@ export const ScannerView = () => {
         />
       ) : !videoPreviewUrl && (
         /* Floating controls overlay - no bottom panel */
-        <div className="absolute bottom-0 left-0 right-0 pb-8 safe-bottom">
+        <div className="absolute bottom-0 left-0 right-0 pb-8 safe-bottom z-20">
           <div className="flex flex-col items-center gap-3">
             {cameraError ? (
               <div className="bg-black/60 backdrop-blur-md rounded-2xl p-5 mx-6 max-w-sm">
