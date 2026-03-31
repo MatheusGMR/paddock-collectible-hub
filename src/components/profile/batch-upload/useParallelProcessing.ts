@@ -5,7 +5,6 @@ import { checkDuplicateInCollection } from "@/lib/database";
 import {
   QueuedMedia,
   AnalysisResult,
-  MultiCarAnalysisResponse,
   PARALLEL_PROCESSING_LIMIT,
 } from "./types";
 
@@ -112,12 +111,21 @@ export function useParallelProcessing({
   );
 
   const analyzeMedia = useCallback(
-    async (mediaBase64: string, isVideo: boolean): Promise<AnalysisResult[]> => {
+    async (
+      mediaBase64: string,
+      isVideo: boolean,
+      confirmedVehicleCount?: number,
+    ): Promise<AnalysisResult[]> => {
       // Downscale image to reduce payload and speed up transfer
       const optimizedBase64 = isVideo ? mediaBase64 : await downscaleBase64(mediaBase64, 800, 0.70);
 
       const { data, error } = await supabase.functions.invoke("analyze-collectible", {
-        body: { imageBase64: optimizedBase64, skipML: true },
+        body: {
+          imageBase64: optimizedBase64,
+          skipML: true,
+          vehicleCount: confirmedVehicleCount,
+          skipVehicleDetectionValidation: Boolean(confirmedVehicleCount && confirmedVehicleCount > 0),
+        },
       });
 
       if (error) throw error;
@@ -199,7 +207,7 @@ export function useParallelProcessing({
   const processMediaItem = useCallback(
     async (media: QueuedMedia): Promise<QueuedMedia> => {
       try {
-        const results = await analyzeMedia(media.base64, media.isVideo);
+        const results = await analyzeMedia(media.base64, media.isVideo, media.vehicleCount);
         return {
           ...media,
           status: "success",
