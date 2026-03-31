@@ -70,7 +70,7 @@ export function useParallelProcessing({
             try {
               const optimized = media.isVideo
                 ? media.base64
-                : await downscaleBase64(media.base64, 800, 0.70);
+                : await downscaleBase64(media.base64);
 
               const { data, error } = await supabase.functions.invoke("analyze-collectible", {
                 body: { imageBase64: optimized, countOnly: true },
