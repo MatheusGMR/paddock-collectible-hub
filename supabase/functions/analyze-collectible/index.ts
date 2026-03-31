@@ -163,7 +163,7 @@ serve(async (req) => {
   const startTime = Date.now();
 
   try {
-    const { imageBase64, skipML, countOnly } = await req.json();
+    const { imageBase64, skipML, countOnly, vehicleCount, skipVehicleDetectionValidation } = await req.json();
     if (!imageBase64) return new Response(JSON.stringify({ error: "Image required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
     const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
@@ -229,9 +229,6 @@ Conte CADA carro separado individualmente. Máximo 10.`;
     }
     // ── END QUICK COUNT MODE ──
 
-    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
-    if (!OPENAI_API_KEY) throw new Error("OPENAI_API_KEY not configured");
-
     const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
     // Auth check and ML enhancements in parallel
@@ -271,9 +268,21 @@ Conte CADA carro separado individualmente. Máximo 10.`;
     }
     console.log(`[Image] Format OK. Base64 length: ${base64Content.length}, prefix: ${imageUrl.substring(0, 30)}`);
 
+    const confirmedCount = typeof vehicleCount === "number" && vehicleCount > 0
+      ? Math.min(Math.floor(vehicleCount), 10)
+      : null;
+
+    const confirmationInstruction = confirmedCount
+      ? `O usuário já confirmou manualmente que há ${confirmedCount} veículo(s) nesta mídia. Use isso como verdade operacional: analise até ${confirmedCount} veículo(s) visíveis e NÃO retorne identified=false por falha de contagem automática.`
+      : "";
+
+    const validationInstruction = skipVehicleDetectionValidation
+      ? "Ignore validação automática de presença de veículo. Priorize a confirmação manual do usuário e retorne os itens identificáveis visíveis."
+      : "";
+
     const uPrompt = isVid
-      ? "Analyze video of collectible cars (max 7)."
-      : "Analyze image. Determine if collectible or real vehicle.";
+      ? `Analyze video of collectible cars (max 7). ${confirmationInstruction} ${validationInstruction}`.trim()
+      : `Analyze image. Determine if collectible or real vehicle. ${confirmationInstruction} ${validationInstruction}`.trim();
 
     const PRIMARY_MODEL = "gpt-4o-mini";
     const FALLBACK_MODEL = "gpt-4o";
@@ -290,6 +299,7 @@ Conte CADA carro separado individualmente. Máximo 10.`;
       if (detectedType === "real_car") return !r?.identified || !r?.car;
       const itemsLen = Array.isArray(r?.items) ? r.items.length : 0;
       const count = typeof r?.count === "number" ? r.count : itemsLen;
+      if (skipVehicleDetectionValidation && confirmedCount && itemsLen > 0) return false;
       if (!r?.identified || count === 0 || itemsLen === 0) return true;
       // Check if identification quality is poor (all "Desconhecido" or empty)
       const firstItem = r.items[0];
@@ -416,7 +426,7 @@ Conte CADA carro separado individualmente. Máximo 10.`;
     
     // Ensure required fields
     if (r.items && Array.isArray(r.items)) {
-      r.count = r.count || r.items.length;
+      r.count = confirmedCount ?? r.count || r.items.length;
       r.identified = r.identified !== false && r.items.length > 0;
       r.detectedType = r.detectedType || "collectible";
       // Normalize marketValue on each item
