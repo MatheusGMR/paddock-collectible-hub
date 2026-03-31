@@ -1755,7 +1755,7 @@ export const ScannerView = () => {
 
         try {
           // Downscale for faster upload & AI processing
-          const imageBase64 = await downscaleBase64(rawBase64, 800, 0.70);
+          const imageBase64 = await downscaleBase64(rawBase64);
           const { data, error } = await supabase.functions.invoke("analyze-collectible", {
             body: { imageBase64, skipML: true },
           });
