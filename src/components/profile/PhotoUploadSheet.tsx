@@ -186,7 +186,7 @@ export const PhotoUploadSheet = ({
 
   /** Step 2: After user confirms counts, run full analysis */
   const handleConfirmAndAnalyze = async () => {
-    // Filter out images with 0 vehicles
+    // Use the user-confirmed count as source of truth for batch analysis
     const validMedia = mediaQueue.filter((m) => (m.vehicleCount || 0) > 0);
 
     if (validMedia.length === 0) {
@@ -234,7 +234,15 @@ export const PhotoUploadSheet = ({
   /** Update vehicle count for a specific image (user adjustment) */
   const handleUpdateCount = (index: number, newCount: number) => {
     setMediaQueue((prev) =>
-      prev.map((m, i) => (i === index ? { ...m, vehicleCount: Math.max(0, newCount) } : m))
+      prev.map((m, i) => (
+        i === index
+          ? {
+              ...m,
+              vehicleCount: Math.max(0, newCount),
+              manuallyAdjusted: true,
+            }
+          : m
+      ))
     );
   };
 
@@ -260,6 +268,7 @@ export const PhotoUploadSheet = ({
       status: "pending",
       vehicleCount: undefined,
       detectedVehicles: undefined,
+      manuallyAdjusted: false,
     };
     setMediaQueue(updatedQueue);
 
@@ -299,6 +308,7 @@ export const PhotoUploadSheet = ({
       status: "pending",
       results: undefined,
       error: undefined,
+      manuallyAdjusted: false,
     };
     setMediaQueue(updatedQueue);
     setFailedMediaIndices((prev) => prev.filter((i) => i !== retryTargetIndex));
