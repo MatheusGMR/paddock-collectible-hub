@@ -185,7 +185,7 @@ export function useParallelProcessing({
           : await downscaleBase64(
               sourceBase64,
               options?.maxDim ?? 640,
-              options?.quality ?? 0.55
+              options?.quality ?? 0.70
             );
 
         const { data, error } = await supabase.functions.invoke("analyze-collectible", {
