@@ -198,15 +198,16 @@ Conte CADA carro separado individualmente. Máximo 10.`;
         method: "POST",
         headers: { Authorization: `Bearer ${OPENAI_API_KEY}`, "Content-Type": "application/json" },
         body: JSON.stringify({
-          model: "gpt-4o-mini",
+          model: "gpt-4.1-mini",
           messages: [
             { role: "system", content: countPrompt },
             { role: "user", content: [
               { type: "text", text: "Conte os veículos e forneça boundingBox." },
-              { type: "image_url", image_url: { url: imageBase64, detail: "low" } }
+              { type: "image_url", image_url: { url: imageBase64, detail: "auto" } }
             ] }
           ],
-          max_tokens: 400,
+          max_tokens: 500,
+          temperature: 0,
           response_format: { type: "json_object" },
         }),
       });
