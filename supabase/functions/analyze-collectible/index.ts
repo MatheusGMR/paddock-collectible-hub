@@ -7,7 +7,12 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const MODEL_PRICING = { "gpt-4o": { input: 2.50, output: 10.00 }, "gpt-4o-mini": { input: 0.15, output: 0.60 } };
+const MODEL_PRICING = {
+  "gpt-4o": { input: 2.50, output: 10.00 },
+  "gpt-4o-mini": { input: 0.15, output: 0.60 },
+  "gpt-4.1": { input: 2.00, output: 8.00 },
+  "gpt-4.1-mini": { input: 0.40, output: 1.60 },
+};
 
 function estimateTokens(content: string, isImage = false, isVideo = false): number {
   const t = Math.ceil(content.length / 4);
