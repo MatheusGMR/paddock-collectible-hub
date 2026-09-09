@@ -404,8 +404,14 @@ Conte CADA carro separado individualmente. Máximo 10.`;
       if ("httpResponse" in primary) return primary.httpResponse;
       console.error("[AI] Primary failed:", primary.error);
       if (skipFallback) {
-        throw primary.error || new Error("Primary model failed");
-      }
+        // Rede de segurança barata: nunca deixa o lote falhar por indisponibilidade do modelo
+        const safety = await fetchAndParse(SAFETY_MODEL, 2, "primary_failed_safety");
+        if (!safety.ok) {
+          if ("httpResponse" in safety) return safety.httpResponse;
+          throw safety.error || primary.error || new Error("Primary model failed");
+        }
+        result = safety.parsed;
+      } else {
       const fallback = await fetchAndParse(FALLBACK_MODEL, 2, "primary_failed");
       if (!fallback.ok) {
         if ("httpResponse" in fallback) return fallback.httpResponse;
