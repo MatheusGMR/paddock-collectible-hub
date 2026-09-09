@@ -304,8 +304,10 @@ Conte CADA carro separado individualmente. Máximo 10.`;
       ? `Analyze video of collectible cars (max 7). ${confirmationInstruction} ${validationInstruction}`.trim()
       : `Analyze image. Determine if collectible or real vehicle. ${confirmationInstruction} ${validationInstruction}`.trim();
 
-    const PRIMARY_MODEL = "gpt-4o-mini";
-    const FALLBACK_MODEL = "gpt-4o";
+    // gpt-4.1-mini: mesma latência do 4o-mini com visão bem mais precisa em miniaturas
+    const PRIMARY_MODEL = "gpt-4.1-mini";
+    const FALLBACK_MODEL = "gpt-4.1";
+    const SAFETY_MODEL = "gpt-4o-mini";
 
     const stripFences = (s: string) => {
       const i = s.indexOf('{');
