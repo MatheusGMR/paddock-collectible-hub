@@ -1,17 +1,5 @@
 // Paddock Push Notifications Service Worker
-
-self.addEventListener('install', (event) => {
-  console.log('[SW] Service Worker installing - clearing old caches');
-  event.waitUntil(
-    caches.keys().then(names => Promise.all(names.map(name => caches.delete(name))))
-  );
-  self.skipWaiting();
-});
-
-self.addEventListener('activate', (event) => {
-  console.log('[SW] Service Worker activated');
-  event.waitUntil(self.clients.claim());
-});
+// Standalone in dev/preview, and imported by the generated PWA worker in production.
 
 self.addEventListener('push', (event) => {
   console.log('[SW] Push received');
