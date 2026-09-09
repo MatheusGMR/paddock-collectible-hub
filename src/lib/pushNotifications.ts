@@ -1,5 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import { Capacitor } from '@capacitor/core';
+import { pushServiceWorkerUrl } from '@/lib/pwa';
 
 // ─── Types ───────────────────────────────────────────────────────
 export interface PushSubscribeResult {
