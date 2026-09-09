@@ -400,7 +400,7 @@ export function useParallelProcessing({
 
         // Small delay between chunks to avoid rate limiting
         if (i + PARALLEL_PROCESSING_LIMIT < queue.length && !abortRef.current) {
-          await new Promise((r) => setTimeout(r, 200));
+          await new Promise((r) => setTimeout(r, 100));
         }
       }
 
