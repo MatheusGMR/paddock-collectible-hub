@@ -1,6 +1,7 @@
 import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
+import { registerServiceWorker } from "./lib/pwa";
 
 // Cache-busting: force reload when build changes (fixes WKWebView stale cache on iOS)
 const currentBuild = __WEB_BUILD_ID__;
