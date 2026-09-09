@@ -352,7 +352,7 @@ Conte CADA carro separado individualmente. Máximo 10.`;
       const res = await fetch("https://api.openai.com/v1/chat/completions", {
         method: "POST",
         headers: { Authorization: `Bearer ${OPENAI_API_KEY}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ model, messages, max_tokens: maxTokens, response_format: { type: "json_object" } }),
+        body: JSON.stringify({ model, messages, max_tokens: maxTokens, temperature: 0.15, response_format: { type: "json_object" } }),
       });
 
       if (!res.ok) {
