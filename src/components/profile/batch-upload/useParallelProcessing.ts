@@ -10,7 +10,7 @@ import {
 } from "./types";
 
 /** Downscale a base64 image to reduce payload size before API call */
-function downscaleBase64(base64: string, maxDim = 512, quality = 0.50): Promise<string> {
+function downscaleBase64(base64: string, maxDim = 768, quality = 0.68): Promise<string> {
   return new Promise((resolve) => {
     const img = new Image();
     img.onload = () => {
@@ -185,7 +185,7 @@ export function useParallelProcessing({
           : await downscaleBase64(
               sourceBase64,
               options?.maxDim ?? 640,
-              options?.quality ?? 0.55
+              options?.quality ?? 0.70
             );
 
         const { data, error } = await supabase.functions.invoke("analyze-collectible", {
@@ -400,7 +400,7 @@ export function useParallelProcessing({
 
         // Small delay between chunks to avoid rate limiting
         if (i + PARALLEL_PROCESSING_LIMIT < queue.length && !abortRef.current) {
-          await new Promise((r) => setTimeout(r, 200));
+          await new Promise((r) => setTimeout(r, 100));
         }
       }
 

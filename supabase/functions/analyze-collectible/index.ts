@@ -7,7 +7,12 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const MODEL_PRICING = { "gpt-4o": { input: 2.50, output: 10.00 }, "gpt-4o-mini": { input: 0.15, output: 0.60 } };
+const MODEL_PRICING = {
+  "gpt-4o": { input: 2.50, output: 10.00 },
+  "gpt-4o-mini": { input: 0.15, output: 0.60 },
+  "gpt-4.1": { input: 2.00, output: 8.00 },
+  "gpt-4.1-mini": { input: 0.40, output: 1.60 },
+};
 
 function estimateTokens(content: string, isImage = false, isVideo = false): number {
   const t = Math.ceil(content.length / 4);
@@ -189,22 +194,30 @@ Responda APENAS em JSON:
 Se NENHUM veículo: {"count": 0, "vehicles": []}
 Conte CADA carro separado individualmente. Máximo 10.`;
 
-      const countRes = await fetch("https://api.openai.com/v1/chat/completions", {
+      const runCount = (model: string) => fetch("https://api.openai.com/v1/chat/completions", {
         method: "POST",
         headers: { Authorization: `Bearer ${OPENAI_API_KEY}`, "Content-Type": "application/json" },
         body: JSON.stringify({
-          model: "gpt-4o-mini",
+          model,
           messages: [
             { role: "system", content: countPrompt },
             { role: "user", content: [
               { type: "text", text: "Conte os veículos e forneça boundingBox." },
-              { type: "image_url", image_url: { url: imageBase64, detail: "low" } }
+              { type: "image_url", image_url: { url: imageBase64, detail: "auto" } }
             ] }
           ],
-          max_tokens: 400,
+          max_tokens: 500,
+          temperature: 0,
           response_format: { type: "json_object" },
         }),
       });
+
+      let countRes = await runCount("gpt-4.1-mini");
+      if (!countRes.ok) {
+        const errText = await countRes.text();
+        console.error("[CountOnly] Primary error:", countRes.status, errText);
+        countRes = await runCount("gpt-4o-mini");
+      }
 
       if (!countRes.ok) {
         const errText = await countRes.text();
@@ -291,8 +304,10 @@ Conte CADA carro separado individualmente. Máximo 10.`;
       ? `Analyze video of collectible cars (max 7). ${confirmationInstruction} ${validationInstruction}`.trim()
       : `Analyze image. Determine if collectible or real vehicle. ${confirmationInstruction} ${validationInstruction}`.trim();
 
-    const PRIMARY_MODEL = "gpt-4o-mini";
-    const FALLBACK_MODEL = "gpt-4o";
+    // gpt-4.1-mini: mesma latência do 4o-mini com visão bem mais precisa em miniaturas
+    const PRIMARY_MODEL = "gpt-4.1-mini";
+    const FALLBACK_MODEL = "gpt-4.1";
+    const SAFETY_MODEL = "gpt-4o-mini";
 
     const stripFences = (s: string) => {
       const i = s.indexOf('{');
@@ -337,7 +352,7 @@ Conte CADA carro separado individualmente. Máximo 10.`;
       const res = await fetch("https://api.openai.com/v1/chat/completions", {
         method: "POST",
         headers: { Authorization: `Bearer ${OPENAI_API_KEY}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ model, messages, max_tokens: maxTokens, response_format: { type: "json_object" } }),
+        body: JSON.stringify({ model, messages, max_tokens: maxTokens, temperature: 0.15, response_format: { type: "json_object" } }),
       });
 
       if (!res.ok) {
@@ -389,14 +404,21 @@ Conte CADA carro separado individualmente. Máximo 10.`;
       if ("httpResponse" in primary) return primary.httpResponse;
       console.error("[AI] Primary failed:", primary.error);
       if (skipFallback) {
-        throw primary.error || new Error("Primary model failed");
+        // Rede de segurança barata: nunca deixa o lote falhar por indisponibilidade do modelo
+        const safety = await fetchAndParse(SAFETY_MODEL, 2, "primary_failed_safety");
+        if (!safety.ok) {
+          if ("httpResponse" in safety) return safety.httpResponse;
+          throw safety.error || primary.error || new Error("Primary model failed");
+        }
+        result = safety.parsed;
+      } else {
+        const fallback = await fetchAndParse(FALLBACK_MODEL, 2, "primary_failed");
+        if (!fallback.ok) {
+          if ("httpResponse" in fallback) return fallback.httpResponse;
+          throw fallback.error;
+        }
+        result = fallback.parsed;
       }
-      const fallback = await fetchAndParse(FALLBACK_MODEL, 2, "primary_failed");
-      if (!fallback.ok) {
-        if ("httpResponse" in fallback) return fallback.httpResponse;
-        throw fallback.error;
-      }
-      result = fallback.parsed;
     } else {
       result = primary.parsed;
       // Skip expensive fallback when caller opts out (batch/upload mode)
