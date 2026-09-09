@@ -194,11 +194,11 @@ Responda APENAS em JSON:
 Se NENHUM veículo: {"count": 0, "vehicles": []}
 Conte CADA carro separado individualmente. Máximo 10.`;
 
-      const countRes = await fetch("https://api.openai.com/v1/chat/completions", {
+      const runCount = (model: string) => fetch("https://api.openai.com/v1/chat/completions", {
         method: "POST",
         headers: { Authorization: `Bearer ${OPENAI_API_KEY}`, "Content-Type": "application/json" },
         body: JSON.stringify({
-          model: "gpt-4.1-mini",
+          model,
           messages: [
             { role: "system", content: countPrompt },
             { role: "user", content: [
@@ -211,6 +211,13 @@ Conte CADA carro separado individualmente. Máximo 10.`;
           response_format: { type: "json_object" },
         }),
       });
+
+      let countRes = await runCount("gpt-4.1-mini");
+      if (!countRes.ok) {
+        const errText = await countRes.text();
+        console.error("[CountOnly] Primary error:", countRes.status, errText);
+        countRes = await runCount("gpt-4o-mini");
+      }
 
       if (!countRes.ok) {
         const errText = await countRes.text();
