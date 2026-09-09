@@ -412,12 +412,13 @@ Conte CADA carro separado individualmente. Máximo 10.`;
         }
         result = safety.parsed;
       } else {
-      const fallback = await fetchAndParse(FALLBACK_MODEL, 2, "primary_failed");
-      if (!fallback.ok) {
-        if ("httpResponse" in fallback) return fallback.httpResponse;
-        throw fallback.error;
+        const fallback = await fetchAndParse(FALLBACK_MODEL, 2, "primary_failed");
+        if (!fallback.ok) {
+          if ("httpResponse" in fallback) return fallback.httpResponse;
+          throw fallback.error;
+        }
+        result = fallback.parsed;
       }
-      result = fallback.parsed;
     } else {
       result = primary.parsed;
       // Skip expensive fallback when caller opts out (batch/upload mode)
