@@ -1,5 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import { Capacitor } from '@capacitor/core';
+import { pushServiceWorkerUrl } from '@/lib/pwa';
 
 // ─── Types ───────────────────────────────────────────────────────
 export interface PushSubscribeResult {
@@ -267,7 +268,7 @@ async function subscribeWeb(userId: string): Promise<PushSubscribeResult> {
 
     let registration: ServiceWorkerRegistration;
     try {
-      registration = await navigator.serviceWorker.register('/sw.js');
+      registration = await navigator.serviceWorker.register(pushServiceWorkerUrl());
       console.log('[Push Web] SW registered, scope:', registration.scope);
     } catch (swError) {
       console.error('[Push Web] SW registration failed:', swError);

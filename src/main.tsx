@@ -1,6 +1,7 @@
 import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
+import { registerServiceWorker } from "./lib/pwa";
 
 // Cache-busting: force reload when build changes (fixes WKWebView stale cache on iOS)
 const currentBuild = __WEB_BUILD_ID__;
@@ -23,17 +24,9 @@ if (storedBuild && storedBuild !== currentBuild) {
   localStorage.setItem("app_build_id", currentBuild);
 }
 
-// Register service worker for push notifications
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js')
-      .then((registration) => {
-        console.log('SW registered:', registration.scope);
-      })
-      .catch((error) => {
-        console.log('SW registration failed:', error);
-      });
-  });
-}
+// Register the service worker (offline support in production, push everywhere else)
+window.addEventListener('load', () => {
+  void registerServiceWorker();
+});
 
 createRoot(document.getElementById("root")!).render(<App />);
