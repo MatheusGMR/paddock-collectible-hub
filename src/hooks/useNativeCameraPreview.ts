@@ -17,17 +17,26 @@ export const useNativeCameraPreview = () => {
 
   const getPreviewSize = useCallback(() => {
     const platform = Capacitor.getPlatform();
-    // On iOS, window.innerHeight may exclude safe area insets.
-    // Use screen dimensions to ensure the camera preview covers the entire display including safe areas.
+    // Cover the entire physical display (including safe areas / gesture bar).
+    // Using the largest available measurement avoids black bands at the bottom.
     const width = Math.round(
-      platform === "ios"
-        ? Math.max(window.innerWidth, screen.width, document.documentElement.clientWidth || 390)
-        : window.innerWidth || document.documentElement.clientWidth || 390
+      Math.max(
+        window.innerWidth || 0,
+        window.visualViewport?.width || 0,
+        screen.width || 0,
+        document.documentElement.clientWidth || 0,
+        390
+      )
     );
     const height = Math.round(
-      platform === "ios"
-        ? Math.max(window.innerHeight, screen.height, document.documentElement.clientHeight || 844)
-        : window.innerHeight || document.documentElement.clientHeight || 844
+      Math.max(
+        window.innerHeight || 0,
+        window.visualViewport?.height || 0,
+        screen.height || 0,
+        (screen as any).availHeight || 0,
+        document.documentElement.clientHeight || 0,
+        844
+      )
     );
 
     return {
@@ -36,6 +45,7 @@ export const useNativeCameraPreview = () => {
       platform,
     };
   }, []);
+
 
   const start = useCallback(async (): Promise<boolean> => {
     if (!isNative) {
