@@ -127,10 +127,9 @@ export const PhotoUploadSheet = ({
       });
     }
 
-    const newMedia: QueuedMedia[] = [];
+    const accepted: { file: File; isVideo: boolean; index: number }[] = [];
 
-    for (let i = 0; i < filesToProcess.length; i++) {
-      const file = filesToProcess[i];
+    filesToProcess.forEach((file, i) => {
       const isVideo = file.type.startsWith("video/");
 
       if (isVideo && file.size > MAX_VIDEO_SIZE_MB * 1024 * 1024) {
@@ -139,17 +138,23 @@ export const PhotoUploadSheet = ({
           description: `${t.scanner.maxVideoSize || "Máximo"} ${MAX_VIDEO_SIZE_MB}MB`,
           variant: "destructive",
         });
-        continue;
+        return;
       }
 
-      const base64 = await fileToBase64(file);
-      newMedia.push({
-        id: `${Date.now()}-${i}`,
-        base64,
+      accepted.push({ file, isVideo, index: i });
+    });
+
+    // Read every file at once instead of one after another
+    const batchId = Date.now();
+    const newMedia: QueuedMedia[] = await Promise.all(
+      accepted.map(async ({ file, isVideo, index }) => ({
+        id: `${batchId}-${index}`,
+        base64: await fileToBase64(file),
         isVideo,
-        status: "pending",
-      });
-    }
+        status: "pending" as const,
+      }))
+    );
+
 
     if (newMedia.length === 0) return;
 
