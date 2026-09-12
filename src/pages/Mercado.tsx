@@ -4,7 +4,6 @@ import { Search, ShoppingBag, Star, Car, Package } from "lucide-react";
 import { useDebounce } from "@/hooks/useDebounce";
 import { CartSheet } from "@/components/mercado/CartSheet";
 import { SellerStoresSection } from "@/components/mercado/SellerStoresSection";
-import { AddToCartButton } from "@/components/mercado/AddToCartButton";
 import { BuyButton } from "@/components/checkout/BuyButton";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
