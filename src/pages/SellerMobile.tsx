@@ -72,9 +72,46 @@ const SellerMobilePage = () => {
     autoActivate();
   }, [loading, isSeller, user, activateSeller]);
 
+  // Shared page shell — same pattern as the rest of the app
+  const SellerShell = ({
+    title,
+    subtitle,
+    onBack,
+    action,
+    children,
+  }: {
+    title: string;
+    subtitle?: string;
+    onBack?: () => void;
+    action?: React.ReactNode;
+    children: React.ReactNode;
+  }) => (
+    <div className="min-h-screen">
+      <header className="sticky top-0 z-40 bg-background/95 backdrop-blur-lg border-b border-border pt-safe">
+        <div className="flex h-14 items-center gap-3 px-4">
+          {onBack && (
+            <button
+              onClick={onBack}
+              className="p-2 -ml-2 rounded-lg hover:bg-muted/50 transition-colors"
+              aria-label="Voltar"
+            >
+              <ArrowLeft className="h-5 w-5 text-foreground" />
+            </button>
+          )}
+          <div className="flex-1 min-w-0">
+            <h1 className="text-lg font-semibold text-foreground truncate">{title}</h1>
+            {subtitle && <p className="text-xs text-muted-foreground truncate">{subtitle}</p>}
+          </div>
+          {action}
+        </div>
+      </header>
+      <div className="px-4 py-4">{children}</div>
+    </div>
+  );
+
   if (authLoading || loading) {
     return (
-      <div className="seller-safe-top flex items-center justify-center py-20">
+      <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
@@ -89,29 +126,31 @@ const SellerMobilePage = () => {
     };
 
     return (
-      <div className="seller-safe-top flex items-center justify-center px-4 pb-12">
-        <Card className="max-w-md w-full border-border">
-          <CardHeader className="text-center">
-            <div className="mx-auto h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
-              <Store className="h-8 w-8 text-primary" />
-            </div>
-            <CardTitle>Tornar-se Lojista</CardTitle>
-            <CardDescription>
-              Ative o modo lojista para acessar o painel de estoque, financeiro, clientes e gerenciar suas vendas na Paddock.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <Button onClick={handleActivate} disabled={activating} className="w-full gap-2">
-              {activating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Store className="h-4 w-4" />}
-              Ativar Modo Lojista
-            </Button>
-            <Button variant="ghost" onClick={() => navigate("/profile")} className="w-full gap-2">
-              <ArrowLeft className="h-4 w-4" />
-              Voltar ao Perfil
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
+      <SellerShell title="Minha Loja">
+        <div className="flex items-center justify-center">
+          <Card className="max-w-md w-full border-border">
+            <CardHeader className="text-center">
+              <div className="mx-auto h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
+                <Store className="h-8 w-8 text-primary" />
+              </div>
+              <CardTitle>Tornar-se Lojista</CardTitle>
+              <CardDescription>
+                Ative o modo lojista para acessar o painel de estoque, financeiro, clientes e gerenciar suas vendas na Paddock.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <Button onClick={handleActivate} disabled={activating} className="w-full gap-2">
+                {activating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Store className="h-4 w-4" />}
+                Ativar Modo Lojista
+              </Button>
+              <Button variant="ghost" onClick={() => navigate("/profile")} className="w-full gap-2">
+                <ArrowLeft className="h-4 w-4" />
+                Voltar ao Perfil
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </SellerShell>
     );
   }
 
@@ -132,86 +171,67 @@ const SellerMobilePage = () => {
     shareViaWhatsApp(text);
   };
 
-  // Inner page back button
-  const BackHeader = ({ title }: { title: string }) => (
-    <div className="flex items-center gap-3 mb-4">
-      <button onClick={() => setTab("menu")} className="p-2 -ml-2 rounded-lg hover:bg-muted/50 transition-colors">
-        <ArrowLeft className="h-5 w-5 text-foreground" />
-      </button>
-      <h2 className="text-lg font-semibold text-foreground">{title}</h2>
-    </div>
-  );
+  const back = () => setTab("menu");
 
-  // Render inner content
   if (tab === "estoque") {
     return (
-      <div className="seller-safe-top px-4 pb-4">
-        <BackHeader title="Estoque" />
+      <SellerShell title="Estoque" onBack={back}>
         <SellerInventory inventory={inventory} loading={false} />
-      </div>
+      </SellerShell>
     );
   }
   if (tab === "pedidos") {
     return (
-      <div className="seller-safe-top px-4 pb-4">
-        <BackHeader title="Pedidos" />
+      <SellerShell title="Pedidos" onBack={back}>
         <SellerOrders />
-      </div>
+      </SellerShell>
     );
   }
   if (tab === "analytics") {
     return (
-      <div className="seller-safe-top px-4 pb-4">
-        <BackHeader title="Desempenho" />
+      <SellerShell title="Desempenho" onBack={back}>
         <SellerAnalytics />
-      </div>
+      </SellerShell>
     );
   }
   if (tab === "financeiro") {
     return (
-      <div className="seller-safe-top px-4 pb-4">
-        <BackHeader title="Financeiro" />
+      <SellerShell title="Financeiro" onBack={back}>
         <SellerFinanceiro receivables={receivables} loading={false} />
-      </div>
+      </SellerShell>
     );
   }
   if (tab === "conta") {
     return (
-      <div className="seller-safe-top px-4 pb-4">
-        <BackHeader title="Conta" />
+      <SellerShell title="Conta" onBack={back}>
         <SellerConta sellerDetails={sellerDetails} onSave={saveSellerDetails} loading={false} />
-      </div>
+      </SellerShell>
     );
   }
   if (tab === "clientes") {
     return (
-      <div className="seller-safe-top px-4 pb-4">
-        <BackHeader title="Clientes" />
+      <SellerShell title="Clientes" onBack={back}>
         <SellerClientes customers={customers} loading={false} />
-      </div>
+      </SellerShell>
     );
   }
   if (tab === "importar") {
     return (
-      <div className="seller-safe-top px-4 pb-4">
-        <BackHeader title="Importar" />
+      <SellerShell title="Importar" onBack={back}>
         <SellerImport />
-      </div>
+      </SellerShell>
     );
   }
 
   // Main menu
   return (
-    <div className="seller-safe-top px-4 pb-4 space-y-4">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold text-foreground">Minha Loja</h1>
-          <p className="text-sm text-muted-foreground">{sellerDetails?.business_name || "Painel do Lojista"}</p>
-        </div>
+    <SellerShell
+      title="Minha Loja"
+      subtitle={sellerDetails?.business_name || "Painel do Lojista"}
+      action={
         <Popover>
           <PopoverTrigger asChild>
-            <Button variant="outline" size="icon" className="h-9 w-9">
+            <Button variant="outline" size="icon" className="h-9 w-9 shrink-0">
               <Share2 className="h-4 w-4" />
             </Button>
           </PopoverTrigger>
@@ -226,44 +246,46 @@ const SellerMobilePage = () => {
             </button>
           </PopoverContent>
         </Popover>
-      </div>
+      }
+    >
+      <div className="space-y-4">
+        {/* Quick Stats */}
+        <div className="grid grid-cols-2 gap-3">
+          <Card className="border-border">
+            <CardContent className="p-4">
+              <p className="text-2xl font-bold text-foreground">{inventory?.active?.length || 0}</p>
+              <p className="text-xs text-muted-foreground">Anúncios ativos</p>
+            </CardContent>
+          </Card>
+          <Card className="border-border">
+            <CardContent className="p-4">
+              <p className="text-2xl font-bold text-foreground">{inventory?.sold?.length || 0}</p>
+              <p className="text-xs text-muted-foreground">Vendidos</p>
+            </CardContent>
+          </Card>
+        </div>
 
-      {/* Quick Stats */}
-      <div className="grid grid-cols-2 gap-3">
-        <Card className="border-border">
-          <CardContent className="p-4">
-            <p className="text-2xl font-bold text-foreground">{inventory?.active?.length || 0}</p>
-            <p className="text-xs text-muted-foreground">Anúncios ativos</p>
-          </CardContent>
-        </Card>
-        <Card className="border-border">
-          <CardContent className="p-4">
-            <p className="text-2xl font-bold text-foreground">{inventory?.sold?.length || 0}</p>
-            <p className="text-xs text-muted-foreground">Vendidos</p>
-          </CardContent>
-        </Card>
+        {/* Menu Grid */}
+        <div className="space-y-1">
+          {menuItems.map((item) => (
+            <button
+              key={item.id}
+              onClick={() => setTab(item.id)}
+              className="w-full flex items-center gap-4 p-4 rounded-xl hover:bg-muted/50 transition-colors"
+            >
+              <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                <item.icon className="h-5 w-5 text-primary" />
+              </div>
+              <div className="flex-1 text-left">
+                <p className="text-sm font-medium text-foreground">{item.title}</p>
+                <p className="text-xs text-muted-foreground">{item.desc}</p>
+              </div>
+              <ChevronRight className="h-4 w-4 text-muted-foreground" />
+            </button>
+          ))}
+        </div>
       </div>
-
-      {/* Menu Grid */}
-      <div className="space-y-1">
-        {menuItems.map((item) => (
-          <button
-            key={item.id}
-            onClick={() => setTab(item.id)}
-            className="w-full flex items-center gap-4 p-4 rounded-xl hover:bg-muted/50 transition-colors"
-          >
-            <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-              <item.icon className="h-5 w-5 text-primary" />
-            </div>
-            <div className="flex-1 text-left">
-              <p className="text-sm font-medium text-foreground">{item.title}</p>
-              <p className="text-xs text-muted-foreground">{item.desc}</p>
-            </div>
-            <ChevronRight className="h-4 w-4 text-muted-foreground" />
-          </button>
-        ))}
-      </div>
-    </div>
+    </SellerShell>
   );
 };
 
