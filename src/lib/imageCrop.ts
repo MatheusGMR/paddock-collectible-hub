@@ -9,54 +9,98 @@ export interface BoundingBox {
  * Crop an image based on a bounding box (percentage coordinates)
  * Returns a base64 data URL of the cropped image
  */
+const sanitizeBox = (box: BoundingBox): BoundingBox | null => {
+  if (!box) return null;
+  let { x, y, width, height } = box;
+  if (![x, y, width, height].every((v) => typeof v === "number" && Number.isFinite(v))) return null;
+
+  // Some models return normalized 0-1 coordinates instead of percentages
+  if (width <= 1 && height <= 1 && x <= 1 && y <= 1) {
+    x *= 100; y *= 100; width *= 100; height *= 100;
+  }
+
+  x = Math.min(Math.max(x, 0), 100);
+  y = Math.min(Math.max(y, 0), 100);
+  width = Math.min(Math.max(width, 0), 100 - x);
+  height = Math.min(Math.max(height, 0), 100 - y);
+
+  // Degenerate/invisible region -> caller should keep original image
+  if (width < 3 || height < 3) return null;
+
+  return { x, y, width, height };
+};
+
+/**
+ * Crop an image based on a bounding box (percentage coordinates)
+ * Returns a base64 data URL of the cropped image.
+ * Falls back to the original image whenever the region would be empty/black.
+ */
 export const cropImageByBoundingBox = (
   imageBase64: string,
   boundingBox: BoundingBox
 ): Promise<string> => {
   return new Promise((resolve, reject) => {
+    const safeBox = sanitizeBox(boundingBox);
+    if (!safeBox) {
+      resolve(imageBase64);
+      return;
+    }
+
     const img = new Image();
     img.onload = () => {
       try {
         const canvas = document.createElement("canvas");
         const ctx = canvas.getContext("2d");
-        
+
         if (!ctx) {
-          reject(new Error("Could not get canvas context"));
+          resolve(imageBase64);
           return;
         }
 
-        // Convert percentage to pixels
-        const x = (boundingBox.x / 100) * img.width;
-        const y = (boundingBox.y / 100) * img.height;
-        const width = (boundingBox.width / 100) * img.width;
-        const height = (boundingBox.height / 100) * img.height;
+        // Convert percentage to pixels, clamped to the real image bounds
+        let x = Math.round((safeBox.x / 100) * img.width);
+        let y = Math.round((safeBox.y / 100) * img.height);
+        let width = Math.round((safeBox.width / 100) * img.width);
+        let height = Math.round((safeBox.height / 100) * img.height);
 
-        // Set canvas size to the crop dimensions
+        x = Math.min(Math.max(x, 0), Math.max(img.width - 1, 0));
+        y = Math.min(Math.max(y, 0), Math.max(img.height - 1, 0));
+        width = Math.min(width, img.width - x);
+        height = Math.min(height, img.height - y);
+
+        // Too small to be a usable photo of the car: keep the original
+        if (width < 24 || height < 24) {
+          resolve(imageBase64);
+          return;
+        }
+
         canvas.width = width;
         canvas.height = height;
 
-        // Draw the cropped portion
-        ctx.drawImage(
-          img,
-          x, y, width, height,  // Source rectangle
-          0, 0, width, height   // Destination rectangle
-        );
+        // White base so any transparent/edge area never renders as black
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, width, height);
+        ctx.imageSmoothingQuality = "high";
+        ctx.drawImage(img, x, y, width, height, 0, 0, width, height);
 
-        // Convert to base64
-        const croppedBase64 = canvas.toDataURL("image/jpeg", 0.85);
-        resolve(croppedBase64);
+        const croppedBase64 = canvas.toDataURL("image/jpeg", 0.9);
+        // Guard against empty canvas output
+        resolve(croppedBase64 && croppedBase64.length > 1000 ? croppedBase64 : imageBase64);
       } catch (error) {
-        reject(error);
+        console.error("[imageCrop] Crop failed, using original:", error);
+        resolve(imageBase64);
       }
     };
-    
+
     img.onerror = () => {
       reject(new Error("Failed to load image for cropping"));
     };
-    
+
+    img.crossOrigin = "anonymous";
     img.src = imageBase64;
   });
 };
+
 
 /**
  * Crop multiple regions from a single image
