@@ -403,49 +403,37 @@ export function useParallelProcessing({
       const results: QueuedMedia[] = [...queue];
       let processedCount = 0;
 
-      // Process in chunks of PARALLEL_PROCESSING_LIMIT
-      for (let i = 0; i < queue.length; i += PARALLEL_PROCESSING_LIMIT) {
-        if (abortRef.current) break;
+      // Mark all as analyzing immediately for instant feedback
+      queue.forEach((media, idx) => {
+        results[idx] = { ...media, status: "analyzing" };
+        onMediaUpdate(results[idx]);
+      });
 
-        const chunk = queue.slice(i, i + PARALLEL_PROCESSING_LIMIT);
-        const chunkIndices = chunk.map((_, idx) => i + idx);
-
-        // Mark chunk as analyzing
-        chunkIndices.forEach((idx) => {
-          results[idx] = { ...results[idx], status: "analyzing" };
-          onMediaUpdate(results[idx]);
-        });
-
-        // Process chunk in parallel using allSettled to never lose partial results
-        const chunkSettled = await Promise.allSettled(
-          chunk.map((media) => processMediaItem(media))
-        );
-
-        // Update results - handle both fulfilled and rejected
-        chunkSettled.forEach((settled, chunkIdx) => {
-          const globalIdx = i + chunkIdx;
-          if (settled.status === "fulfilled") {
-            results[globalIdx] = settled.value;
-            onMediaUpdate(settled.value);
-          } else {
-            // Even if Promise itself rejected (shouldn't happen, but safety net)
-            const errorMedia: QueuedMedia = {
-              ...results[globalIdx],
+      // Continuous pool: a new photo starts the moment a slot frees up
+      await runPool(
+        queue,
+        PARALLEL_PROCESSING_LIMIT,
+        async (media, index) => {
+          let processed: QueuedMedia;
+          try {
+            processed = await processMediaItem(media);
+          } catch (reason) {
+            processed = {
+              ...results[index],
               status: "error",
-              error: String(settled.reason ?? "Falha inesperada"),
+              error: String(reason ?? "Falha inesperada"),
             };
-            results[globalIdx] = errorMedia;
-            onMediaUpdate(errorMedia);
           }
+
+          results[index] = processed;
+          onMediaUpdate(processed);
           processedCount++;
           onProgress(processedCount, queue.length);
-        });
+          return processed;
+        },
+        () => abortRef.current
+      );
 
-        // Small delay between chunks to avoid rate limiting
-        if (i + PARALLEL_PROCESSING_LIMIT < queue.length && !abortRef.current) {
-          await new Promise((r) => setTimeout(r, 100));
-        }
-      }
 
       setIsProcessing(false);
       return results;
