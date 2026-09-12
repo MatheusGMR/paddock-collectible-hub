@@ -629,6 +629,12 @@ export const PhotoUploadSheet = ({
                     Reanalisar imagens substituídas
                   </Button>
                 )}
+                {failedMediaIndices.length > 0 && (
+                  <Button variant="secondary" onClick={handleRetrySameImages} className="w-full">
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Tentar novamente estas fotos
+                  </Button>
+                )}
                 <Button variant="outline" onClick={handleSkipAllFailed} className="w-full">
                   {consolidatedResults.length > 0
                     ? `Ver ${consolidatedResults.length} ${consolidatedResults.length === 1 ? "resultado" : "resultados"}`
