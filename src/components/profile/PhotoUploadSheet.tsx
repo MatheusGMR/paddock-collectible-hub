@@ -95,17 +95,19 @@ export const PhotoUploadSheet = ({
     const failed: number[] = [];
 
     processedQueue.forEach((media, mediaIndex) => {
+      const originalIndex = mediaQueue.findIndex((queued) => queued.id === media.id);
+      const stableMediaIndex = originalIndex >= 0 ? originalIndex : mediaIndex;
       if (media.status === "success" && media.results && media.results.length > 0) {
         media.results.forEach((result) => {
           consolidated.push({
             ...result,
             mediaId: media.id,
-            mediaIndex,
+            mediaIndex: stableMediaIndex,
             isSelected: !result.isDuplicate,
           });
         });
       } else {
-        failed.push(mediaIndex);
+        failed.push(stableMediaIndex);
       }
     });
 
@@ -321,18 +323,34 @@ export const PhotoUploadSheet = ({
     const file = files[0];
     const base64 = await fileToBase64(file);
     const updatedQueue = [...mediaQueue];
-    updatedQueue[retryTargetIndex] = {
+    const replacement: QueuedMedia = {
       ...updatedQueue[retryTargetIndex],
       base64,
       isVideo: file.type.startsWith("video/"),
       status: "pending",
       results: undefined,
       error: undefined,
+      vehicleCount: undefined,
+      detectedVehicles: undefined,
       manuallyAdjusted: false,
     };
+    updatedQueue[retryTargetIndex] = replacement;
     setMediaQueue(updatedQueue);
     setFailedMediaIndices((prev) => prev.filter((i) => i !== retryTargetIndex));
     if (retryInputRef.current) retryInputRef.current.value = "";
+
+    // A replacement is a different photo: detect its vehicles again instead of
+    // reusing stale boxes/counts from the failed image.
+    try {
+      const [recounted] = await quickCountQueue([replacement]);
+      if (recounted) {
+        setMediaQueue((prev) => prev.map((item) => item.id === replacement.id
+          ? { ...recounted, status: "pending" }
+          : item));
+      }
+    } catch (error) {
+      console.error("[BatchUpload] Replacement count failed:", error);
+    }
     setRetryTargetIndex(null);
   };
 
