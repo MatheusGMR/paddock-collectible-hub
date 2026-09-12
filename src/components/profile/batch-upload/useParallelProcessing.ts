@@ -6,16 +6,31 @@ import {
   QueuedMedia,
   AnalysisResult,
   PARALLEL_PROCESSING_LIMIT,
+  COUNT_PARALLEL_LIMIT,
   DetectedVehicle,
 } from "./types";
 
+/** Cache of already-downscaled payloads to avoid re-encoding the same photo twice */
+const downscaleCache = new Map<string, string>();
+const cacheKey = (base64: string, maxDim: number, quality: number) =>
+  `${maxDim}|${quality}|${base64.length}|${base64.slice(-96)}`;
+
 /** Downscale a base64 image to reduce payload size before API call */
 function downscaleBase64(base64: string, maxDim = 768, quality = 0.68): Promise<string> {
+  const key = cacheKey(base64, maxDim, quality);
+  const cached = downscaleCache.get(key);
+  if (cached) return Promise.resolve(cached);
+
   return new Promise((resolve) => {
+    const finish = (value: string) => {
+      if (downscaleCache.size > 40) downscaleCache.clear();
+      downscaleCache.set(key, value);
+      resolve(value);
+    };
     const img = new Image();
     img.onload = () => {
       let { width, height } = img;
-      if (width <= maxDim && height <= maxDim) { resolve(base64); return; }
+      if (width <= maxDim && height <= maxDim) { finish(base64); return; }
       const ratio = Math.min(maxDim / width, maxDim / height);
       width = Math.round(width * ratio);
       height = Math.round(height * ratio);
@@ -23,13 +38,44 @@ function downscaleBase64(base64: string, maxDim = 768, quality = 0.68): Promise<
       canvas.width = width;
       canvas.height = height;
       const ctx = canvas.getContext("2d")!;
+      ctx.imageSmoothingQuality = "high";
       ctx.drawImage(img, 0, 0, width, height);
-      resolve(canvas.toDataURL("image/jpeg", quality));
+      finish(canvas.toDataURL("image/jpeg", quality));
     };
     img.onerror = () => resolve(base64);
     img.src = base64;
   });
 }
+
+/**
+ * Continuous worker pool: keeps `limit` requests in flight at all times instead of
+ * waiting for the slowest item of each chunk before starting the next batch.
+ */
+async function runPool<T, R>(
+  items: T[],
+  limit: number,
+  worker: (item: T, index: number) => Promise<R>,
+  shouldAbort?: () => boolean
+): Promise<R[]> {
+  const results = new Array<R>(items.length);
+  let cursor = 0;
+
+  const runners = Array.from({ length: Math.min(limit, items.length) }, async () => {
+    while (true) {
+      const index = cursor++;
+      if (index >= items.length) return;
+      if (shouldAbort?.()) return;
+      results[index] = await worker(items[index], index);
+    }
+  });
+
+  await Promise.all(runners);
+  return results;
+}
+
+/** Memoized duplicate lookups (same car appearing across several photos) */
+const duplicateCache = new Map<string, { isDuplicate: boolean; existingItemImage?: string }>();
+
 
 interface UseParallelProcessingProps {
   userId: string | undefined;
@@ -53,57 +99,54 @@ export function useParallelProcessing({
       abortRef.current = false;
 
       const results: QueuedMedia[] = [...queue];
+      let done = 0;
 
-      for (let i = 0; i < queue.length; i += PARALLEL_PROCESSING_LIMIT) {
-        if (abortRef.current) break;
+      // Mark everything as counting up-front so the grid animates immediately
+      queue.forEach((media, idx) => {
+        results[idx] = { ...media, status: "counting" };
+        onMediaUpdate(results[idx]);
+      });
 
-        const chunk = queue.slice(i, i + PARALLEL_PROCESSING_LIMIT);
-        const chunkIndices = chunk.map((_, idx) => i + idx);
+      await runPool(
+        queue,
+        COUNT_PARALLEL_LIMIT,
+        async (media, index) => {
+          let counted: QueuedMedia;
+          try {
+            const optimized = media.isVideo
+              ? media.base64
+              : await downscaleBase64(media.base64, 640, 0.62);
 
-        // Mark as counting
-        chunkIndices.forEach((idx) => {
-          results[idx] = { ...results[idx], status: "counting" };
-          onMediaUpdate(results[idx]);
-        });
+            const { data, error } = await supabase.functions.invoke("analyze-collectible", {
+              body: { imageBase64: optimized, countOnly: true },
+            });
 
-        const chunkResults = await Promise.all(
-          chunk.map(async (media) => {
-            try {
-              const optimized = media.isVideo
-                ? media.base64
-                : await downscaleBase64(media.base64);
+            if (error) throw error;
 
-              const { data, error } = await supabase.functions.invoke("analyze-collectible", {
-                body: { imageBase64: optimized, countOnly: true },
-              });
+            counted = {
+              ...media,
+              status: "counted",
+              vehicleCount: data?.count || 0,
+              detectedVehicles: Array.isArray(data?.vehicles) ? data.vehicles : [],
+            };
+          } catch (err) {
+            console.error("[QuickCount] Error:", err);
+            counted = {
+              ...media,
+              status: "counted",
+              vehicleCount: 0,
+              detectedVehicles: [],
+            };
+          }
 
-              if (error) throw error;
-
-              return {
-                ...media,
-                status: "counted" as const,
-                vehicleCount: data?.count || 0,
-                detectedVehicles: Array.isArray(data?.vehicles) ? data.vehicles : [],
-              };
-            } catch (err) {
-              console.error("[QuickCount] Error:", err);
-              return {
-                ...media,
-                status: "counted" as const,
-                vehicleCount: 0,
-                detectedVehicles: [],
-              };
-            }
-          })
-        );
-
-        chunkResults.forEach((result, chunkIdx) => {
-          const globalIdx = i + chunkIdx;
-          results[globalIdx] = result;
-          onMediaUpdate(result);
-          onProgress(globalIdx + 1, queue.length);
-        });
-      }
+          results[index] = counted;
+          onMediaUpdate(counted);
+          done++;
+          onProgress(done, queue.length);
+          return counted;
+        },
+        () => abortRef.current
+      );
 
       setIsCounting(false);
       return results;
@@ -300,13 +343,19 @@ export function useParallelProcessing({
       const itemsWithDuplicateCheck = await Promise.all(
         itemsWithCrops.map(async (item) => {
           if (userId) {
+            const key = `${userId}|${item.realCar.brand}|${item.realCar.model}|${item.collectible?.color || ""}`.toLowerCase();
             try {
-              const duplicate = await checkDuplicateInCollection(
-                userId,
-                item.realCar.brand,
-                item.realCar.model,
-                item.collectible?.color
-              );
+              let duplicate = duplicateCache.get(key);
+              if (!duplicate) {
+                duplicate = await checkDuplicateInCollection(
+                  userId,
+                  item.realCar.brand,
+                  item.realCar.model,
+                  item.collectible?.color
+                );
+                if (duplicateCache.size > 200) duplicateCache.clear();
+                duplicateCache.set(key, duplicate);
+              }
               return {
                 ...item,
                 isDuplicate: duplicate.isDuplicate,
@@ -360,49 +409,37 @@ export function useParallelProcessing({
       const results: QueuedMedia[] = [...queue];
       let processedCount = 0;
 
-      // Process in chunks of PARALLEL_PROCESSING_LIMIT
-      for (let i = 0; i < queue.length; i += PARALLEL_PROCESSING_LIMIT) {
-        if (abortRef.current) break;
+      // Mark all as analyzing immediately for instant feedback
+      queue.forEach((media, idx) => {
+        results[idx] = { ...media, status: "analyzing" };
+        onMediaUpdate(results[idx]);
+      });
 
-        const chunk = queue.slice(i, i + PARALLEL_PROCESSING_LIMIT);
-        const chunkIndices = chunk.map((_, idx) => i + idx);
-
-        // Mark chunk as analyzing
-        chunkIndices.forEach((idx) => {
-          results[idx] = { ...results[idx], status: "analyzing" };
-          onMediaUpdate(results[idx]);
-        });
-
-        // Process chunk in parallel using allSettled to never lose partial results
-        const chunkSettled = await Promise.allSettled(
-          chunk.map((media) => processMediaItem(media))
-        );
-
-        // Update results - handle both fulfilled and rejected
-        chunkSettled.forEach((settled, chunkIdx) => {
-          const globalIdx = i + chunkIdx;
-          if (settled.status === "fulfilled") {
-            results[globalIdx] = settled.value;
-            onMediaUpdate(settled.value);
-          } else {
-            // Even if Promise itself rejected (shouldn't happen, but safety net)
-            const errorMedia: QueuedMedia = {
-              ...results[globalIdx],
+      // Continuous pool: a new photo starts the moment a slot frees up
+      await runPool(
+        queue,
+        PARALLEL_PROCESSING_LIMIT,
+        async (media, index) => {
+          let processed: QueuedMedia;
+          try {
+            processed = await processMediaItem(media);
+          } catch (reason) {
+            processed = {
+              ...results[index],
               status: "error",
-              error: String(settled.reason ?? "Falha inesperada"),
+              error: String(reason ?? "Falha inesperada"),
             };
-            results[globalIdx] = errorMedia;
-            onMediaUpdate(errorMedia);
           }
+
+          results[index] = processed;
+          onMediaUpdate(processed);
           processedCount++;
           onProgress(processedCount, queue.length);
-        });
+          return processed;
+        },
+        () => abortRef.current
+      );
 
-        // Small delay between chunks to avoid rate limiting
-        if (i + PARALLEL_PROCESSING_LIMIT < queue.length && !abortRef.current) {
-          await new Promise((r) => setTimeout(r, 100));
-        }
-      }
 
       setIsProcessing(false);
       return results;

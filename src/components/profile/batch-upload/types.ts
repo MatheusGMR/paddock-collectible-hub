@@ -2,7 +2,8 @@ import { BoundingBox } from "@/lib/imageCrop";
 import { PriceIndex } from "@/lib/priceIndex";
 
 export const MAX_PHOTOS_PER_BATCH = 10;
-export const PARALLEL_PROCESSING_LIMIT = 3;
+export const PARALLEL_PROCESSING_LIMIT = 4;
+export const COUNT_PARALLEL_LIMIT = 5;
 export const MAX_VIDEO_SIZE_MB = 20;
 
 export interface AnalysisResult {
