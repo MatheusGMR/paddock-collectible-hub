@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Package, Plus, Search, Eye, Share2, Upload } from "lucide-react";
-import { shareViaWhatsApp, getListingShareUrl } from "@/lib/shareWhatsApp";
+import { shareListingViaWhatsApp } from "@/lib/shareWhatsApp";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -196,17 +196,13 @@ export const SellerInventory = ({ inventory, loading, onRefresh }: SellerInvento
                           title="Compartilhar via WhatsApp"
                           onClick={(e) => {
                             e.stopPropagation();
-                            const url = getListingShareUrl(item.id);
-                            const text = [
-                              `🏎️ *${item.title}*`,
-                              `💰 *${formatPrice(item.price, item.currency)}*`,
-                              "",
-                              "Miniatura disponível na Paddock!",
-                              "Compre com segurança via Apple Pay, Google Pay ou cartão.",
-                              "",
-                              `👉 ${url}`,
-                            ].join("\n");
-                            shareViaWhatsApp(text);
+                            void shareListingViaWhatsApp({
+                              id: item.id,
+                              title: item.title,
+                              price: item.price,
+                              currency: item.currency,
+                              image_url: (item as any).image_url,
+                            });
                           }}
                         >
                           <Share2 className="h-4 w-4" />

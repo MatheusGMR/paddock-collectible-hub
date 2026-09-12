@@ -73,7 +73,7 @@ Deno.serve(async (req) => {
 
   const { data: listing } = await supabase
     .from("listings")
-    .select("title, price, currency, image_url, description")
+    .select("title, price, currency, image_url, description, item_id")
     .eq("id", listingId)
     .maybeSingle();
 
@@ -84,20 +84,50 @@ Deno.serve(async (req) => {
     });
   }
 
+  let item: Record<string, unknown> | null = null;
+  if (listing.item_id) {
+    const { data } = await supabase
+      .from("items")
+      .select("real_car_brand, real_car_model, real_car_year, collectible_manufacturer, collectible_scale, real_car_photos")
+      .eq("id", listing.item_id)
+      .maybeSingle();
+    item = data as Record<string, unknown> | null;
+  }
+
   const title = listing.title || "Miniatura na Paddock";
-  const rawDesc = listing.description || listing.title || "Veja este anúncio na Paddock";
-  const firstLine = rawDesc.split("\n")[0].trim();
-  const ogDescription = firstLine.length > 150 ? firstLine.substring(0, 147) + "..." : firstLine;
-  const imageUrl = listing.image_url || "";
   const price = new Intl.NumberFormat("pt-BR", {
     style: "currency",
     currency: listing.currency || "BRL",
   }).format(listing.price);
 
-  const ogTitle = `${title} - ${price}`;
+  const brand = (item?.real_car_brand as string) || "";
+  const model = (item?.real_car_model as string) || "";
+  const carYear = (item?.real_car_year as string | number) || "";
+  const manufacturer = (item?.collectible_manufacturer as string) || "";
+  const scale = (item?.collectible_scale as string) || "";
+
+  const carLine = brand ? `${[brand, model].filter(Boolean).join(" ")}${carYear ? ` (${carYear})` : ""}` : "";
+  const makerLine = manufacturer ? `${manufacturer}${scale ? ` • Escala ${scale}` : ""}` : "";
+
+  const rawDesc = [carLine, makerLine].filter(Boolean).join(" • ") ||
+    (listing.description || listing.title || "Veja este anúncio na Paddock").split("\n")[0].trim();
+  const descWithPrice = `${rawDesc} — ${price}`;
+  const ogDescription = descWithPrice.length > 160 ? descWithPrice.substring(0, 157) + "..." : descWithPrice;
+
+  const photos = Array.isArray(item?.real_car_photos) ? (item?.real_car_photos as string[]) : [];
+  const imageUrl = listing.image_url || photos.find((p) => typeof p === "string" && p.startsWith("http")) || "";
+
+  const ogTitle = `${title}${brand ? ` • ${brand}` : ""} - ${price}`;
 
   const imageMeta = imageUrl
-    ? `<meta property="og:image" content="${safeAttr(imageUrl)}" />\n  <meta name="twitter:image" content="${safeAttr(imageUrl)}" />`
+    ? [
+        `  <meta property="og:image" content="${safeAttr(imageUrl)}" />`,
+        `  <meta property="og:image:secure_url" content="${safeAttr(imageUrl)}" />`,
+        '  <meta property="og:image:width" content="1200" />',
+        '  <meta property="og:image:height" content="1200" />',
+        `  <meta property="og:image:alt" content="${safeAttr(title)}" />`,
+        `  <meta name="twitter:image" content="${safeAttr(imageUrl)}" />`,
+      ].join("\n")
     : "";
 
   const html = [
@@ -106,17 +136,20 @@ Deno.serve(async (req) => {
     "<head>",
     '  <meta charset="utf-8" />',
     `  <title>${safeText(ogTitle)}</title>`,
+    `  <meta name="description" content="${safeAttr(ogDescription)}" />`,
     '  <meta property="og:type" content="product" />',
     `  <meta property="og:title" content="${safeAttr(ogTitle)}" />`,
     `  <meta property="og:description" content="${safeAttr(ogDescription)}" />`,
     imageMeta,
+    `  <meta property="product:price:amount" content="${safeAttr(String(listing.price))}" />`,
+    `  <meta property="product:price:currency" content="${safeAttr(listing.currency || "BRL")}" />`,
     `  <meta property="og:url" content="${safeAttr(redirectUrl)}" />`,
     '  <meta property="og:site_name" content="Paddock" />',
     '  <meta name="twitter:card" content="summary_large_image" />',
     `  <meta name="twitter:title" content="${safeAttr(ogTitle)}" />`,
     `  <meta name="twitter:description" content="${safeAttr(ogDescription)}" />`,
     "</head>",
-    "<body></body>",
+    `<body><p>${safeText(ogTitle)}</p></body>`,
     "</html>",
   ].join("\n");
 
