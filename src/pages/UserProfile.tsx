@@ -167,7 +167,7 @@ const UserProfilePage = () => {
   return (
     <div className="min-h-screen pb-20">
       {/* Header */}
-      <div className="border-b border-border">
+      <div className="border-b border-border pt-safe">
         <div className="flex items-center justify-between px-4 py-3">
           <button onClick={() => navigate(-1)} className="p-2 -ml-2">
             <ArrowLeft className="h-5 w-5" />

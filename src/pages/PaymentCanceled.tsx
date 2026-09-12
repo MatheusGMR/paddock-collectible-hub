@@ -19,7 +19,7 @@ export default function PaymentCanceled() {
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6 text-center">
+    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6 text-center pt-safe pb-safe">
       {/* Canceled Icon */}
       <div className="mb-6">
         <XCircle className="h-24 w-24 text-muted-foreground" />

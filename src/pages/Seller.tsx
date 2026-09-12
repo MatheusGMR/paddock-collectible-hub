@@ -165,7 +165,7 @@ const SellerPage = () => {
       <div className="min-h-screen flex w-full bg-background">
         <SellerSidebar />
         <main className="flex-1 overflow-auto">
-          <header className="h-14 flex items-center gap-3 border-b border-border px-6">
+          <header className="h-14 flex items-center gap-3 border-b border-border px-6 pt-safe box-content">
             <SidebarTrigger />
             <h1 className="text-lg font-semibold text-foreground flex-1">Painel do Lojista</h1>
             <ShareStoreButton
