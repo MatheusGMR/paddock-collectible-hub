@@ -47,6 +47,7 @@ const SellerMobilePage = () => {
     loading,
     saveSellerDetails,
     activateSeller,
+    loadInventory,
   } = useSellerData();
 
   useEffect(() => {
@@ -176,7 +177,13 @@ const SellerMobilePage = () => {
   if (tab === "estoque") {
     return (
       <SellerShell title="Estoque" onBack={back}>
-        <SellerInventory inventory={inventory} loading={false} />
+        <SellerInventory
+          inventory={inventory}
+          loading={false}
+          onRefresh={loadInventory}
+          onImport={() => setTab("importar")}
+          storeName={sellerDetails?.business_name}
+        />
       </SellerShell>
     );
   }
@@ -217,7 +224,7 @@ const SellerMobilePage = () => {
   }
   if (tab === "importar") {
     return (
-      <SellerShell title="Importar" onBack={back}>
+      <SellerShell title="Importar" onBack={() => { loadInventory(); setTab("estoque"); }}>
         <SellerImport />
       </SellerShell>
     );
