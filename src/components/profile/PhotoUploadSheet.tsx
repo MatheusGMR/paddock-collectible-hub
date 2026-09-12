@@ -405,7 +405,18 @@ export const PhotoUploadSheet = ({
     setPhase("reprocessing");
     setProgress({ current: 0, total: targets.length });
     try {
-      const reprocessed = await processQueue(targets);
+      // Recount to refresh missing or inaccurate boxes. Preserve the count the
+      // user confirmed when the fresh automatic count cannot find anything.
+      const recounted = await quickCountQueue(targets);
+      const refreshedTargets = recounted.map((item, index) => ({
+        ...item,
+        status: "pending" as const,
+        vehicleCount: (item.vehicleCount || 0) > 0
+          ? item.vehicleCount
+          : targets[index].vehicleCount,
+        manuallyAdjusted: targets[index].manuallyAdjusted,
+      }));
+      const reprocessed = await processQueue(refreshedTargets);
       const updatedQueue = [...mediaQueue];
       reprocessed.forEach((item) => {
         const idx = updatedQueue.findIndex((m) => m.id === item.id);

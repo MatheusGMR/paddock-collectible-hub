@@ -308,14 +308,25 @@ export function useParallelProcessing({
         items.length === 0 &&
         !isVideo &&
         confirmedVehicleCount &&
-        confirmedVehicleCount > 0 &&
-        normalizedHints.length > 0
+        confirmedVehicleCount > 0
       ) {
-        console.log("[BatchProcessing] Full-image analysis failed, retrying with per-vehicle crops");
+        console.log("[BatchProcessing] Full-image analysis failed, starting visual recovery");
+
+        // Count responses may contain a correct total but omit bounding boxes.
+        // In that case retry the original photo at higher fidelity instead of
+        // silently skipping the only recovery path.
+        if (normalizedHints.length === 0) {
+          items = await invokeRemoteAnalysis(mediaBase64, {
+            confirmedCount: confirmedVehicleCount,
+            maxDim: 1600,
+            quality: 0.90,
+          });
+        }
 
         const cropCandidates = normalizedHints.slice(0, confirmedVehicleCount);
-        const croppedSettled = await Promise.allSettled(
-          cropCandidates.map(async (vehicle, index) => {
+        if (items.length === 0 && cropCandidates.length > 0) {
+          const croppedSettled = await Promise.allSettled(
+            cropCandidates.map(async (vehicle, index) => {
             const box = vehicle.boundingBox;
             const paddingX = Math.max(4, box.width * 0.18);
             const paddingY = Math.max(4, box.height * 0.25);
@@ -342,16 +353,17 @@ export function useParallelProcessing({
               boundingBox: item.boundingBox || vehicle.boundingBox,
               photoIndex: index,
             } as AnalysisResult;
-          })
-        );
+            })
+          );
 
-        const recoveredItems = croppedSettled.flatMap((result) =>
-          result.status === "fulfilled" && result.value ? [result.value] : []
-        );
+          const recoveredItems = croppedSettled.flatMap((result) =>
+            result.status === "fulfilled" && result.value ? [result.value] : []
+          );
 
-        if (recoveredItems.length > 0) {
-          console.log("[BatchProcessing] Recovery via crops succeeded:", recoveredItems.length);
-          items = recoveredItems;
+          if (recoveredItems.length > 0) {
+            console.log("[BatchProcessing] Recovery via crops succeeded:", recoveredItems.length);
+            items = recoveredItems;
+          }
         }
       }
 
