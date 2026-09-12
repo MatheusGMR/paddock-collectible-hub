@@ -92,6 +92,36 @@ export const AuthStepEmail = ({ email, onEmailChange, onContinue, loading }: Aut
           </>
         )}
       </Button>
+
+      <div className="flex items-center gap-3">
+        <div className="h-px flex-1 bg-border" />
+        <span className="text-xs text-muted-foreground">ou continue com</span>
+        <div className="h-px flex-1 bg-border" />
+      </div>
+
+      <div className="space-y-3">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => handleSocial("google")}
+          disabled={socialLoading !== null || loading}
+          className="w-full h-12 gap-3 bg-muted border-0 text-foreground hover:bg-muted/80 font-medium"
+        >
+          {socialLoading === "google" ? <Loader2 className="h-5 w-5 animate-spin" /> : <GoogleIcon />}
+          Continuar com Google
+        </Button>
+
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => handleSocial("apple")}
+          disabled={socialLoading !== null || loading}
+          className="w-full h-12 gap-3 bg-muted border-0 text-foreground hover:bg-muted/80 font-medium"
+        >
+          {socialLoading === "apple" ? <Loader2 className="h-5 w-5 animate-spin" /> : <Apple className="h-5 w-5" />}
+          Continuar com Apple
+        </Button>
+      </div>
     </form>
   );
 };
