@@ -4,7 +4,6 @@ import { Search, ShoppingBag, Star, Car, Package } from "lucide-react";
 import { useDebounce } from "@/hooks/useDebounce";
 import { CartSheet } from "@/components/mercado/CartSheet";
 import { SellerStoresSection } from "@/components/mercado/SellerStoresSection";
-import { AddToCartButton } from "@/components/mercado/AddToCartButton";
 import { BuyButton } from "@/components/checkout/BuyButton";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -355,15 +354,8 @@ const MarketplaceCard = ({ listing, onClick }: { listing: MarketplaceListing; on
         </div>
       </button>
 
-      {/* Quick action buttons */}
-      <div className="px-3 pb-3 flex gap-2">
-        <AddToCartButton
-          listingId={listing.id}
-          size="sm"
-          variant="outline"
-          className="flex-1 text-xs h-8"
-          showLabel={true}
-        />
+      {/* Quick action button */}
+      <div className="px-3 pb-3 flex">
         <BuyButton
           listingId={listing.id}
           price={listing.price}
