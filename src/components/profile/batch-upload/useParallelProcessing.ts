@@ -297,8 +297,9 @@ export function useParallelProcessing({
               vehicle.boundingBox as BoundingBox
             );
             const [item] = await invokeRemoteAnalysis(croppedBase64, {
-              maxDim: 900,
-              quality: 0.78,
+              confirmedCount: 1,
+              maxDim: 1024,
+              quality: 0.85,
             });
 
             if (!item) return null;
