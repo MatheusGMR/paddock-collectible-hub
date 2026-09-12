@@ -57,7 +57,7 @@ export const AuthStepEmail = ({ email, onEmailChange, onContinue, loading }: Aut
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6 w-full">
+    <form onSubmit={handleSubmit} className="space-y-5 w-full">
       {/* Invisible spacer to match "Voltar" button height in other steps */}
       <div className="h-5" aria-hidden="true" />
 
