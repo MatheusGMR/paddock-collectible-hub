@@ -74,7 +74,7 @@ const SellerMobilePage = () => {
 
   if (authLoading || loading) {
     return (
-      <div className="flex items-center justify-center py-20">
+      <div className="seller-safe-top flex items-center justify-center py-20">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
@@ -89,7 +89,7 @@ const SellerMobilePage = () => {
     };
 
     return (
-      <div className="flex items-center justify-center px-4 py-12">
+      <div className="seller-safe-top flex items-center justify-center px-4 pb-12">
         <Card className="max-w-md w-full border-border">
           <CardHeader className="text-center">
             <div className="mx-auto h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
@@ -145,7 +145,7 @@ const SellerMobilePage = () => {
   // Render inner content
   if (tab === "estoque") {
     return (
-      <div className="px-4 pb-4 pt-safe-2">
+      <div className="seller-safe-top px-4 pb-4">
         <BackHeader title="Estoque" />
         <SellerInventory inventory={inventory} loading={false} />
       </div>
@@ -153,7 +153,7 @@ const SellerMobilePage = () => {
   }
   if (tab === "pedidos") {
     return (
-      <div className="px-4 pb-4 pt-safe-2">
+      <div className="seller-safe-top px-4 pb-4">
         <BackHeader title="Pedidos" />
         <SellerOrders />
       </div>
@@ -161,7 +161,7 @@ const SellerMobilePage = () => {
   }
   if (tab === "analytics") {
     return (
-      <div className="px-4 pb-4 pt-safe-2">
+      <div className="seller-safe-top px-4 pb-4">
         <BackHeader title="Desempenho" />
         <SellerAnalytics />
       </div>
@@ -169,7 +169,7 @@ const SellerMobilePage = () => {
   }
   if (tab === "financeiro") {
     return (
-      <div className="px-4 pb-4 pt-safe-2">
+      <div className="seller-safe-top px-4 pb-4">
         <BackHeader title="Financeiro" />
         <SellerFinanceiro receivables={receivables} loading={false} />
       </div>
@@ -177,7 +177,7 @@ const SellerMobilePage = () => {
   }
   if (tab === "conta") {
     return (
-      <div className="px-4 pb-4 pt-safe-2">
+      <div className="seller-safe-top px-4 pb-4">
         <BackHeader title="Conta" />
         <SellerConta sellerDetails={sellerDetails} onSave={saveSellerDetails} loading={false} />
       </div>
@@ -185,7 +185,7 @@ const SellerMobilePage = () => {
   }
   if (tab === "clientes") {
     return (
-      <div className="px-4 pb-4 pt-safe-2">
+      <div className="seller-safe-top px-4 pb-4">
         <BackHeader title="Clientes" />
         <SellerClientes customers={customers} loading={false} />
       </div>
@@ -193,7 +193,7 @@ const SellerMobilePage = () => {
   }
   if (tab === "importar") {
     return (
-      <div className="px-4 pb-4 pt-safe-2">
+      <div className="seller-safe-top px-4 pb-4">
         <BackHeader title="Importar" />
         <SellerImport />
       </div>
@@ -202,7 +202,7 @@ const SellerMobilePage = () => {
 
   // Main menu
   return (
-    <div className="px-4 pb-4 space-y-4 pt-safe-2">
+    <div className="seller-safe-top px-4 pb-4 space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>

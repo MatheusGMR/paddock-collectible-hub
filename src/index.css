@@ -258,6 +258,18 @@
     padding-top: 0.75rem;
     padding-top: calc(env(safe-area-inset-top, 0px) + 0.75rem);
   }
+
+  /* Seller area needs a minimum inset because some iOS WebViews report 0px. */
+  .seller-safe-top {
+    padding-top: 0.75rem;
+    padding-top: calc(max(env(safe-area-inset-top, 0px), 3.25rem) + 0.75rem);
+  }
+
+  @media (min-width: 768px) {
+    .seller-safe-top {
+      padding-top: 0.75rem;
+    }
+  }
   
   .pb-safe {
     padding-bottom: constant(safe-area-inset-bottom, 0px);
