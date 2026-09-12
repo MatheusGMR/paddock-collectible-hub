@@ -371,12 +371,18 @@ export function useParallelProcessing({
         items.map(async (item) => {
           if (!isVideo && item.boundingBox && mediaBase64) {
             try {
-              const croppedImage = await cropImageByBoundingBox(
-                mediaBase64,
-                item.boundingBox as BoundingBox
-              );
-              console.log("[BatchProcessing] Cropped image for", item.realCar?.brand, item.realCar?.model);
-              return { ...item, croppedImage };
+              const box = item.boundingBox as BoundingBox;
+              // Generous padding so the whole car fits inside the card image
+              const padX = Math.max(3, box.width * 0.2);
+              const padY = Math.max(3, box.height * 0.28);
+              const paddedBox: BoundingBox = {
+                x: Math.max(0, box.x - padX),
+                y: Math.max(0, box.y - padY),
+                width: Math.min(100 - Math.max(0, box.x - padX), box.width + padX * 2),
+                height: Math.min(100 - Math.max(0, box.y - padY), box.height + padY * 2),
+              };
+              const croppedImage = await cropImageByBoundingBox(mediaBase64, paddedBox);
+              return { ...item, croppedImage: croppedImage || mediaBase64 };
             } catch (error) {
               console.error("[BatchProcessing] Failed to crop image:", error);
               return { ...item, croppedImage: mediaBase64 };
@@ -385,6 +391,7 @@ export function useParallelProcessing({
           return { ...item, croppedImage: isVideo ? undefined : mediaBase64 };
         })
       );
+
 
       const itemsWithDuplicateCheck = await Promise.all(
         itemsWithCrops.map(async (item) => {
