@@ -9,13 +9,27 @@ import {
   DetectedVehicle,
 } from "./types";
 
+/** Cache of already-downscaled payloads to avoid re-encoding the same photo twice */
+const downscaleCache = new Map<string, string>();
+const cacheKey = (base64: string, maxDim: number, quality: number) =>
+  `${maxDim}|${quality}|${base64.length}|${base64.slice(-96)}`;
+
 /** Downscale a base64 image to reduce payload size before API call */
 function downscaleBase64(base64: string, maxDim = 768, quality = 0.68): Promise<string> {
+  const key = cacheKey(base64, maxDim, quality);
+  const cached = downscaleCache.get(key);
+  if (cached) return Promise.resolve(cached);
+
   return new Promise((resolve) => {
+    const finish = (value: string) => {
+      if (downscaleCache.size > 40) downscaleCache.clear();
+      downscaleCache.set(key, value);
+      resolve(value);
+    };
     const img = new Image();
     img.onload = () => {
       let { width, height } = img;
-      if (width <= maxDim && height <= maxDim) { resolve(base64); return; }
+      if (width <= maxDim && height <= maxDim) { finish(base64); return; }
       const ratio = Math.min(maxDim / width, maxDim / height);
       width = Math.round(width * ratio);
       height = Math.round(height * ratio);
@@ -23,13 +37,44 @@ function downscaleBase64(base64: string, maxDim = 768, quality = 0.68): Promise<
       canvas.width = width;
       canvas.height = height;
       const ctx = canvas.getContext("2d")!;
+      ctx.imageSmoothingQuality = "high";
       ctx.drawImage(img, 0, 0, width, height);
-      resolve(canvas.toDataURL("image/jpeg", quality));
+      finish(canvas.toDataURL("image/jpeg", quality));
     };
     img.onerror = () => resolve(base64);
     img.src = base64;
   });
 }
+
+/**
+ * Continuous worker pool: keeps `limit` requests in flight at all times instead of
+ * waiting for the slowest item of each chunk before starting the next batch.
+ */
+async function runPool<T, R>(
+  items: T[],
+  limit: number,
+  worker: (item: T, index: number) => Promise<R>,
+  shouldAbort?: () => boolean
+): Promise<R[]> {
+  const results = new Array<R>(items.length);
+  let cursor = 0;
+
+  const runners = Array.from({ length: Math.min(limit, items.length) }, async () => {
+    while (true) {
+      const index = cursor++;
+      if (index >= items.length) return;
+      if (shouldAbort?.()) return;
+      results[index] = await worker(items[index], index);
+    }
+  });
+
+  await Promise.all(runners);
+  return results;
+}
+
+/** Memoized duplicate lookups (same car appearing across several photos) */
+const duplicateCache = new Map<string, { isDuplicate: boolean; existingItemImage?: string }>();
+
 
 interface UseParallelProcessingProps {
   userId: string | undefined;
