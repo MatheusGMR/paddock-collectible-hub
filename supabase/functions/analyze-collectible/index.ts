@@ -436,6 +436,25 @@ Conte CADA carro separado individualmente. Máximo 10.`;
       }
     }
 
+    // Reforço obrigatório: o usuário confirmou N veículos, então não podemos devolver vazio
+    // sem uma segunda passada, mesmo no modo lote (skipFallback).
+    // deno-lint-ignore no-explicit-any
+    const emptyResult = (r: any) => {
+      if (!r) return true;
+      if (r?.detectedType === "real_car" && r?.car) return false;
+      const len = Array.isArray(r?.items) ? r.items.length : 0;
+      return len === 0;
+    };
+
+    if (confirmedCount && confirmedCount > 0 && emptyResult(result)) {
+      console.log("[AI] Empty result with confirmed count — reinforcement pass");
+      const reinforce = await fetchAndParse(FALLBACK_MODEL, 3, "confirmed_count_empty");
+      if (reinforce.ok && !emptyResult(reinforce.parsed)) {
+        result = reinforce.parsed;
+      }
+    }
+
+
     // Fire-and-forget A/B recording
     const responseTime = Date.now() - startTime;
     if (variant?.variant_id) {
