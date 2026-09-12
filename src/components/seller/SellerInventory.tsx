@@ -16,18 +16,22 @@ import {
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { EditListingSheet } from "./EditListingSheet";
+import { NewListingSheet } from "./NewListingSheet";
 import type { InventoryData } from "@/hooks/useSellerData";
 
 interface SellerInventoryProps {
   inventory: InventoryData | null;
   loading: boolean;
   onRefresh?: () => void;
+  onImport?: () => void;
+  storeName?: string | null;
 }
 
-export const SellerInventory = ({ inventory, loading, onRefresh }: SellerInventoryProps) => {
+export const SellerInventory = ({ inventory, loading, onRefresh, onImport, storeName }: SellerInventoryProps) => {
   const [search, setSearch] = useState("");
   const [tab, setTab] = useState("active");
   const [editItem, setEditItem] = useState<any>(null);
+  const [newOpen, setNewOpen] = useState(false);
   const navigate = useNavigate();
 
   if (loading) {
@@ -117,17 +121,25 @@ export const SellerInventory = ({ inventory, loading, onRefresh }: SellerInvento
           <Button
             variant="outline"
             className="gap-2"
-            onClick={() => navigate("/seller/importar")}
+            onClick={() => (onImport ? onImport() : navigate("/seller/importar"))}
           >
             <Upload className="h-4 w-4" />
             Importar
           </Button>
-          <Button className="gap-2">
+          <Button className="gap-2" onClick={() => setNewOpen(true)}>
             <Plus className="h-4 w-4" />
             Novo Anúncio
           </Button>
         </div>
       </div>
+
+      <NewListingSheet
+        open={newOpen}
+        onOpenChange={setNewOpen}
+        onCreated={() => onRefresh?.()}
+        storeName={storeName}
+      />
+
 
       {/* Tabs */}
       <Tabs value={tab} onValueChange={setTab}>

@@ -177,7 +177,7 @@ const SellerPage = () => {
             <Routes>
               <Route
                 index
-                element={<SellerInventory inventory={inventory} loading={false} onRefresh={loadInventory} />}
+                element={<SellerInventory inventory={inventory} loading={false} onRefresh={loadInventory} storeName={sellerDetails?.business_name} />}
               />
               <Route
                 path="financeiro"
