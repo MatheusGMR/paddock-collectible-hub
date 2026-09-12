@@ -210,22 +210,76 @@ export const PhotoUploadSheet = ({
     await runFullAnalysis(validMedia);
   };
 
+  /** Silently reanalyze failed images before showing any error to the user */
+  const autoRecover = async (
+    baseQueue: QueuedMedia[],
+    failed: number[],
+    maxAttempts = 2
+  ): Promise<{ queue: QueuedMedia[]; consolidated: ReturnType<typeof consolidateResults>["consolidated"]; failed: number[] }> => {
+    let queue = baseQueue;
+    let currentFailed = failed;
+    let result = consolidateResults(queue);
+
+    for (let attempt = 0; attempt < maxAttempts && currentFailed.length > 0; attempt++) {
+      const targets = currentFailed
+        .map((idx) => queue[idx])
+        .filter(Boolean)
+        .map((m) => ({ ...m, status: "pending" as const, results: undefined, error: undefined }));
+      if (targets.length === 0) break;
+
+      setProgress({ current: 0, total: targets.length });
+      try {
+        const recounted = await quickCountQueue(targets);
+        const refreshed = recounted.map((item, index) => ({
+          ...item,
+          status: "pending" as const,
+          vehicleCount: (item.vehicleCount || 0) > 0 ? item.vehicleCount : targets[index].vehicleCount,
+          manuallyAdjusted: targets[index].manuallyAdjusted,
+        }));
+        const reprocessed = await processQueue(refreshed);
+        const updated = [...queue];
+        reprocessed.forEach((item) => {
+          const idx = updated.findIndex((m) => m.id === item.id);
+          if (idx !== -1) updated[idx] = item;
+        });
+        queue = updated;
+        result = consolidateResults(queue);
+        currentFailed = result.failed;
+      } catch (error) {
+        console.error("[BatchUpload] Auto recovery attempt failed:", error);
+        break;
+      }
+    }
+
+    return { queue, consolidated: result.consolidated, failed: currentFailed };
+  };
+
   /** Run full analysis on a set of media items */
   const runFullAnalysis = async (media: QueuedMedia[]) => {
     try {
       const processedQueue = await processQueue(media);
-      setMediaQueue((prev) => {
-        // Merge processed results back into full queue
-        const updated = [...prev];
+      const mergedQueue = (() => {
+        const updated = [...mediaQueue];
         processedQueue.forEach((processed) => {
           const idx = updated.findIndex((m) => m.id === processed.id);
           if (idx !== -1) updated[idx] = processed;
         });
         return updated;
-      });
+      })();
 
-      const { consolidated, failed } = consolidateResults(processedQueue);
+      const first = consolidateResults(mergedQueue);
+      let finalQueue = mergedQueue;
+      let consolidated = first.consolidated;
+      let failed = first.failed;
 
+      if (failed.length > 0) {
+        const recovered = await autoRecover(mergedQueue, failed);
+        finalQueue = recovered.queue;
+        consolidated = recovered.consolidated;
+        failed = recovered.failed;
+      }
+
+      setMediaQueue(finalQueue);
       setConsolidatedResults(consolidated);
       setFailedMediaIndices(failed);
 
@@ -252,6 +306,7 @@ export const PhotoUploadSheet = ({
       });
     }
   };
+
 
   /** Update vehicle count for a specific image (user adjustment) */
   const handleUpdateCount = (index: number, newCount: number) => {
