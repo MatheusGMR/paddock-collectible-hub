@@ -256,6 +256,30 @@ export function useParallelProcessing({
         });
 
         if (responseType === "real_car") {
+          // In batch upload the user has already confirmed these are collection
+          // items. Do not silently discard a usable identification if the model
+          // mislabeled the scale of the photographed vehicle.
+          if (options?.confirmedCount && raw?.car) {
+            const car = raw.car;
+            return [{
+              realCar: {
+                brand: car.brand || "Desconhecido",
+                model: car.model || "Desconhecido",
+                year: car.year || "",
+                historicalFact: "",
+              },
+              collectible: {
+                manufacturer: "",
+                scale: "",
+                estimatedYear: "",
+                origin: "",
+                series: "",
+                condition: "Bom",
+                color: car.color || "",
+                notes: "",
+              },
+            }];
+          }
           console.log("[BatchProcessing] Real car detected, skipping");
           return [];
         }
@@ -292,9 +316,18 @@ export function useParallelProcessing({
         const cropCandidates = normalizedHints.slice(0, confirmedVehicleCount);
         const croppedSettled = await Promise.allSettled(
           cropCandidates.map(async (vehicle, index) => {
+            const box = vehicle.boundingBox;
+            const paddingX = Math.max(4, box.width * 0.18);
+            const paddingY = Math.max(4, box.height * 0.25);
+            const paddedBox: BoundingBox = {
+              x: Math.max(0, box.x - paddingX),
+              y: Math.max(0, box.y - paddingY),
+              width: Math.min(100 - Math.max(0, box.x - paddingX), box.width + paddingX * 2),
+              height: Math.min(100 - Math.max(0, box.y - paddingY), box.height + paddingY * 2),
+            };
             const croppedBase64 = await cropImageByBoundingBox(
               mediaBase64,
-              vehicle.boundingBox as BoundingBox
+              paddedBox
             );
             const [item] = await invokeRemoteAnalysis(croppedBase64, {
               confirmedCount: 1,
