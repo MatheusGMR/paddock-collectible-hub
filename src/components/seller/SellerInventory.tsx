@@ -117,17 +117,25 @@ export const SellerInventory = ({ inventory, loading, onRefresh }: SellerInvento
           <Button
             variant="outline"
             className="gap-2"
-            onClick={() => navigate("/seller/importar")}
+            onClick={() => (onImport ? onImport() : navigate("/seller/importar"))}
           >
             <Upload className="h-4 w-4" />
             Importar
           </Button>
-          <Button className="gap-2">
+          <Button className="gap-2" onClick={() => setNewOpen(true)}>
             <Plus className="h-4 w-4" />
             Novo Anúncio
           </Button>
         </div>
       </div>
+
+      <NewListingSheet
+        open={newOpen}
+        onOpenChange={setNewOpen}
+        onCreated={() => onRefresh?.()}
+        storeName={storeName}
+      />
+
 
       {/* Tabs */}
       <Tabs value={tab} onValueChange={setTab}>
