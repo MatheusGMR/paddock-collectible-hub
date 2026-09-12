@@ -275,8 +275,8 @@ export function useParallelProcessing({
         ? {
             confirmedCount: confirmedVehicleCount,
             hints: normalizedHints,
-            maxDim: 900,
-            quality: 0.72,
+            maxDim: 1280,
+            quality: 0.82,
           }
         : undefined);
 
