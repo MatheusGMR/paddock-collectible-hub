@@ -343,13 +343,19 @@ export function useParallelProcessing({
       const itemsWithDuplicateCheck = await Promise.all(
         itemsWithCrops.map(async (item) => {
           if (userId) {
+            const key = `${userId}|${item.realCar.brand}|${item.realCar.model}|${item.collectible?.color || ""}`.toLowerCase();
             try {
-              const duplicate = await checkDuplicateInCollection(
-                userId,
-                item.realCar.brand,
-                item.realCar.model,
-                item.collectible?.color
-              );
+              let duplicate = duplicateCache.get(key);
+              if (!duplicate) {
+                duplicate = await checkDuplicateInCollection(
+                  userId,
+                  item.realCar.brand,
+                  item.realCar.model,
+                  item.collectible?.color
+                );
+                if (duplicateCache.size > 200) duplicateCache.clear();
+                duplicateCache.set(key, duplicate);
+              }
               return {
                 ...item,
                 isDuplicate: duplicate.isDuplicate,
