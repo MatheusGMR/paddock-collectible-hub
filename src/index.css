@@ -247,6 +247,17 @@
     /* iOS 11.2+ */
     padding-top: env(safe-area-inset-top, 0px);
   }
+
+  /* Safe area + extra breathing room (keeps original spacing on desktop) */
+  .pt-safe-2 {
+    padding-top: 0.5rem;
+    padding-top: calc(env(safe-area-inset-top, 0px) + 0.5rem);
+  }
+
+  .pt-safe-3 {
+    padding-top: 0.75rem;
+    padding-top: calc(env(safe-area-inset-top, 0px) + 0.75rem);
+  }
   
   .pb-safe {
     padding-bottom: constant(safe-area-inset-bottom, 0px);

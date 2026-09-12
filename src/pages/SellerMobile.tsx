@@ -145,7 +145,7 @@ const SellerMobilePage = () => {
   // Render inner content
   if (tab === "estoque") {
     return (
-      <div className="px-4 pb-4 pt-safe">
+      <div className="px-4 pb-4 pt-safe-2">
         <BackHeader title="Estoque" />
         <SellerInventory inventory={inventory} loading={false} />
       </div>
@@ -153,7 +153,7 @@ const SellerMobilePage = () => {
   }
   if (tab === "pedidos") {
     return (
-      <div className="px-4 pb-4 pt-safe">
+      <div className="px-4 pb-4 pt-safe-2">
         <BackHeader title="Pedidos" />
         <SellerOrders />
       </div>
@@ -161,7 +161,7 @@ const SellerMobilePage = () => {
   }
   if (tab === "analytics") {
     return (
-      <div className="px-4 pb-4 pt-safe">
+      <div className="px-4 pb-4 pt-safe-2">
         <BackHeader title="Desempenho" />
         <SellerAnalytics />
       </div>
@@ -169,7 +169,7 @@ const SellerMobilePage = () => {
   }
   if (tab === "financeiro") {
     return (
-      <div className="px-4 pb-4 pt-safe">
+      <div className="px-4 pb-4 pt-safe-2">
         <BackHeader title="Financeiro" />
         <SellerFinanceiro receivables={receivables} loading={false} />
       </div>
@@ -177,7 +177,7 @@ const SellerMobilePage = () => {
   }
   if (tab === "conta") {
     return (
-      <div className="px-4 pb-4 pt-safe">
+      <div className="px-4 pb-4 pt-safe-2">
         <BackHeader title="Conta" />
         <SellerConta sellerDetails={sellerDetails} onSave={saveSellerDetails} loading={false} />
       </div>
@@ -185,7 +185,7 @@ const SellerMobilePage = () => {
   }
   if (tab === "clientes") {
     return (
-      <div className="px-4 pb-4 pt-safe">
+      <div className="px-4 pb-4 pt-safe-2">
         <BackHeader title="Clientes" />
         <SellerClientes customers={customers} loading={false} />
       </div>
@@ -193,7 +193,7 @@ const SellerMobilePage = () => {
   }
   if (tab === "importar") {
     return (
-      <div className="px-4 pb-4 pt-safe">
+      <div className="px-4 pb-4 pt-safe-2">
         <BackHeader title="Importar" />
         <SellerImport />
       </div>
@@ -202,7 +202,7 @@ const SellerMobilePage = () => {
 
   // Main menu
   return (
-    <div className="px-4 pt-2 pb-4 space-y-4">
+    <div className="px-4 pb-4 space-y-4 pt-safe-2">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
