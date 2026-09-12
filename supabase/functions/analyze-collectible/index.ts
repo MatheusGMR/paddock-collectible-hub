@@ -334,8 +334,12 @@ Conte CADA carro separado individualmente. Máximo 10.`;
 
     const fetchAndParse = async (model: string, attempt: number, reason: string) => {
       const isFallback = model === FALLBACK_MODEL;
-      const imageDetail = "low"; // Always use low detail for speed — quality is sufficient for diecast/cars
-      const maxTokens = isFallback ? 1536 : 1024;
+      // Fotos de estante (vários carrinhos pequenos) precisam de detalhe alto para serem reconhecidas
+      const imageDetail = confirmedCount && confirmedCount > 0 ? "high" : "low";
+      const baseTokens = isFallback ? 1536 : 1024;
+      const maxTokens = Math.min(4096, confirmedCount && confirmedCount > 1
+        ? baseTokens + (confirmedCount - 1) * 700
+        : baseTokens);
       const systemPrompt = isFallback ? dynamicPrompt + FALLBACK_PROMPT_EXTRA : dynamicPrompt;
 
       const messages = [
