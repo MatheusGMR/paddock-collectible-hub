@@ -375,6 +375,42 @@ export const PhotoUploadSheet = ({
     setPhase("reviewing");
   };
 
+  /** Reanalyze the same failed images (no replacement needed) */
+  const handleRetrySameImages = async () => {
+    const targets = failedMediaIndices
+      .map((idx) => mediaQueue[idx])
+      .filter(Boolean)
+      .map((m) => ({ ...m, status: "pending" as const, results: undefined, error: undefined }));
+
+    if (targets.length === 0) return;
+
+    setPhase("reprocessing");
+    setProgress({ current: 0, total: targets.length });
+    try {
+      const reprocessed = await processQueue(targets);
+      const updatedQueue = [...mediaQueue];
+      reprocessed.forEach((item) => {
+        const idx = updatedQueue.findIndex((m) => m.id === item.id);
+        if (idx !== -1) updatedQueue[idx] = item;
+      });
+      setMediaQueue(updatedQueue);
+      const { consolidated, failed } = consolidateResults(updatedQueue);
+      setConsolidatedResults(consolidated);
+      setFailedMediaIndices(failed);
+      if (failed.length > 0) {
+        setPhase("retry-failed");
+      } else if (consolidated.length > 0) {
+        saveResults(consolidated);
+        setPhase("reviewing");
+      } else {
+        setPhase("retry-failed");
+      }
+    } catch (error) {
+      console.error("[BatchUpload] Retry same images failed:", error);
+      setPhase("retry-failed");
+    }
+  };
+
   // ── Collection add handlers ──
   const handleAddToCollectionSingle = async (index: number) => {
     if (!user) return;
