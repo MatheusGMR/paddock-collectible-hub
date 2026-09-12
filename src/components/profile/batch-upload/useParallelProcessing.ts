@@ -98,57 +98,54 @@ export function useParallelProcessing({
       abortRef.current = false;
 
       const results: QueuedMedia[] = [...queue];
+      let done = 0;
 
-      for (let i = 0; i < queue.length; i += PARALLEL_PROCESSING_LIMIT) {
-        if (abortRef.current) break;
+      // Mark everything as counting up-front so the grid animates immediately
+      queue.forEach((media, idx) => {
+        results[idx] = { ...media, status: "counting" };
+        onMediaUpdate(results[idx]);
+      });
 
-        const chunk = queue.slice(i, i + PARALLEL_PROCESSING_LIMIT);
-        const chunkIndices = chunk.map((_, idx) => i + idx);
+      await runPool(
+        queue,
+        COUNT_PARALLEL_LIMIT,
+        async (media, index) => {
+          let counted: QueuedMedia;
+          try {
+            const optimized = media.isVideo
+              ? media.base64
+              : await downscaleBase64(media.base64, 640, 0.62);
 
-        // Mark as counting
-        chunkIndices.forEach((idx) => {
-          results[idx] = { ...results[idx], status: "counting" };
-          onMediaUpdate(results[idx]);
-        });
+            const { data, error } = await supabase.functions.invoke("analyze-collectible", {
+              body: { imageBase64: optimized, countOnly: true },
+            });
 
-        const chunkResults = await Promise.all(
-          chunk.map(async (media) => {
-            try {
-              const optimized = media.isVideo
-                ? media.base64
-                : await downscaleBase64(media.base64);
+            if (error) throw error;
 
-              const { data, error } = await supabase.functions.invoke("analyze-collectible", {
-                body: { imageBase64: optimized, countOnly: true },
-              });
+            counted = {
+              ...media,
+              status: "counted",
+              vehicleCount: data?.count || 0,
+              detectedVehicles: Array.isArray(data?.vehicles) ? data.vehicles : [],
+            };
+          } catch (err) {
+            console.error("[QuickCount] Error:", err);
+            counted = {
+              ...media,
+              status: "counted",
+              vehicleCount: 0,
+              detectedVehicles: [],
+            };
+          }
 
-              if (error) throw error;
-
-              return {
-                ...media,
-                status: "counted" as const,
-                vehicleCount: data?.count || 0,
-                detectedVehicles: Array.isArray(data?.vehicles) ? data.vehicles : [],
-              };
-            } catch (err) {
-              console.error("[QuickCount] Error:", err);
-              return {
-                ...media,
-                status: "counted" as const,
-                vehicleCount: 0,
-                detectedVehicles: [],
-              };
-            }
-          })
-        );
-
-        chunkResults.forEach((result, chunkIdx) => {
-          const globalIdx = i + chunkIdx;
-          results[globalIdx] = result;
-          onMediaUpdate(result);
-          onProgress(globalIdx + 1, queue.length);
-        });
-      }
+          results[index] = counted;
+          onMediaUpdate(counted);
+          done++;
+          onProgress(done, queue.length);
+          return counted;
+        },
+        () => abortRef.current
+      );
 
       setIsCounting(false);
       return results;
