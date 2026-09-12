@@ -6,6 +6,7 @@ import {
   QueuedMedia,
   AnalysisResult,
   PARALLEL_PROCESSING_LIMIT,
+  COUNT_PARALLEL_LIMIT,
   DetectedVehicle,
 } from "./types";
 
