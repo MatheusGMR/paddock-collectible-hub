@@ -168,7 +168,7 @@ serve(async (req) => {
   const startTime = Date.now();
 
   try {
-    const { imageBase64, skipML, countOnly, vehicleCount, skipVehicleDetectionValidation, skipFallback } = await req.json();
+    const { imageBase64, skipML, countOnly, vehicleCount, detectedVehicles, skipVehicleDetectionValidation, skipFallback } = await req.json();
     if (!imageBase64) return new Response(JSON.stringify({ error: "Image required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
     const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
@@ -293,7 +293,19 @@ Conte CADA carro separado individualmente. Máximo 10.`;
       : null;
 
     const confirmationInstruction = confirmedCount
-      ? `O usuário já confirmou manualmente que há ${confirmedCount} veículo(s) nesta mídia. Use isso como verdade operacional: analise até ${confirmedCount} veículo(s) visíveis e NÃO retorne identified=false por falha de contagem automática.`
+      ? `O usuário confirmou manualmente que há ${confirmedCount} MINIATURA(S) COLECIONÁVEL(IS) nesta foto. Esta confirmação é definitiva: detectedType DEVE ser "collectible", preencha items com até ${confirmedCount} item(ns), e NUNCA classifique como "real_car" nem retorne items vazio.`
+      : "";
+
+    const confirmedBoxes = Array.isArray(detectedVehicles)
+      ? detectedVehicles
+          .filter((vehicle: any) => vehicle?.boundingBox)
+          .slice(0, confirmedCount ?? 10)
+          .map((vehicle: any, index: number) => `${index + 1}: ${JSON.stringify(vehicle.boundingBox)}`)
+          .join("; ")
+      : "";
+
+    const locationInstruction = confirmedBoxes
+      ? `Use estas regiões já detectadas para localizar cada miniatura (x,y,width,height em porcentagem): ${confirmedBoxes}.`
       : "";
 
     const validationInstruction = skipVehicleDetectionValidation
@@ -301,8 +313,10 @@ Conte CADA carro separado individualmente. Máximo 10.`;
       : "";
 
     const uPrompt = isVid
-      ? `Analyze video of collectible cars (max 7). ${confirmationInstruction} ${validationInstruction}`.trim()
-      : `Analyze image. Determine if collectible or real vehicle. ${confirmationInstruction} ${validationInstruction}`.trim();
+      ? `Analise o vídeo de miniaturas colecionáveis (máx. 7). ${confirmationInstruction} ${locationInstruction} ${validationInstruction}`.trim()
+      : confirmedCount
+        ? `Analise as miniaturas colecionáveis confirmadas nesta imagem. ${confirmationInstruction} ${locationInstruction} ${validationInstruction}`.trim()
+        : `Analise a imagem e determine se é miniatura colecionável ou veículo real. ${validationInstruction}`.trim();
 
     // gpt-4.1-mini: mesma latência do 4o-mini com visão bem mais precisa em miniaturas
     const PRIMARY_MODEL = "gpt-4.1-mini";
@@ -441,8 +455,11 @@ Conte CADA carro separado individualmente. Máximo 10.`;
     // deno-lint-ignore no-explicit-any
     const emptyResult = (r: any) => {
       if (!r) return true;
-      if (r?.detectedType === "real_car" && r?.car) return false;
       const len = Array.isArray(r?.items) ? r.items.length : 0;
+      // A confirmação do usuário é de miniaturas; uma resposta real_car é uma
+      // classificação incorreta e precisa passar pelo reforço.
+      if (confirmedCount && confirmedCount > 0) return len === 0;
+      if (r?.detectedType === "real_car" && r?.car) return false;
       return len === 0;
     };
 
