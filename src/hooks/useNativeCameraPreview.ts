@@ -50,9 +50,22 @@ export const useNativeCameraPreview = () => {
       )
     );
 
+    // A portrait 16:9 feed is 9:16. Size it like "cover": preserve the
+    // camera ratio while extending beyond only the shorter viewport axis.
+    const portraitCameraRatio = 9 / 16;
+    const viewportRatio = width / height;
+    const previewWidth = viewportRatio > portraitCameraRatio
+      ? width
+      : Math.ceil(height * portraitCameraRatio);
+    const previewHeight = viewportRatio > portraitCameraRatio
+      ? Math.ceil(width / portraitCameraRatio)
+      : height;
+
     return {
-      width,
-      height,
+      width: previewWidth,
+      height: previewHeight,
+      x: Math.floor((width - previewWidth) / 2),
+      y: Math.floor((height - previewHeight) / 2),
       platform,
     };
   }, []);
@@ -79,7 +92,7 @@ export const useNativeCameraPreview = () => {
         await new Promise((resolve) => setTimeout(resolve, 80));
       }
 
-      const { width, height, platform } = getPreviewSize();
+      const { width, height, x, y, platform } = getPreviewSize();
 
       const container = document.getElementById("camera-preview-container");
       if (container) {
@@ -114,7 +127,7 @@ export const useNativeCameraPreview = () => {
       const startedBounds = await CameraPreview.start(options);
       console.log("[CameraPreview] Started bounds:", JSON.stringify(startedBounds));
 
-      await CameraPreview.setPreviewSize({ x: 0, y: 0, width, height });
+      await CameraPreview.setPreviewSize({ x, y, width, height });
       await CameraPreview.setZoom({ level: 1, ramp: false, autoFocus: true });
 
       isStartedRef.current = true;
