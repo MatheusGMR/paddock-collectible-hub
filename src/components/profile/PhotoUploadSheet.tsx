@@ -259,10 +259,14 @@ export const PhotoUploadSheet = ({
     try {
       const processedQueue = await processQueue(media);
       const mergedQueue = (() => {
-        const updated = [...mediaQueue];
+        // `mediaQueue` may still hold the pre-update value when analysis starts
+        // in the same tick as setMediaQueue (single-photo path), so fall back to
+        // the media passed in and append any item that isn't in the queue yet.
+        const updated = mediaQueue.length > 0 ? [...mediaQueue] : [...media];
         processedQueue.forEach((processed) => {
           const idx = updated.findIndex((m) => m.id === processed.id);
           if (idx !== -1) updated[idx] = processed;
+          else updated.push(processed);
         });
         return updated;
       })();
