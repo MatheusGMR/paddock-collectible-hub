@@ -994,8 +994,8 @@ export const ScannerView = () => {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
           facingMode: facingMode,
-          width: { ideal: 1920 },
-          height: { ideal: 1920 }
+          width: { ideal: 1440 },
+          aspectRatio: { ideal: window.innerWidth / Math.max(window.innerHeight, 1) }
         },
         audio: false
       });
