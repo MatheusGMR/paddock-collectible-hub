@@ -316,3 +316,15 @@
     animation: slide-up-card 0.3s ease-out forwards;
   }
 }
+
+/* Hide native media controls on the scanner camera preview */
+.no-media-controls::-webkit-media-controls,
+.no-media-controls::-webkit-media-controls-panel,
+.no-media-controls::-webkit-media-controls-start-playback-button,
+.no-media-controls::-webkit-media-controls-play-button,
+.no-media-controls::-webkit-media-controls-overlay-play-button,
+.no-media-controls::-webkit-media-controls-enclosure {
+  display: none !important;
+  -webkit-appearance: none !important;
+  opacity: 0 !important;
+}
