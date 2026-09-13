@@ -706,14 +706,13 @@ export const ScannerView = () => {
 
         console.log("[Scanner] Requesting camera stream (web)...");
         
-        // Match the stream aspect ratio to the screen so the preview fills the
-        // viewport without heavy cropping (perceived "zoom in").
-        const screenAspect = window.innerWidth / Math.max(window.innerHeight, 1);
+        // Request a portrait-oriented stream; the video element uses
+        // object-cover so it always fills the screen edge to edge.
         const stream = await navigator.mediaDevices.getUserMedia({
           video: {
             facingMode: "environment",
-            width: { ideal: 1440 },
-            aspectRatio: { ideal: screenAspect }
+            width: { ideal: 1080 },
+            height: { ideal: 1920 },
           },
           audio: false
         });
@@ -994,8 +993,8 @@ export const ScannerView = () => {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
           facingMode: facingMode,
-          width: { ideal: 1440 },
-          aspectRatio: { ideal: window.innerWidth / Math.max(window.innerHeight, 1) }
+          width: { ideal: 1080 },
+          height: { ideal: 1920 },
         },
         audio: false
       });
