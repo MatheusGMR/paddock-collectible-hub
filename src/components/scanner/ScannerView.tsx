@@ -2385,7 +2385,7 @@ export const ScannerView = () => {
           disableRemotePlayback
           tabIndex={-1}
           style={{ transform: `scale(${zoomLevel})`, transformOrigin: 'center center', backgroundColor: '#000' }}
-          className={`no-media-controls absolute top-0 left-0 w-full h-full object-contain transition-opacity duration-200 ${
+          className={`no-media-controls absolute top-0 left-0 w-full h-full object-cover transition-opacity duration-200 ${
             cameraActive && !useCameraPreview && !capturedImage && !videoPreviewUrl ? 'opacity-100' : 'opacity-0 pointer-events-none'
           }`}
         />
