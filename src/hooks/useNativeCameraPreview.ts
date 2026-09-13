@@ -17,31 +17,55 @@ export const useNativeCameraPreview = () => {
 
   const getPreviewSize = useCallback(() => {
     const platform = Capacitor.getPlatform();
-    // Cover the entire physical display (including safe areas / gesture bar).
-    // Using the largest available measurement avoids black bands at the bottom.
+    const pixelRatio = window.devicePixelRatio || 1;
+    const viewportWidth = Math.max(
+      window.innerWidth || 0,
+      window.visualViewport?.width || 0,
+      document.documentElement.clientWidth || 0,
+      390
+    );
+    const viewportHeight = Math.max(
+      window.innerHeight || 0,
+      window.visualViewport?.height || 0,
+      document.documentElement.clientHeight || 0,
+      844
+    );
+
+    // Some iOS WebViews expose screen dimensions in physical pixels while the
+    // native preview API expects CSS points. Normalize them before comparing.
+    const normalizeScreenDimension = (value: number, viewportValue: number) =>
+      value > viewportValue * 1.5 && pixelRatio > 1 ? value / pixelRatio : value;
+
     const width = Math.round(
       Math.max(
-        window.innerWidth || 0,
-        window.visualViewport?.width || 0,
-        screen.width || 0,
-        document.documentElement.clientWidth || 0,
-        390
+        viewportWidth,
+        normalizeScreenDimension(screen.width || 0, viewportWidth)
       )
     );
     const height = Math.round(
       Math.max(
-        window.innerHeight || 0,
-        window.visualViewport?.height || 0,
-        screen.height || 0,
-        (screen as any).availHeight || 0,
-        document.documentElement.clientHeight || 0,
-        844
+        viewportHeight,
+        normalizeScreenDimension(screen.height || 0, viewportHeight),
+        normalizeScreenDimension(screen.availHeight || 0, viewportHeight)
       )
     );
 
+    // A portrait 16:9 feed is 9:16. Size it like "cover": preserve the
+    // camera ratio while extending beyond only the shorter viewport axis.
+    const portraitCameraRatio = 9 / 16;
+    const viewportRatio = width / height;
+    const previewWidth = viewportRatio > portraitCameraRatio
+      ? width
+      : Math.ceil(height * portraitCameraRatio);
+    const previewHeight = viewportRatio > portraitCameraRatio
+      ? Math.ceil(width / portraitCameraRatio)
+      : height;
+
     return {
-      width,
-      height,
+      width: previewWidth,
+      height: previewHeight,
+      x: Math.floor((width - previewWidth) / 2),
+      y: Math.floor((height - previewHeight) / 2),
       platform,
     };
   }, []);
@@ -68,7 +92,7 @@ export const useNativeCameraPreview = () => {
         await new Promise((resolve) => setTimeout(resolve, 80));
       }
 
-      const { width, height, platform } = getPreviewSize();
+      const { width, height, x, y, platform } = getPreviewSize();
 
       const container = document.getElementById("camera-preview-container");
       if (container) {
@@ -89,19 +113,22 @@ export const useNativeCameraPreview = () => {
         className: "camera-preview",
         disableAudio: true,
         storeToFile: false,
-        x: 0,
-        y: 0,
-        width,
-        height,
+        // Configure the camera sensor/session as 16:9. The preview is expanded
+        // to the full viewport after start so no uncovered strip remains.
+        aspectRatio: "16:9",
+        initialZoomLevel: 1,
+        positioning: "center",
         enableOpacity: true,
-        enableZoom: true,
         lockAndroidOrientation: platform === "android",
-      } as any;
+      };
 
       console.log("[CameraPreview] Starting with options:", JSON.stringify({ width, height, platform }));
 
       const startedBounds = await CameraPreview.start(options);
       console.log("[CameraPreview] Started bounds:", JSON.stringify(startedBounds));
+
+      await CameraPreview.setPreviewSize({ x, y, width, height });
+      await CameraPreview.setZoom({ level: 1, ramp: false, autoFocus: true });
 
       isStartedRef.current = true;
       console.log("[CameraPreview] Camera preview started successfully", startedBounds);

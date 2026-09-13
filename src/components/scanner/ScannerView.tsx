@@ -706,13 +706,14 @@ export const ScannerView = () => {
 
         console.log("[Scanner] Requesting camera stream (web)...");
         
-        // Request a portrait-oriented stream; the video element uses
-        // object-cover so it always fills the screen edge to edge.
+        // Request a 16:9 camera stream in portrait orientation. The video
+        // element fills the viewport while preserving that camera proportion.
         const stream = await navigator.mediaDevices.getUserMedia({
           video: {
             facingMode: "environment",
             width: { ideal: 1080 },
             height: { ideal: 1920 },
+            aspectRatio: { ideal: 9 / 16 },
           },
           audio: false
         });
@@ -995,6 +996,7 @@ export const ScannerView = () => {
           facingMode: facingMode,
           width: { ideal: 1080 },
           height: { ideal: 1920 },
+          aspectRatio: { ideal: 9 / 16 },
         },
         audio: false
       });
