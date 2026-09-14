@@ -269,8 +269,9 @@ export const PhotoUploadSheet = ({
 
   /** Run full analysis on a set of media items */
   const runFullAnalysis = async (media: QueuedMedia[]) => {
+    let processedQueue: QueuedMedia[] = media;
     try {
-      const processedQueue = await processQueue(media);
+      processedQueue = await processQueue(media);
       const mergedQueue = (() => {
         // `mediaQueue` may still hold the pre-update value when analysis starts
         // in the same tick as setMediaQueue (single-photo path), so fall back to
