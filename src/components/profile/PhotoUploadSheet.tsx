@@ -193,8 +193,21 @@ export const PhotoUploadSheet = ({
 
   /** Step 2: After user confirms counts, run full analysis */
   const handleConfirmAndAnalyze = async () => {
-    // Use the user-confirmed count as source of truth for batch analysis
-    const validMedia = mediaQueue.filter((m) => (m.vehicleCount || 0) > 0);
+    // Photos the user deliberately set to zero are skipped silently; photos the
+    // automatic count missed still go through analysis instead of being dropped.
+    const skippedIds = new Set(
+      mediaQueue
+        .filter((m) => m.manuallyAdjusted && (m.vehicleCount || 0) === 0)
+        .map((m) => m.id)
+    );
+
+    if (skippedIds.size > 0) {
+      setMediaQueue((prev) =>
+        prev.map((m) => (skippedIds.has(m.id) ? { ...m, skipped: true } : m))
+      );
+    }
+
+    const validMedia = mediaQueue.filter((m) => !skippedIds.has(m.id));
 
     if (validMedia.length === 0) {
       toast({
@@ -207,7 +220,7 @@ export const PhotoUploadSheet = ({
 
     setPhase("processing");
     setProgress({ current: 0, total: validMedia.length });
-    await runFullAnalysis(validMedia);
+    await runFullAnalysis(validMedia.map((m) => ({ ...m, skipped: false })));
   };
 
   /** Silently reanalyze failed images before showing any error to the user */
