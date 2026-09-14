@@ -87,6 +87,10 @@ export interface QueuedMedia {
   status: "pending" | "counting" | "counted" | "analyzing" | "success" | "error";
   results?: AnalysisResult[];
   error?: string;
+  /** "empty" = IA não reconheceu nada; "technical" = falha de rede/serviço */
+  errorKind?: "empty" | "technical";
+  /** Usuário zerou a contagem de propósito: pular sem marcar como erro */
+  skipped?: boolean;
   // Quick count data
   vehicleCount?: number;
   detectedVehicles?: DetectedVehicle[];
