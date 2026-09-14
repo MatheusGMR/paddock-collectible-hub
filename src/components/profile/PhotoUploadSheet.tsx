@@ -518,10 +518,13 @@ export const PhotoUploadSheet = ({
   };
 
   // ── Collection add handlers ──
-  const handleAddToCollectionSingle = async (index: number) => {
-    if (!user) return;
+  const handleAddToCollectionSingle = async (index: number): Promise<boolean> => {
+    if (!user) {
+      toast({ title: t.common.error, description: "Faça login para adicionar à coleção", variant: "destructive" });
+      return false;
+    }
     const result = consolidatedResults[index];
-    if (!result) return;
+    if (!result) return false;
     setIsAddingToCollection(true);
     try {
       const mediaItem = mediaQueue.find(m => m.id === result.mediaId);
