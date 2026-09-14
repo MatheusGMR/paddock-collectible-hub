@@ -237,7 +237,7 @@ export const PhotoUploadSheet = ({
       const targets = currentFailed
         .map((idx) => queue[idx])
         .filter(Boolean)
-        .map((m) => ({ ...m, status: "pending" as const, results: undefined, error: undefined }));
+        .map((m) => ({ ...m, status: "pending" as const, results: undefined, error: undefined, errorKind: undefined }));
       if (targets.length === 0) break;
 
       setProgress({ current: 0, total: targets.length });
@@ -475,7 +475,7 @@ export const PhotoUploadSheet = ({
     const targets = failedMediaIndices
       .map((idx) => mediaQueue[idx])
       .filter(Boolean)
-      .map((m) => ({ ...m, status: "pending" as const, results: undefined, error: undefined }));
+      .map((m) => ({ ...m, status: "pending" as const, results: undefined, error: undefined, errorKind: undefined }));
 
     if (targets.length === 0) return;
 
