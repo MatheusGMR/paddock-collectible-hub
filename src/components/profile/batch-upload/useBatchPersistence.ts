@@ -35,19 +35,44 @@ export function useBatchPersistence() {
 
   const saveResults = useCallback((results: ConsolidatedResult[]) => {
     if (results.length === 0) {
-      localStorage.removeItem(BATCH_UPLOAD_STORAGE_KEY);
+      try {
+        localStorage.removeItem(BATCH_UPLOAD_STORAGE_KEY);
+      } catch (e) {
+        console.warn("[BatchPersistence] Failed to clear storage:", e);
+      }
       setHasPendingResults(false);
       setPendingResults([]);
       return;
     }
 
-    const data: StoredBatchUpload = {
-      results,
-      timestamp: Date.now(),
-    };
-    localStorage.setItem(BATCH_UPLOAD_STORAGE_KEY, JSON.stringify(data));
+    // Estado em memória é sempre a fonte de verdade da revisão.
     setHasPendingResults(true);
     setPendingResults(results);
+
+    const write = (payload: ConsolidatedResult[]) => {
+      const data: StoredBatchUpload = { results: payload, timestamp: Date.now() };
+      localStorage.setItem(BATCH_UPLOAD_STORAGE_KEY, JSON.stringify(data));
+    };
+
+    // Versão leve: sem as imagens pesadas que estouram a cota do navegador.
+    const lightweight = (payload: ConsolidatedResult[]) =>
+      payload.map(({ croppedImage: _c, existingItemImage: _e, realCarPhotos: _p, ...rest }) => rest as ConsolidatedResult);
+
+    try {
+      write(results);
+    } catch (e) {
+      console.warn("[BatchPersistence] Storage full, retrying without images:", e);
+      try {
+        write(lightweight(results));
+      } catch (e2) {
+        console.warn("[BatchPersistence] Could not persist batch results:", e2);
+        try {
+          localStorage.removeItem(BATCH_UPLOAD_STORAGE_KEY);
+        } catch {
+          /* ignore */
+        }
+      }
+    }
   }, []);
 
   const clearResults = useCallback(() => {

@@ -269,8 +269,9 @@ export const PhotoUploadSheet = ({
 
   /** Run full analysis on a set of media items */
   const runFullAnalysis = async (media: QueuedMedia[]) => {
+    let processedQueue: QueuedMedia[] = media;
     try {
-      const processedQueue = await processQueue(media);
+      processedQueue = await processQueue(media);
       const mergedQueue = (() => {
         // `mediaQueue` may still hold the pre-update value when analysis starts
         // in the same tick as setMediaQueue (single-photo path), so fall back to
@@ -308,17 +309,31 @@ export const PhotoUploadSheet = ({
       if (failed.length > 0) {
         setPhase("retry-failed");
       } else if (consolidated.length > 0) {
-        saveResults(consolidated);
         setPhase("reviewing");
       } else {
         // All failed with no results - show retry screen instead of resetting
         setPhase("retry-failed");
       }
+
+      // Persistência é best-effort: nunca pode derrubar a revisão
+      if (consolidated.length > 0) {
+        try {
+          saveResults(consolidated);
+        } catch (e) {
+          console.warn("[BatchUpload] Failed to persist results:", e);
+        }
+      }
     } catch (error) {
       console.error("[BatchUpload] Processing failed:", error);
-      // Never reset to selecting - show retry screen so user can try again
-      const { consolidated, failed } = consolidateResults(media);
+      // Never reset to selecting - keep whatever was already identified
+      const { consolidated, failed } = consolidateResults(processedQueue);
       setConsolidatedResults(consolidated);
+
+      if (consolidated.length > 0 && failed.length === 0) {
+        setPhase("reviewing");
+        return;
+      }
+
       setFailedMediaIndices(failed.length > 0 ? failed : media.map((_, i) => i));
       setPhase("retry-failed");
       toast({
