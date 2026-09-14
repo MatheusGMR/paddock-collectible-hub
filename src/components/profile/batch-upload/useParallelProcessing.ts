@@ -393,6 +393,8 @@ export function useParallelProcessing({
       );
 
 
+      console.log("[BatchProcessing] After crop stage:", itemsWithCrops.length, "of", items.length);
+
       const itemsWithDuplicateCheck = await Promise.all(
         itemsWithCrops.map(async (item) => {
           if (userId) {
@@ -437,9 +439,20 @@ export function useParallelProcessing({
           media.vehicleCount,
           media.detectedVehicles
         );
+        console.log("[BatchProcessing] Final items for media", media.id, results.length);
+        if (results.length === 0) {
+          return {
+            ...media,
+            status: "error",
+            errorKind: "empty",
+            error: "Nenhum veículo reconhecido nesta foto",
+          };
+        }
         return {
           ...media,
           status: "success",
+          errorKind: undefined,
+          error: undefined,
           results,
         };
       } catch (error) {
@@ -447,6 +460,7 @@ export function useParallelProcessing({
         return {
           ...media,
           status: "error",
+          errorKind: "technical",
           error: error instanceof Error ? error.message : "Falha na análise",
         };
       }

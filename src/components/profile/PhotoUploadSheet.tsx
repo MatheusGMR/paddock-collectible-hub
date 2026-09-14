@@ -97,7 +97,7 @@ export const PhotoUploadSheet = ({
     processedQueue.forEach((media, mediaIndex) => {
       const originalIndex = mediaQueue.findIndex((queued) => queued.id === media.id);
       const stableMediaIndex = originalIndex >= 0 ? originalIndex : mediaIndex;
-      if (media.status === "success" && media.results && media.results.length > 0) {
+      if (media.results && media.results.length > 0) {
         media.results.forEach((result) => {
           consolidated.push({
             ...result,
@@ -106,7 +106,7 @@ export const PhotoUploadSheet = ({
             isSelected: !result.isDuplicate,
           });
         });
-      } else {
+      } else if (!media.skipped) {
         failed.push(stableMediaIndex);
       }
     });
@@ -193,8 +193,21 @@ export const PhotoUploadSheet = ({
 
   /** Step 2: After user confirms counts, run full analysis */
   const handleConfirmAndAnalyze = async () => {
-    // Use the user-confirmed count as source of truth for batch analysis
-    const validMedia = mediaQueue.filter((m) => (m.vehicleCount || 0) > 0);
+    // Photos the user deliberately set to zero are skipped silently; photos the
+    // automatic count missed still go through analysis instead of being dropped.
+    const skippedIds = new Set(
+      mediaQueue
+        .filter((m) => m.manuallyAdjusted && (m.vehicleCount || 0) === 0)
+        .map((m) => m.id)
+    );
+
+    if (skippedIds.size > 0) {
+      setMediaQueue((prev) =>
+        prev.map((m) => (skippedIds.has(m.id) ? { ...m, skipped: true } : m))
+      );
+    }
+
+    const validMedia = mediaQueue.filter((m) => !skippedIds.has(m.id));
 
     if (validMedia.length === 0) {
       toast({
@@ -207,7 +220,7 @@ export const PhotoUploadSheet = ({
 
     setPhase("processing");
     setProgress({ current: 0, total: validMedia.length });
-    await runFullAnalysis(validMedia);
+    await runFullAnalysis(validMedia.map((m) => ({ ...m, skipped: false })));
   };
 
   /** Silently reanalyze failed images before showing any error to the user */
@@ -224,7 +237,7 @@ export const PhotoUploadSheet = ({
       const targets = currentFailed
         .map((idx) => queue[idx])
         .filter(Boolean)
-        .map((m) => ({ ...m, status: "pending" as const, results: undefined, error: undefined }));
+        .map((m) => ({ ...m, status: "pending" as const, results: undefined, error: undefined, errorKind: undefined }));
       if (targets.length === 0) break;
 
       setProgress({ current: 0, total: targets.length });
@@ -263,12 +276,17 @@ export const PhotoUploadSheet = ({
         // in the same tick as setMediaQueue (single-photo path), so fall back to
         // the media passed in and append any item that isn't in the queue yet.
         const updated = mediaQueue.length > 0 ? [...mediaQueue] : [...media];
+        const processedIds = new Set<string>();
         processedQueue.forEach((processed) => {
+          processedIds.add(processed.id);
           const idx = updated.findIndex((m) => m.id === processed.id);
           if (idx !== -1) updated[idx] = processed;
           else updated.push(processed);
         });
-        return updated;
+        // Anything left out of this run was intentionally skipped by the user
+        return updated.map((m) =>
+          processedIds.has(m.id) ? m : { ...m, skipped: true }
+        );
       })();
 
       const first = consolidateResults(mergedQueue);
@@ -457,7 +475,7 @@ export const PhotoUploadSheet = ({
     const targets = failedMediaIndices
       .map((idx) => mediaQueue[idx])
       .filter(Boolean)
-      .map((m) => ({ ...m, status: "pending" as const, results: undefined, error: undefined }));
+      .map((m) => ({ ...m, status: "pending" as const, results: undefined, error: undefined, errorKind: undefined }));
 
     if (targets.length === 0) return;
 
@@ -715,7 +733,9 @@ export const PhotoUploadSheet = ({
                     : "Nenhum veículo identificado"}
                 </p>
                 <p className="text-xs text-foreground-secondary mt-2">
-                  Substitua as imagens com problema ou pule para ver os resultados
+                  {failedMediaIndices.some((i) => mediaQueue[i]?.errorKind === "technical")
+                    ? "Houve uma falha ao processar. Tente novamente estas fotos."
+                    : "Substitua as imagens com problema ou pule para ver os resultados"}
                 </p>
               </div>
               <div className="grid grid-cols-2 gap-3 mb-6">
@@ -732,7 +752,9 @@ export const PhotoUploadSheet = ({
                       {!isReplaced && (
                         <div className="absolute inset-0 bg-background/60 flex flex-col items-center justify-center gap-2">
                           <AlertCircle className="h-6 w-6 text-destructive" />
-                          <span className="text-xs text-foreground font-medium">Não identificado</span>
+                          <span className="text-xs text-foreground font-medium">
+                            {media.errorKind === "technical" ? "Falha ao processar" : "Não identificado"}
+                          </span>
                         </div>
                       )}
                       <div className="absolute bottom-0 left-0 right-0 flex gap-1 p-2">
