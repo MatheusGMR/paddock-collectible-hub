@@ -393,6 +393,8 @@ export function useParallelProcessing({
       );
 
 
+      console.log("[BatchProcessing] After crop stage:", itemsWithCrops.length, "of", items.length);
+
       const itemsWithDuplicateCheck = await Promise.all(
         itemsWithCrops.map(async (item) => {
           if (userId) {

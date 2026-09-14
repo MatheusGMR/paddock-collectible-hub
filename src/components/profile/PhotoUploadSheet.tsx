@@ -97,7 +97,7 @@ export const PhotoUploadSheet = ({
     processedQueue.forEach((media, mediaIndex) => {
       const originalIndex = mediaQueue.findIndex((queued) => queued.id === media.id);
       const stableMediaIndex = originalIndex >= 0 ? originalIndex : mediaIndex;
-      if (media.status === "success" && media.results && media.results.length > 0) {
+      if (media.results && media.results.length > 0) {
         media.results.forEach((result) => {
           consolidated.push({
             ...result,
@@ -106,7 +106,7 @@ export const PhotoUploadSheet = ({
             isSelected: !result.isDuplicate,
           });
         });
-      } else {
+      } else if (!media.skipped) {
         failed.push(stableMediaIndex);
       }
     });
