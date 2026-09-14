@@ -276,12 +276,17 @@ export const PhotoUploadSheet = ({
         // in the same tick as setMediaQueue (single-photo path), so fall back to
         // the media passed in and append any item that isn't in the queue yet.
         const updated = mediaQueue.length > 0 ? [...mediaQueue] : [...media];
+        const processedIds = new Set<string>();
         processedQueue.forEach((processed) => {
+          processedIds.add(processed.id);
           const idx = updated.findIndex((m) => m.id === processed.id);
           if (idx !== -1) updated[idx] = processed;
           else updated.push(processed);
         });
-        return updated;
+        // Anything left out of this run was intentionally skipped by the user
+        return updated.map((m) =>
+          processedIds.has(m.id) ? m : { ...m, skipped: true }
+        );
       })();
 
       const first = consolidateResults(mergedQueue);
