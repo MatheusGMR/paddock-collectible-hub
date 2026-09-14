@@ -733,7 +733,9 @@ export const PhotoUploadSheet = ({
                     : "Nenhum veículo identificado"}
                 </p>
                 <p className="text-xs text-foreground-secondary mt-2">
-                  Substitua as imagens com problema ou pule para ver os resultados
+                  {failedMediaIndices.some((i) => mediaQueue[i]?.errorKind === "technical")
+                    ? "Houve uma falha ao processar. Tente novamente estas fotos."
+                    : "Substitua as imagens com problema ou pule para ver os resultados"}
                 </p>
               </div>
               <div className="grid grid-cols-2 gap-3 mb-6">
@@ -750,7 +752,9 @@ export const PhotoUploadSheet = ({
                       {!isReplaced && (
                         <div className="absolute inset-0 bg-background/60 flex flex-col items-center justify-center gap-2">
                           <AlertCircle className="h-6 w-6 text-destructive" />
-                          <span className="text-xs text-foreground font-medium">Não identificado</span>
+                          <span className="text-xs text-foreground font-medium">
+                            {media.errorKind === "technical" ? "Falha ao processar" : "Não identificado"}
+                          </span>
                         </div>
                       )}
                       <div className="absolute bottom-0 left-0 right-0 flex gap-1 p-2">
