@@ -15,7 +15,7 @@ import { ScanFeedback } from "@/components/scanner/ScanFeedback";
 
 interface BatchCarouselViewProps {
   results: ConsolidatedResult[];
-  onAddToCollection: (index: number) => Promise<void>;
+  onAddToCollection: (index: number) => Promise<boolean | void>;
   onSkip: (index: number) => void;
   onComplete: () => void;
   onSkipAll: () => void;
@@ -97,7 +97,8 @@ export function BatchCarouselView({
     if (addingIndex !== null) return;
     setAddingIndex(originalIndex);
     try {
-      await onAddToCollection(originalIndex);
+      const ok = await onAddToCollection(originalIndex);
+      if (ok === false) return;
       setJustAddedIndex(originalIndex);
       setTimeout(() => {
         setJustAddedIndex(null);

@@ -518,10 +518,13 @@ export const PhotoUploadSheet = ({
   };
 
   // ── Collection add handlers ──
-  const handleAddToCollectionSingle = async (index: number) => {
-    if (!user) return;
+  const handleAddToCollectionSingle = async (index: number): Promise<boolean> => {
+    if (!user) {
+      toast({ title: t.common.error, description: "Faça login para adicionar à coleção", variant: "destructive" });
+      return false;
+    }
     const result = consolidatedResults[index];
-    if (!result) return;
+    if (!result) return false;
     setIsAddingToCollection(true);
     try {
       const mediaItem = mediaQueue.find(m => m.id === result.mediaId);
@@ -558,9 +561,16 @@ export const PhotoUploadSheet = ({
       }, imageUrl);
       setAddedIndices(prev => new Set([...prev, index]));
       toast({ title: t.scanner.addedToCollection, description: `${result.realCar.brand} ${result.realCar.model}` });
+      onCollectionUpdated?.();
+      return true;
     } catch (error) {
       console.error("Failed to add item:", error);
-      toast({ title: t.common.error, description: "Falha ao adicionar item", variant: "destructive" });
+      toast({
+        title: t.common.error,
+        description: error instanceof Error ? error.message : "Falha ao adicionar item",
+        variant: "destructive",
+      });
+      return false;
     } finally {
       setIsAddingToCollection(false);
     }
