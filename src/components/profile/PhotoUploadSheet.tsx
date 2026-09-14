@@ -561,9 +561,16 @@ export const PhotoUploadSheet = ({
       }, imageUrl);
       setAddedIndices(prev => new Set([...prev, index]));
       toast({ title: t.scanner.addedToCollection, description: `${result.realCar.brand} ${result.realCar.model}` });
+      onCollectionUpdated?.();
+      return true;
     } catch (error) {
       console.error("Failed to add item:", error);
-      toast({ title: t.common.error, description: "Falha ao adicionar item", variant: "destructive" });
+      toast({
+        title: t.common.error,
+        description: error instanceof Error ? error.message : "Falha ao adicionar item",
+        variant: "destructive",
+      });
+      return false;
     } finally {
       setIsAddingToCollection(false);
     }
