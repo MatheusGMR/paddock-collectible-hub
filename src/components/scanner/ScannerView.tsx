@@ -2296,9 +2296,14 @@ export const ScannerView = () => {
         className={`scanner-camera-layer fixed inset-0 overflow-hidden select-none ${
           useCameraPreview && !capturedImage && !hasResults ? 'bg-transparent' : 'bg-black'
         }`}
-        style={{ width: '100vw', height: '100dvh', top: 0, left: 0, WebkitUserSelect: 'none', WebkitTouchCallout: 'none' } as React.CSSProperties}
+        style={{ width: '100vw', height: '100dvh', top: 0, left: 0, WebkitUserSelect: 'none', WebkitTouchCallout: 'none', touchAction: 'none' } as React.CSSProperties}
         onTouchStart={(e) => {
-          e.preventDefault();
+          const target = e.target as HTMLElement;
+          if (target.closest('button, input, textarea, select, [role="button"]')) {
+            touchStartPos.current = null;
+            lastPinchDistance.current = null;
+            return;
+          }
           touchMoved.current = false;
           if (e.touches.length === 1) {
             touchStartPos.current = { x: e.touches[0].clientX, y: e.touches[0].clientY, time: Date.now() };
@@ -2322,6 +2327,12 @@ export const ScannerView = () => {
           }
         }}
         onTouchEnd={(e) => {
+          const target = e.target as HTMLElement;
+          if (target.closest('button, input, textarea, select, [role="button"]')) {
+            touchStartPos.current = null;
+            lastPinchDistance.current = null;
+            return;
+          }
           // Pinch end
           if (lastPinchDistance.current !== null) {
             lastPinchDistance.current = null;
