@@ -50,22 +50,9 @@ export const useNativeCameraPreview = () => {
       )
     );
 
-    // A portrait 16:9 feed is 9:16. Size it like "cover": preserve the
-    // camera ratio while extending beyond only the shorter viewport axis.
-    const portraitCameraRatio = 9 / 16;
-    const viewportRatio = width / height;
-    const previewWidth = viewportRatio > portraitCameraRatio
-      ? width
-      : Math.ceil(height * portraitCameraRatio);
-    const previewHeight = viewportRatio > portraitCameraRatio
-      ? Math.ceil(width / portraitCameraRatio)
-      : height;
-
     return {
-      width: previewWidth,
-      height: previewHeight,
-      x: Math.floor((width - previewWidth) / 2),
-      y: Math.floor((height - previewHeight) / 2),
+      width,
+      height,
       platform,
     };
   }, []);
@@ -92,7 +79,7 @@ export const useNativeCameraPreview = () => {
         await new Promise((resolve) => setTimeout(resolve, 80));
       }
 
-      const { width, height, x, y, platform } = getPreviewSize();
+      const { width, height, platform } = getPreviewSize();
 
       const container = document.getElementById("camera-preview-container");
       if (container) {
@@ -113,8 +100,8 @@ export const useNativeCameraPreview = () => {
         className: "camera-preview",
         disableAudio: true,
         storeToFile: false,
-        // Configure the camera sensor/session as 16:9. The preview is expanded
-        // to the full viewport after start so no uncovered strip remains.
+        // Let the native plugin be the single sizing authority. It fits the
+        // complete portrait 9:16 frame without enlarging it beyond the screen.
         aspectRatio: "16:9",
         initialZoomLevel: 1,
         positioning: "center",
@@ -127,7 +114,6 @@ export const useNativeCameraPreview = () => {
       const startedBounds = await CameraPreview.start(options);
       console.log("[CameraPreview] Started bounds:", JSON.stringify(startedBounds));
 
-      await CameraPreview.setPreviewSize({ x, y, width, height });
       await CameraPreview.setZoom({ level: 1, ramp: false, autoFocus: true });
 
       isStartedRef.current = true;
