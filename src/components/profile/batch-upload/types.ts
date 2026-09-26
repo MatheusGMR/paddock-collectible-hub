@@ -31,6 +31,7 @@ export interface AnalysisResult {
   musicListeningTip?: string;
   realCarPhotos?: string[];
   croppedImage?: string;
+  photoAdjusted?: boolean;
   isDuplicate?: boolean;
   existingItemImage?: string;
   photoIndex?: number;
