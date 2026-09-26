@@ -1246,6 +1246,7 @@ export type Database = {
           is_pinned: boolean
           item_id: string
           notes: string | null
+          original_image_url: string | null
           pinned_at: string | null
           user_context: Json | null
           user_id: string
@@ -1258,6 +1259,7 @@ export type Database = {
           is_pinned?: boolean
           item_id: string
           notes?: string | null
+          original_image_url?: string | null
           pinned_at?: string | null
           user_context?: Json | null
           user_id: string
@@ -1270,6 +1272,7 @@ export type Database = {
           is_pinned?: boolean
           item_id?: string
           notes?: string | null
+          original_image_url?: string | null
           pinned_at?: string | null
           user_context?: Json | null
           user_id?: string
