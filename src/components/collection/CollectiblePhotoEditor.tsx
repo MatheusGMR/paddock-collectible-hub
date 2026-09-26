@@ -96,7 +96,7 @@ export function CollectiblePhotoEditor({ open, onOpenChange, source, onSave, leg
         </div>
         <div className="space-y-2">
           <div className="flex justify-between text-sm"><span>Tamanho</span><span>{Math.round(zoom * 100)}%</span></div>
-          <Slider aria-label="Tamanho da foto" value={[zoom]} onValueChange={([value]) => setZoom(value)} min={0.5} max={3} step={0.05} disabled={!ready} />
+          <Slider aria-label="Tamanho da foto" value={[zoom]} onValueChange={([value]) => setZoom(value)} min={0.5} max={8} step={0.05} disabled={!ready} />
           <p className="text-xs text-muted-foreground">Diminua para criar margem; arraste para centralizar o carrinho.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
