@@ -35,7 +35,18 @@
   </head>
 
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div id="boot-fallback" style="display:none;min-height:100vh;align-items:center;justify-content:center;flex-direction:column;gap:16px;background:#0E1117;color:#e6e6e6;font-family:system-ui,sans-serif;text-align:center;padding:24px">
+        <p>O Paddock está demorando para abrir.</p>
+        <button onclick="window.__paddockRecover ? window.__paddockRecover() : location.reload()" style="padding:12px 24px;border-radius:12px;border:0;background:#22d3ee;color:#0E1117;font-weight:600">Atualizar</button>
+      </div>
+    </div>
+    <script>
+      setTimeout(function () {
+        var f = document.getElementById("boot-fallback");
+        if (f) f.style.display = "flex";
+      }, 8000);
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

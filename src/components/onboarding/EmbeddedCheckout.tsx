@@ -11,7 +11,8 @@ import { ArrowLeft, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 // Load Stripe with the publishable key
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || "");
+const stripeKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY as string | undefined;
+const stripePromise = stripeKey ? loadStripe(stripeKey) : null;
 
 interface EmbeddedCheckoutProps {
   onBack: () => void;
