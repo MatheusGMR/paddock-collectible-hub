@@ -13,6 +13,7 @@ import { ScanFeedback } from "./ScanFeedback";
 import { MarketValueCard } from "./MarketValueCard";
 
 import { BoundingBox } from "@/lib/imageCrop";
+import { CollectiblePhotoEditor } from "@/components/collection/CollectiblePhotoEditor";
 
 interface AnalysisResult {
   boundingBox?: BoundingBox;
@@ -46,6 +47,7 @@ interface AnalysisResult {
 interface ResultCarouselProps {
   results: AnalysisResult[];
   originalImage?: string;
+  onAdjustPhoto: (index: number, image: string) => void;
   onAddToCollection: (index: number) => Promise<string | void>; // Returns itemId on success
   onAddAndPost: (index: number) => Promise<void>;
   onSkip: (index: number) => void;
@@ -66,9 +68,10 @@ interface HighlightedImageProps {
   carName: string;
   carYear: string;
   totalResults?: number;
+  onEdit: () => void;
 }
 
-const HighlightedImage = ({ originalImage, croppedImage, boundingBox, carName, carYear, totalResults = 1 }: HighlightedImageProps) => {
+const HighlightedImage = ({ originalImage, croppedImage, boundingBox, carName, carYear, totalResults = 1, onEdit }: HighlightedImageProps) => {
   // For multi-car: show original image with bounding box overlay so user knows which car
   // For single car: show cropped image directly
   const showBoundingBoxOverlay = totalResults > 1 && boundingBox && originalImage;
@@ -108,6 +111,7 @@ const HighlightedImage = ({ originalImage, croppedImage, boundingBox, carName, c
                 transparent ${boundingBox.y}%, transparent ${boundingBox.y + boundingBox.height}%, 
                 rgba(0,0,0,0.4) ${boundingBox.y + boundingBox.height}%, rgba(0,0,0,0.4) 100%)`
             }} />
+            <Button type="button" variant="secondary" size="sm" className="absolute bottom-3 right-3" onClick={onEdit}>Ajustar foto</Button>
           </div>
         </div>
         {croppedImage && (
@@ -116,8 +120,9 @@ const HighlightedImage = ({ originalImage, croppedImage, boundingBox, carName, c
               <img
                 src={croppedImage}
                 alt={carName}
-                className="w-full h-full object-cover"
+                className="w-full h-full object-contain bg-muted"
               />
+              <Button type="button" variant="secondary" size="sm" className="absolute bottom-3 right-3" onClick={onEdit}>Ajustar foto</Button>
               <div className="absolute top-3 left-3 flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/60 backdrop-blur-sm">
                 <Car className="h-3.5 w-3.5 text-primary" />
                 <span className="text-xs font-medium text-white">{carYear}</span>
@@ -138,8 +143,9 @@ const HighlightedImage = ({ originalImage, croppedImage, boundingBox, carName, c
         <img
           src={displayImage}
           alt={carName}
-          className="w-full h-full object-cover"
+          className="w-full h-full object-contain bg-muted"
         />
+        <Button type="button" variant="secondary" size="sm" className="absolute bottom-3 right-3" onClick={onEdit}>Ajustar foto</Button>
         <div className="absolute top-3 left-3 flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/60 backdrop-blur-sm">
           <Car className="h-3.5 w-3.5 text-primary" />
           <span className="text-xs font-medium text-white">{carYear}</span>
@@ -194,6 +200,7 @@ const DetailRow = ({ label, value }: { label: string; value: string | null | und
 export const ResultCarousel = ({
   results,
   originalImage,
+  onAdjustPhoto,
   onAddToCollection,
   onAddAndPost,
   onSkip,
@@ -209,6 +216,7 @@ export const ResultCarousel = ({
   const [postingIndex, setPostingIndex] = useState<number | null>(null);
   const [justAddedIndex, setJustAddedIndex] = useState<number | null>(null);
   const [breakdownOpen, setBreakdownOpen] = useState(false);
+  const [photoEditorIndex, setPhotoEditorIndex] = useState<number | null>(null);
   const [breakdownResult, setBreakdownResult] = useState<AnalysisResult | null>(null);
   const [isExpanded, setIsExpanded] = useState(true);
   const [dragOffset, setDragOffset] = useState(0);
@@ -464,6 +472,7 @@ export const ResultCarousel = ({
               carName={`${result.realCar.brand} ${result.realCar.model}`}
               carYear={result.realCar.year}
               totalResults={results.length}
+              onEdit={() => setPhotoEditorIndex(originalIndex)}
             />
 
             {/* Duplicate Warning */}
@@ -707,6 +716,12 @@ export const ResultCarousel = ({
           breakdown={breakdownResult.priceIndex.breakdown}
         />
       )}
+      <CollectiblePhotoEditor
+        open={photoEditorIndex !== null}
+        onOpenChange={(value) => { if (!value) setPhotoEditorIndex(null); }}
+        source={originalImage || (photoEditorIndex !== null ? results[photoEditorIndex]?.croppedImage : "") || ""}
+        onSave={(image) => { if (photoEditorIndex !== null) onAdjustPhoto(photoEditorIndex, image); }}
+      />
     </>
   );
 };
