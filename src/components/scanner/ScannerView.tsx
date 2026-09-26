@@ -11,6 +11,7 @@ import { useGuidedTips } from "@/contexts/GuidedTipsContext";
 import { useThemeColor } from "@/hooks/useThemeColor";
 import { addToCollection, checkDuplicateInCollection } from "@/lib/database";
 import { uploadCollectionImage, isBase64DataUri } from "@/lib/uploadImage";
+import { storeCollectionPhotos, saveOriginalPhoto } from "@/lib/collectionPhoto";
 import { enrichResultsWithPhotos } from "@/lib/api/carPhotos";
 import { useNavigate } from "react-router-dom";
 import { CaptureButton } from "@/components/scanner/CaptureButton";
@@ -130,6 +131,7 @@ interface AnalysisResult {
   musicListeningTip?: string;
   realCarPhotos?: string[];
   croppedImage?: string; // Will be populated after cropping
+  photoAdjusted?: boolean;
   isDuplicate?: boolean; // Duplicate detection flag
   existingItemImage?: string; // Image of existing item if duplicate
   marketValue?: { min: number; max: number; currency: string; source: string; confidence: 'high' | 'medium' | 'low' };
@@ -1970,25 +1972,14 @@ export const ScannerView = () => {
 
     try {
       // Determine which image to use
-      const imageToSave = analysisResults.length === 1 
+      const imageToSave = result.photoAdjusted ? result.croppedImage : analysisResults.length === 1
         ? (capturedImage || result.croppedImage)
         : (result.croppedImage || capturedImage);
 
       // Upload image to storage if it's a base64 data URI
       let imageUrl: string | undefined;
-      if (imageToSave && isBase64DataUri(imageToSave)) {
-        console.log("[Scanner] Uploading image to storage...");
-        const uploadedUrl = await uploadCollectionImage(user.id, imageToSave);
-        if (uploadedUrl) {
-          imageUrl = uploadedUrl;
-          console.log("[Scanner] Image uploaded successfully:", imageUrl);
-        } else {
-          console.warn("[Scanner] Image upload failed, saving without image");
-        }
-      } else if (imageToSave) {
-        // It's already a URL, use it directly
-        imageUrl = imageToSave;
-      }
+      const photos = await storeCollectionPhotos(user.id, imageToSave || undefined, capturedImage || undefined);
+      imageUrl = photos.imageUrl;
 
       const collectionItem = await addToCollection(
         user.id,
@@ -2016,6 +2007,8 @@ export const ScannerView = () => {
         },
         imageUrl
       );
+      try { await saveOriginalPhoto(collectionItem.id, user.id, photos.originalUrl); }
+      catch (error) { console.warn("[Scanner] Original photo could not be linked:", error); }
 
       // Get the item_id from the collection item
       const itemId = collectionItem.item_id;
@@ -2066,19 +2059,14 @@ export const ScannerView = () => {
 
     try {
       // Same add-to-collection logic
-      const imageToSave = analysisResults.length === 1 
+      const imageToSave = result.photoAdjusted ? result.croppedImage : analysisResults.length === 1
         ? (capturedImage || result.croppedImage)
         : (result.croppedImage || capturedImage);
 
-      let imageUrl: string | undefined;
-      if (imageToSave && isBase64DataUri(imageToSave)) {
-        const uploadedUrl = await uploadCollectionImage(user.id, imageToSave);
-        if (uploadedUrl) imageUrl = uploadedUrl;
-      } else if (imageToSave) {
-        imageUrl = imageToSave;
-      }
+      const photos = await storeCollectionPhotos(user.id, imageToSave || undefined, capturedImage || undefined);
+      const imageUrl = photos.imageUrl;
 
-      await addToCollection(
+      const collectionItem = await addToCollection(
         user.id,
         {
           real_car_brand: result.realCar.brand,
@@ -2104,6 +2092,8 @@ export const ScannerView = () => {
         },
         imageUrl
       );
+      try { await saveOriginalPhoto(collectionItem.id, user.id, photos.originalUrl); }
+      catch (error) { console.warn("[Scanner] Original photo could not be linked:", error); }
 
       setAddedIndices(prev => new Set(prev).add(index));
 
@@ -2545,6 +2535,7 @@ export const ScannerView = () => {
         <ResultCarousel
           results={analysisResults}
           originalImage={capturedImage || undefined}
+          onAdjustPhoto={(index, image) => setAnalysisResults((previous) => previous.map((result, i) => i === index ? { ...result, croppedImage: image, photoAdjusted: true } : result))}
           onAddToCollection={handleAddToCollection}
           onAddAndPost={handleAddAndPost}
           onSkip={handleSkipItem}

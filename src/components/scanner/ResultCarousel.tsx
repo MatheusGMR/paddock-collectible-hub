@@ -39,6 +39,7 @@ interface AnalysisResult {
   musicListeningTip?: string;
   realCarPhotos?: string[];
   croppedImage?: string;
+  photoAdjusted?: boolean;
   isDuplicate?: boolean;
   existingItemImage?: string;
   marketValue?: MarketValue;
@@ -69,12 +70,13 @@ interface HighlightedImageProps {
   carYear: string;
   totalResults?: number;
   onEdit: () => void;
+  photoAdjusted?: boolean;
 }
 
-const HighlightedImage = ({ originalImage, croppedImage, boundingBox, carName, carYear, totalResults = 1, onEdit }: HighlightedImageProps) => {
+const HighlightedImage = ({ originalImage, croppedImage, boundingBox, carName, carYear, totalResults = 1, onEdit, photoAdjusted }: HighlightedImageProps) => {
   // For multi-car: show original image with bounding box overlay so user knows which car
   // For single car: show cropped image directly
-  const showBoundingBoxOverlay = totalResults > 1 && boundingBox && originalImage;
+  const showBoundingBoxOverlay = !photoAdjusted && totalResults > 1 && boundingBox && originalImage;
   
   if (showBoundingBoxOverlay) {
     return (
@@ -135,7 +137,7 @@ const HighlightedImage = ({ originalImage, croppedImage, boundingBox, carName, c
   }
 
   // Single car or no bounding box: show original image directly (no crop needed)
-  const displayImage = originalImage || croppedImage;
+  const displayImage = photoAdjusted ? croppedImage : (originalImage || croppedImage);
   
   return (
     <div className="relative w-full rounded-2xl overflow-hidden">
@@ -472,6 +474,7 @@ export const ResultCarousel = ({
               carName={`${result.realCar.brand} ${result.realCar.model}`}
               carYear={result.realCar.year}
               totalResults={results.length}
+              photoAdjusted={result.photoAdjusted}
               onEdit={() => setPhotoEditorIndex(originalIndex)}
             />
 
