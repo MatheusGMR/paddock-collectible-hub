@@ -20,10 +20,22 @@ import { PriceIndexBreakdown, getRarityTier, formatBRL } from "@/lib/priceIndex"
 import { MusicPlayer } from "@/components/scanner/MusicPlayer";
 import { RealCarPhotoCarousel } from "@/components/collection/RealCarPhotoCarousel";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import { Sparkles, RefreshCw } from "lucide-react";
+
+interface UserContext {
+  special_edition?: boolean;
+  numbered?: boolean;
+  unique?: boolean;
+  imported_from?: string;
+  notes?: string;
+}
 
 export interface CollectibleDetailItem {
   id: string;
   image_url: string | null;
+  user_context?: UserContext | null;
   item: {
     real_car_brand: string;
     real_car_model: string;
@@ -101,6 +113,44 @@ export const CollectibleDetailCard = ({ item, open, onOpenChange, onDelete }: Co
   const [isDeleting, setIsDeleting] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
   const [imageFailed, setImageFailed] = useState(false);
+  const [override, setOverride] = useState<{ score: number; breakdown: PriceIndexBreakdown } | null>(null);
+  const [recalculating, setRecalculating] = useState(false);
+  const [ctxOpen, setCtxOpen] = useState(false);
+  const [ctx, setCtx] = useState<UserContext>({});
+
+  useEffect(() => {
+    setOverride(null);
+    setCtx(item?.user_context ?? {});
+    if (!item?.user_context) {
+      supabase.from("user_collection").select("user_context").eq("id", item?.id ?? "").maybeSingle()
+        .then(({ data }) => { if (data?.user_context) setCtx(data.user_context as UserContext); });
+    }
+  }, [item?.id]);
+
+  const recalculate = async (saveContext: boolean) => {
+    if (!item) return;
+    setRecalculating(true);
+    try {
+      if (saveContext) {
+        const { error } = await supabase.from("user_collection").update({ user_context: ctx as never }).eq("id", item.id);
+        if (error) throw error;
+      }
+      const { data: res, error } = await supabase.functions.invoke("recalculate-index", { body: { collectionIds: [item.id] } });
+      if (error) throw error;
+      const r = res?.results?.[0];
+      if (!r || r.error) throw new Error(r?.error || "Falha");
+      const { data: fresh } = await supabase.from("user_collection").select("item:items(price_index,index_breakdown)").eq("id", item.id).single();
+      const f = fresh?.item as { price_index: number; index_breakdown: PriceIndexBreakdown } | null;
+      if (f) setOverride({ score: f.price_index, breakdown: f.index_breakdown });
+      setCtxOpen(false);
+      toast.success(`Pontuação atualizada: ${r.score}`);
+    } catch (e) {
+      console.error(e);
+      toast.error("Não foi possível recalcular agora. Tente novamente.");
+    } finally {
+      setRecalculating(false);
+    }
+  };
   
   // Reset image state when item changes
   useEffect(() => {
@@ -122,8 +172,9 @@ export const CollectibleDetailCard = ({ item, open, onOpenChange, onDelete }: Co
   if (!item?.item) return null;
   
   const { item: data } = item;
-  const score = data.price_index ?? 0;
-  const tier = data.rarity_tier ?? getRarityTier(score);
+  const score = override?.score ?? data.price_index ?? 0;
+  const tier = override ? getRarityTier(override.score) : (data.rarity_tier ?? getRarityTier(score));
+  const breakdown = override?.breakdown ?? data.index_breakdown ?? null;
 
   const handleDelete = async () => {
     if (!onDelete) return;
@@ -196,15 +247,41 @@ export const CollectibleDetailCard = ({ item, open, onOpenChange, onDelete }: Co
               </div>
               
               {/* Price Index Badge */}
-              {score > 0 && (
-                <div className="flex justify-center" data-tip="price-index">
-                  <IndexBadge
-                    score={score}
-                    tier={tier}
-                    onClick={() => setBreakdownOpen(true)}
-                  />
-                </div>
-              )}
+              <div className="flex flex-col items-center gap-3" data-tip="price-index">
+                {score > 0 && (
+                  <IndexBadge score={score} tier={tier} onClick={() => breakdown ? setBreakdownOpen(true) : recalculate(false)} />
+                )}
+                {(!breakdown || score === 0) && (
+                  <Button size="sm" variant="outline" onClick={() => recalculate(false)} disabled={recalculating}>
+                    {recalculating ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-2" />}
+                    Calcular critérios
+                  </Button>
+                )}
+                <button type="button" onClick={() => setCtxOpen((v) => !v)} className="flex items-center gap-1.5 text-xs text-primary">
+                  <Sparkles className="h-3.5 w-3.5" /> Informações especiais
+                </button>
+                {ctxOpen && (
+                  <div className="w-full rounded-xl border border-border/50 bg-card/80 p-4 space-y-3">
+                    <p className="text-xs text-foreground-secondary">Conte o que a foto não mostra. Isso ajusta a raridade.</p>
+                    {([
+                      ["special_edition", "Edição especial / licenciada"],
+                      ["numbered", "Numerada / tiragem limitada"],
+                      ["unique", "Unidade única"],
+                    ] as const).map(([k, label]) => (
+                      <label key={k} className="flex items-center gap-2 text-sm text-foreground">
+                        <input type="checkbox" className="accent-primary h-4 w-4" checked={!!ctx[k]} onChange={(e) => setCtx({ ...ctx, [k]: e.target.checked })} />
+                        {label}
+                      </label>
+                    ))}
+                    <input className="w-full rounded-lg bg-muted px-3 py-2 text-sm text-foreground" placeholder="Importado de (ex.: Estados Unidos)" value={ctx.imported_from ?? ""} onChange={(e) => setCtx({ ...ctx, imported_from: e.target.value.slice(0, 60) })} />
+                    <textarea className="w-full rounded-lg bg-muted px-3 py-2 text-sm text-foreground resize-none" rows={2} placeholder="Observação (ex.: edição Elvis Presley)" value={ctx.notes ?? ""} onChange={(e) => setCtx({ ...ctx, notes: e.target.value.slice(0, 300) })} />
+                    <Button className="w-full" onClick={() => recalculate(true)} disabled={recalculating}>
+                      {recalculating ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+                      Salvar e recalcular
+                    </Button>
+                  </div>
+                )}
+              </div>
 
               {/* Market Value */}
               {data.estimated_value_min != null && data.estimated_value_max != null && data.estimated_value_min > 0 && (
@@ -309,13 +386,13 @@ export const CollectibleDetailCard = ({ item, open, onOpenChange, onDelete }: Co
       </Drawer>
       
       {/* Index Breakdown Sheet */}
-      {data.index_breakdown && (
+      {breakdown && (
         <IndexBreakdown
           open={breakdownOpen}
           onOpenChange={setBreakdownOpen}
           score={score}
           tier={tier}
-          breakdown={data.index_breakdown}
+          breakdown={breakdown}
         />
       )}
       
