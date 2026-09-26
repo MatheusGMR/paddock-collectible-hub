@@ -140,7 +140,7 @@ export const CollectibleDetailCard = ({ item, open, onOpenChange, onDelete }: Co
       const r = res?.results?.[0];
       if (!r || r.error) throw new Error(r?.error || "Falha");
       const { data: fresh } = await supabase.from("user_collection").select("item:items(price_index,index_breakdown)").eq("id", item.id).single();
-      const f = fresh?.item as { price_index: number; index_breakdown: PriceIndexBreakdown } | null;
+      const f = fresh?.item as unknown as { price_index: number; index_breakdown: PriceIndexBreakdown } | null;
       if (f) setOverride({ score: f.price_index, breakdown: f.index_breakdown });
       setCtxOpen(false);
       toast.success(`Pontuação atualizada: ${r.score}`);
