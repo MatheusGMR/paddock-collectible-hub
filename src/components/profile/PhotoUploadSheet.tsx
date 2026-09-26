@@ -7,7 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { addToCollection } from "@/lib/database";
-import { uploadCollectionImage, isBase64DataUri } from "@/lib/uploadImage";
+import { storeCollectionPhotos } from "@/lib/collectionPhoto";
 import { LoadingFacts } from "@/components/scanner/LoadingFacts";
 import { useNavigate } from "react-router-dom";
 import {
@@ -543,15 +543,10 @@ export const PhotoUploadSheet = ({
     setIsAddingToCollection(true);
     try {
       const mediaItem = mediaQueue.find(m => m.id === result.mediaId);
-      let imageUrl: string | undefined;
       let imageToSave = result.croppedImage;
       if (!imageToSave && mediaItem?.base64) imageToSave = mediaItem.base64;
-      if (imageToSave && isBase64DataUri(imageToSave)) {
-        const uploadedUrl = await uploadCollectionImage(user.id, imageToSave);
-        if (uploadedUrl) imageUrl = uploadedUrl;
-      } else if (imageToSave) {
-        imageUrl = imageToSave;
-      }
+      const original = mediaItem?.isVideo ? undefined : mediaItem?.base64;
+      const photos = await storeCollectionPhotos(user.id, imageToSave, original);
       await addToCollection(user.id, {
         real_car_brand: result.realCar.brand,
         real_car_model: result.realCar.model,
@@ -573,7 +568,7 @@ export const PhotoUploadSheet = ({
         real_car_photos: result.realCarPhotos || null,
         estimated_value_min: result.marketValue?.min || null,
         estimated_value_max: result.marketValue?.max || null,
-      }, imageUrl);
+      }, photos.imageUrl, photos.originalUrl);
       setAddedIndices(prev => new Set([...prev, index]));
       toast({ title: t.scanner.addedToCollection, description: `${result.realCar.brand} ${result.realCar.model}` });
       onCollectionUpdated?.();
@@ -820,6 +815,13 @@ export const PhotoUploadSheet = ({
           {phase === "reviewing" && (
             <BatchCarouselView
               results={consolidatedResults}
+              getOriginalPhoto={(index) => mediaQueue.find((media) => media.id === consolidatedResults[index]?.mediaId && !media.isVideo)?.base64}
+              onAdjustPhoto={(index, image) => {
+                setConsolidatedResults((previous) => {
+                  const updated = previous.map((result, i) => i === index ? { ...result, croppedImage: image, photoAdjusted: true } : result);
+                  return updated;
+                });
+              }}
               onAddToCollection={handleAddToCollectionSingle}
               onSkip={handleSkipSingle}
               onComplete={handleComplete}

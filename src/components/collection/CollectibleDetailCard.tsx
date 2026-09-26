@@ -23,6 +23,9 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Sparkles, RefreshCw } from "lucide-react";
+import { CollectiblePhotoEditor } from "@/components/collection/CollectiblePhotoEditor";
+import { useAuth } from "@/contexts/AuthContext";
+import { uploadCollectionImage } from "@/lib/uploadImage";
 
 interface UserContext {
   special_edition?: boolean;
@@ -35,6 +38,7 @@ interface UserContext {
 export interface CollectibleDetailItem {
   id: string;
   image_url: string | null;
+  original_image_url?: string | null;
   user_context?: UserContext | null;
   item: {
     real_car_brand: string;
@@ -64,6 +68,8 @@ interface CollectibleDetailCardProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onDelete?: (id: string) => Promise<void>;
+  canEditPhoto?: boolean;
+  onPhotoUpdated?: () => void;
 }
 
 interface CollapsibleSectionProps {
@@ -107,7 +113,15 @@ const DetailRow = ({ label, value }: { label: string; value: string | null | und
   );
 };
 
-export const CollectibleDetailCard = ({ item, open, onOpenChange, onDelete }: CollectibleDetailCardProps) => {
+export const CollectibleDetailCard = ({ item, open, onOpenChange, onDelete, canEditPhoto = false, onPhotoUpdated }: CollectibleDetailCardProps) => {
+  const { user } = useAuth();
+  const [photoEditorOpen, setPhotoEditorOpen] = useState(false);
+  const [photoSource, setPhotoSource] = useState<string | null>(null);
+  const [updatedImage, setUpdatedImage] = useState<string | null>(null);
+  const [updatedOriginal, setUpdatedOriginal] = useState<string | null>(null);
+  useEffect(() => {
+    return () => { if (photoSource?.startsWith("blob:")) URL.revokeObjectURL(photoSource); };
+  }, [photoSource]);
   const [breakdownOpen, setBreakdownOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -156,11 +170,14 @@ export const CollectibleDetailCard = ({ item, open, onOpenChange, onDelete }: Co
   useEffect(() => {
     setImageLoaded(false);
     setImageFailed(false);
+    setUpdatedImage(null);
+    setUpdatedOriginal(null);
+    setPhotoSource(null);
   }, [item?.id]);
 
   // Resolve the best available image: captured photo > real car photo > placeholder
   const resolvedImageUrl = (() => {
-    const captured = item?.image_url;
+    const captured = updatedImage || item?.image_url;
     // Accept any non-empty string that looks like a valid image source
     if (captured && captured.trim().length > 0 && captured !== "/placeholder.svg") return captured;
     // Fallback to first real car photo
@@ -219,9 +236,15 @@ export const CollectibleDetailCard = ({ item, open, onOpenChange, onDelete }: Co
                       src={resolvedImageUrl}
                       alt={`${data.real_car_brand} ${data.real_car_model}`}
                       className={cn(
-                        "w-full h-full object-contain object-center transition-opacity",
+                         "w-full h-full object-contain object-center transition-opacity",
+                         canEditPhoto && user && "cursor-pointer",
                         imageLoaded ? "opacity-100" : "opacity-0"
                       )}
+                       role={canEditPhoto && user ? "button" : undefined}
+                       tabIndex={canEditPhoto && user ? 0 : undefined}
+                       aria-label={canEditPhoto && user ? "Ajustar foto do carrinho" : undefined}
+                       onClick={() => { if (canEditPhoto && user) { setPhotoSource(updatedOriginal || item.original_image_url || item.image_url || null); setPhotoEditorOpen(true); } }}
+                       onKeyDown={(e) => { if (canEditPhoto && user && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); setPhotoSource(updatedOriginal || item.original_image_url || item.image_url || null); setPhotoEditorOpen(true); } }}
                       onLoad={(e) => {
                         const img = e.currentTarget;
                         if (img.naturalWidth < 10 || img.naturalHeight < 10) {
@@ -233,6 +256,9 @@ export const CollectibleDetailCard = ({ item, open, onOpenChange, onDelete }: Co
                       onError={() => setImageFailed(true)}
                     />
                   </>
+                )}
+                {canEditPhoto && user && (
+                  <Button type="button" variant="secondary" size="sm" className="absolute bottom-3 right-3" onClick={() => { setPhotoSource(updatedOriginal || item.original_image_url || item.image_url || null); setPhotoEditorOpen(true); }}>Ajustar foto</Button>
                 )}
               </div>
               
@@ -384,6 +410,43 @@ export const CollectibleDetailCard = ({ item, open, onOpenChange, onDelete }: Co
           </ScrollArea>
         </DrawerContent>
       </Drawer>
+      {canEditPhoto && user && (
+        <CollectiblePhotoEditor
+          open={photoEditorOpen}
+          onOpenChange={setPhotoEditorOpen}
+          source={photoSource || resolvedImageUrl}
+          legacy={!updatedOriginal && !item.original_image_url && !photoSource?.startsWith("blob:")}
+          onReplace={(file) => { setPhotoSource(URL.createObjectURL(file)); }}
+          onSave={async (image) => {
+            if (!item || !user) throw new Error("Faça login para ajustar esta foto.");
+            const imageUrl = await uploadCollectionImage(user.id, image);
+            if (!imageUrl) throw new Error("Não foi possível enviar a foto.");
+            const isReplacement = photoSource?.startsWith("blob:");
+            let originalUrl: string | null = null;
+            if (isReplacement && photoSource) {
+              const originalBlob = await fetch(photoSource).then((response) => response.blob());
+              const reader = new FileReader();
+              const base64 = await new Promise<string>((resolve, reject) => {
+                reader.onload = () => resolve(reader.result as string);
+                reader.onerror = reject;
+                reader.readAsDataURL(originalBlob);
+              });
+              originalUrl = await uploadCollectionImage(user.id, base64);
+              if (!originalUrl) throw new Error("Não foi possível preservar a foto original.");
+            }
+            const { data: saved, error } = await supabase.from("user_collection")
+              .update({ image_url: imageUrl, ...(originalUrl ? { original_image_url: originalUrl } : {}) })
+              .eq("id", item.id).eq("user_id", user.id).select("id").maybeSingle();
+            if (error || !saved) throw error || new Error("Não foi possível atualizar este carrinho.");
+            setUpdatedImage(imageUrl);
+            if (originalUrl) setUpdatedOriginal(originalUrl);
+            setImageLoaded(false);
+            setImageFailed(false);
+            onPhotoUpdated?.();
+            toast.success("Foto atualizada");
+          }}
+        />
+      )}
       
       {/* Index Breakdown Sheet */}
       {breakdown && (

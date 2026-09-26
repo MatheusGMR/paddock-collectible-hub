@@ -151,6 +151,7 @@ const ProfilePage = () => {
             posts={gridPosts} 
             collectionItems={sortedCollection} 
             onPinToggle={loadProfile}
+            onPhotoUpdated={loadProfile}
             onDelete={async (id) => {
               await deleteFromCollection(id);
               loadProfile();
@@ -164,7 +165,7 @@ const ProfilePage = () => {
         )
       ) : activeTab === "collection" ? (
         collection.length > 0 ? (
-          <CollectionList items={collection} onItemDeleted={loadProfile} />
+          <CollectionList items={collection} onItemDeleted={loadProfile} onPhotoUpdated={loadProfile} />
         ) : (
           <div className="p-8 text-center text-foreground-secondary">
             <p>{t.profile.emptyCollection}</p>

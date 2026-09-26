@@ -12,6 +12,7 @@ import { ConsolidatedResult } from "./types";
 import { MusicPlayer } from "@/components/scanner/MusicPlayer";
 import { RealCarGallery } from "@/components/scanner/RealCarGallery";
 import { ScanFeedback } from "@/components/scanner/ScanFeedback";
+import { CollectiblePhotoEditor } from "@/components/collection/CollectiblePhotoEditor";
 
 interface BatchCarouselViewProps {
   results: ConsolidatedResult[];
@@ -22,6 +23,8 @@ interface BatchCarouselViewProps {
   addedIndices: Set<number>;
   skippedIndices: Set<number>;
   isAdding: boolean;
+  getOriginalPhoto: (index: number) => string | undefined;
+  onAdjustPhoto: (index: number, image: string) => void;
 }
 
 // Collapsible section component - same as scanner ResultCarousel
@@ -67,12 +70,15 @@ export function BatchCarouselView({
   addedIndices,
   skippedIndices,
   isAdding,
+  getOriginalPhoto,
+  onAdjustPhoto,
 }: BatchCarouselViewProps) {
   const { t } = useLanguage();
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [addingIndex, setAddingIndex] = useState<number | null>(null);
   const [justAddedIndex, setJustAddedIndex] = useState<number | null>(null);
   const [breakdownOpen, setBreakdownOpen] = useState(false);
+  const [photoEditorIndex, setPhotoEditorIndex] = useState<number | null>(null);
   const [breakdownResult, setBreakdownResult] = useState<ConsolidatedResult | null>(null);
 
   // Get remaining items (not added or skipped)
@@ -250,8 +256,11 @@ export function BatchCarouselView({
                   <img
                     src={displayImage}
                     alt={`${result.realCar.brand} ${result.realCar.model}`}
-                    className="w-full h-full object-contain object-center bg-muted"
+                    className="w-full h-full object-contain object-center bg-muted cursor-pointer"
+                    role="button" tabIndex={0} aria-label="Ajustar foto do carrinho" onClick={() => setPhotoEditorIndex(originalIndex)}
+                    onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setPhotoEditorIndex(originalIndex); } }}
                   />
+                  <Button type="button" variant="secondary" size="sm" className="absolute bottom-3 right-3" onClick={() => setPhotoEditorIndex(originalIndex)}>Ajustar foto</Button>
                   <div className="absolute top-3 left-3 flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/60 backdrop-blur-sm">
                     <Car className="h-3.5 w-3.5 text-primary" />
                     <span className="text-xs font-medium text-white">{result.realCar.year}</span>
@@ -483,6 +492,13 @@ export function BatchCarouselView({
           breakdown={breakdownResult.priceIndex.breakdown}
         />
       )}
+      <CollectiblePhotoEditor
+        open={photoEditorIndex !== null}
+        onOpenChange={(value) => { if (!value) setPhotoEditorIndex(null); }}
+        source={photoEditorIndex !== null ? (getOriginalPhoto(photoEditorIndex) || results[photoEditorIndex]?.croppedImage || "") : ""}
+        legacy={photoEditorIndex !== null && !getOriginalPhoto(photoEditorIndex)}
+        onSave={(image) => { if (photoEditorIndex !== null) onAdjustPhoto(photoEditorIndex, image); }}
+      />
     </>
   );
 }
