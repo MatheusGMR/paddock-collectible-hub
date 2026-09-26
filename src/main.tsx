@@ -3,30 +3,46 @@ import App from "./App.tsx";
 import "./index.css";
 import { registerServiceWorker } from "./lib/pwa";
 
-// Cache-busting: force reload when build changes (fixes WKWebView stale cache on iOS)
+const RECOVERY_FLAG = "paddock_recovered";
+
+async function purgeAndReload() {
+  if (sessionStorage.getItem(RECOVERY_FLAG)) return; // evita loop
+  sessionStorage.setItem(RECOVERY_FLAG, "1");
+  try {
+    if ("serviceWorker" in navigator) {
+      const regs = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(regs.map((r) => r.unregister()));
+    }
+    if ("caches" in window) {
+      const names = await caches.keys();
+      await Promise.all(names.map((n) => caches.delete(n)));
+    }
+  } catch (e) {
+    console.warn("[App] Recovery failed:", e);
+  }
+  window.location.reload();
+}
+(window as unknown as { __paddockRecover: () => void }).__paddockRecover = () => {
+  sessionStorage.removeItem(RECOVERY_FLAG);
+  void purgeAndReload();
+};
+
+// Cache-busting: force reload when build changes
 const currentBuild = __WEB_BUILD_ID__;
 const storedBuild = localStorage.getItem("app_build_id");
-console.log("[App] WEB_BUILD_ID:", currentBuild, "stored:", storedBuild);
-
+localStorage.setItem("app_build_id", currentBuild);
 if (storedBuild && storedBuild !== currentBuild) {
-  console.log("[App] Build changed, purging caches and reloading...");
-  localStorage.setItem("app_build_id", currentBuild);
-  if ('caches' in window) {
-    caches.keys().then(names => {
-      Promise.all(names.map(name => caches.delete(name))).then(() => {
-        (window as Window).location.reload();
-      });
-    });
-  } else {
-    (window as Window).location.reload();
-  }
-} else {
-  localStorage.setItem("app_build_id", currentBuild);
+  void purgeAndReload();
 }
 
-// Register the service worker (offline support in production, push everywhere else)
-window.addEventListener('load', () => {
+window.addEventListener("load", () => {
   void registerServiceWorker();
 });
 
-createRoot(document.getElementById("root")!).render(<App />);
+try {
+  createRoot(document.getElementById("root")!).render(<App />);
+  setTimeout(() => sessionStorage.removeItem(RECOVERY_FLAG), 10000);
+} catch (e) {
+  console.error("[App] Render failed:", e);
+  void purgeAndReload();
+}
