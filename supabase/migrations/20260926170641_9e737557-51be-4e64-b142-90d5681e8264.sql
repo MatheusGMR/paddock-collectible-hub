@@ -1,0 +1,1 @@
+ALTER TABLE public.user_collection ADD COLUMN IF NOT EXISTS user_context jsonb;

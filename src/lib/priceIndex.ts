@@ -5,8 +5,9 @@ export interface IndexBreakdownItem {
 }
 
 export interface PriceIndexBreakdown {
-  rarity: IndexBreakdownItem; // max: 45 - Brazilian market availability
-  condition: IndexBreakdownItem; // max: 20
+  rarity: IndexBreakdownItem; // max: 35 (legacy: 45)
+  exclusivity?: IndexBreakdownItem; // max: 15
+  condition: IndexBreakdownItem; // max: 15 (legacy: 20)
   manufacturer: IndexBreakdownItem; // max: 15
   scale: IndexBreakdownItem; // max: 10
   age: IndexBreakdownItem; // max: 10
@@ -65,7 +66,8 @@ export const getTierBgColor = (tier: string): string => {
 
 export const getCriteriaLabel = (key: string): string => {
   const labels: Record<string, string> = {
-    rarity: 'Raridade',
+    rarity: 'Raridade / Tiragem',
+    exclusivity: 'Exclusividade / Licença',
     condition: 'Condição',
     manufacturer: 'Fabricante',
     scale: 'Escala',
@@ -76,6 +78,7 @@ export const getCriteriaLabel = (key: string): string => {
 };
 
 export const getScorePercentage = (score: number, max: number): number => {
+  if (!max) return 0;
   return Math.round((score / max) * 100);
 };
 

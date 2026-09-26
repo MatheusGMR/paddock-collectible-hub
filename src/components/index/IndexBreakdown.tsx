@@ -32,6 +32,7 @@ export const IndexBreakdown = ({
   // Only show criteria that exist in the breakdown (origin is now deprecated)
   const criteriaOrder: (keyof PriceIndexBreakdown)[] = [
     "rarity",
+    "exclusivity",
     "condition",
     "manufacturer",
     "scale",
@@ -83,10 +84,7 @@ export const IndexBreakdown = ({
 
           <div className="mt-6 p-4 bg-muted rounded-lg">
             <p className="text-xs text-foreground-secondary leading-relaxed">
-              <strong className="text-foreground">Como funciona:</strong> O índice reflete a 
-              realidade do <strong>mercado brasileiro</strong>: raridade no BR (45%), condição (20%), 
-              fabricante (15%), escala (10%) e idade (10%). Modelos difíceis de encontrar no Brasil 
-              recebem pontuação maior, independente da disponibilidade em outros países.
+              <strong className="text-foreground">Como funciona:</strong> raridade/tiragem (35), exclusividade/licença (15), condição (15), fabricante (15), idade (10) e escala (10). Peças únicas ou numeradas ficam no mínimo em Super Raro; edições especiais e importadas sem venda no Brasil pontuam mais.
             </p>
           </div>
         </div>

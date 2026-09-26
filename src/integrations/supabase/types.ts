@@ -1247,6 +1247,7 @@ export type Database = {
           item_id: string
           notes: string | null
           pinned_at: string | null
+          user_context: Json | null
           user_id: string
         }
         Insert: {
@@ -1258,6 +1259,7 @@ export type Database = {
           item_id: string
           notes?: string | null
           pinned_at?: string | null
+          user_context?: Json | null
           user_id: string
         }
         Update: {
@@ -1269,6 +1271,7 @@ export type Database = {
           item_id?: string
           notes?: string | null
           pinned_at?: string | null
+          user_context?: Json | null
           user_id?: string
         }
         Relationships: [

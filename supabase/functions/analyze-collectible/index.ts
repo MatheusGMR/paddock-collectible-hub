@@ -68,11 +68,13 @@ musicListeningTip: 2-3 frases sensoriais/nostálgicas (aromas, cenários, memór
 
 priceIndex (Brasil, 100pts):
 Breakdown com "score", "max", "reason" para CADA:
-- rarity (máx 45): disponibilidade real no Brasil
-- condition (máx 20): estado visual
+- rarity (máx 35): tiragem/produção (limitada, numerada, chase, STH, unidade única = alto; mainline de varejo = baixo, máx 12)
+- exclusivity (máx 15): edição especial/licenciada/homenagem (celebridades, filmes, pilotos) e importado sem venda no Brasil
+- condition (máx 15): estado visual e embalagem
 - manufacturer (máx 15): reputação da marca
 - scale (máx 10): raridade da escala
 - age (máx 10): idade e impacto
+Piso: unidade única ou numerada => score >= 70.
 Tiers: ultra_rare(85+), super_rare(70-84), rare(50-69), uncommon(30-49), common(<30).
 
 marketValue (OBRIGATÓRIO para colecionáveis):
@@ -106,7 +108,8 @@ NUNCA use chaves diferentes de "items" para a lista. NUNCA use "vehicles", "carr
 const FALLBACK_PROMPT_EXTRA = `
 
 DETALHAMENTO EXTRA (fallback):
-- rarity reason: mencione lojas, feiras, OLX, ML; compare disponibilidade com outros países; cite séries limitadas.
+- rarity reason: cite tiragem, séries limitadas e disponibilidade no Brasil e exterior.
+- exclusivity reason: cite licença/edição especial/importação.
 - condition reason: detalhe pintura, rodas, chassi, embalagem.
 - manufacturer reason: posição no mercado, acabamento, materiais.
 - scale reason: raridade da escala, demanda.
