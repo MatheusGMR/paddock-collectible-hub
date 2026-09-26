@@ -61,6 +61,7 @@ const GroupIcon = ({
 interface CollectionListProps {
   items: CollectibleDetailItem[];
   onItemDeleted?: () => void;
+  onPhotoUpdated?: () => void;
 }
 
 // Country ISO codes and labels
@@ -163,7 +164,7 @@ interface GroupedItems {
   items: CollectibleDetailItem[];
 }
 
-export const CollectionList = ({ items, onItemDeleted }: CollectionListProps) => {
+export const CollectionList = ({ items, onItemDeleted, onPhotoUpdated }: CollectionListProps) => {
   const [selectedItem, setSelectedItem] = useState<CollectibleDetailItem | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [sortOption, setSortOption] = useState<CollectionSortOption>("brand");
@@ -345,6 +346,8 @@ export const CollectionList = ({ items, onItemDeleted }: CollectionListProps) =>
         open={drawerOpen}
         onOpenChange={setDrawerOpen}
         onDelete={handleDeleteItem}
+        canEditPhoto={!!onPhotoUpdated}
+        onPhotoUpdated={onPhotoUpdated}
       />
     </>
   );

@@ -61,6 +61,7 @@ export interface CollectionItem {
 export interface CollectionItemWithIndex {
   id: string;
   image_url: string | null;
+  original_image_url?: string | null;
   is_pinned?: boolean;
   pinned_at?: string | null;
   item: {
@@ -164,6 +165,7 @@ export const getCollectionWithIndex = async (userId: string): Promise<Collection
     .select(`
       id,
       image_url,
+      original_image_url,
       is_pinned,
       pinned_at,
       item:items(
@@ -196,6 +198,7 @@ export const getCollectionWithIndex = async (userId: string): Promise<Collection
   return (data || []).map(item => ({
     id: item.id,
     image_url: item.image_url,
+    original_image_url: item.original_image_url,
     is_pinned: item.is_pinned,
     pinned_at: item.pinned_at,
     item: item.item ? {
