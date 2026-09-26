@@ -87,7 +87,9 @@ const HighlightedImage = ({ originalImage, croppedImage, boundingBox, carName, c
             <img
               src={originalImage}
               alt="Foto original"
-              className="w-full h-full object-cover"
+              className="w-full h-full object-contain bg-muted cursor-pointer"
+              role="button" tabIndex={0} aria-label="Ajustar foto do carrinho" onClick={onEdit}
+              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onEdit(); } }}
             />
             <div
               className="absolute border-2 border-primary rounded-lg shadow-[0_0_12px_rgba(var(--primary),0.4)] pointer-events-none transition-all"
@@ -122,7 +124,9 @@ const HighlightedImage = ({ originalImage, croppedImage, boundingBox, carName, c
               <img
                 src={croppedImage}
                 alt={carName}
-                className="w-full h-full object-contain bg-muted"
+                className="w-full h-full object-contain bg-muted cursor-pointer"
+                role="button" tabIndex={0} aria-label="Ajustar foto do carrinho" onClick={onEdit}
+                onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onEdit(); } }}
               />
               <Button type="button" variant="secondary" size="sm" className="absolute bottom-3 right-3" onClick={onEdit}>Ajustar foto</Button>
               <div className="absolute top-3 left-3 flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/60 backdrop-blur-sm">
@@ -145,7 +149,9 @@ const HighlightedImage = ({ originalImage, croppedImage, boundingBox, carName, c
         <img
           src={displayImage}
           alt={carName}
-          className="w-full h-full object-contain bg-muted"
+          className="w-full h-full object-contain bg-muted cursor-pointer"
+          role="button" tabIndex={0} aria-label="Ajustar foto do carrinho" onClick={onEdit}
+          onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onEdit(); } }}
         />
         <Button type="button" variant="secondary" size="sm" className="absolute bottom-3 right-3" onClick={onEdit}>Ajustar foto</Button>
         <div className="absolute top-3 left-3 flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/60 backdrop-blur-sm">

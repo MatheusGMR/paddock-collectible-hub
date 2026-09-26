@@ -822,7 +822,6 @@ export const PhotoUploadSheet = ({
               onAdjustPhoto={(index, image) => {
                 setConsolidatedResults((previous) => {
                   const updated = previous.map((result, i) => i === index ? { ...result, croppedImage: image, photoAdjusted: true } : result);
-                  saveResults(updated);
                   return updated;
                 });
               }}

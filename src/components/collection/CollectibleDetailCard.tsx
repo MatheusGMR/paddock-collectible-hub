@@ -233,9 +233,15 @@ export const CollectibleDetailCard = ({ item, open, onOpenChange, onDelete, canE
                       src={resolvedImageUrl}
                       alt={`${data.real_car_brand} ${data.real_car_model}`}
                       className={cn(
-                        "w-full h-full object-contain object-center transition-opacity",
+                         "w-full h-full object-contain object-center transition-opacity",
+                         canEditPhoto && user && "cursor-pointer",
                         imageLoaded ? "opacity-100" : "opacity-0"
                       )}
+                       role={canEditPhoto && user ? "button" : undefined}
+                       tabIndex={canEditPhoto && user ? 0 : undefined}
+                       aria-label={canEditPhoto && user ? "Ajustar foto do carrinho" : undefined}
+                       onClick={() => { if (canEditPhoto && user) { setPhotoSource(updatedOriginal || item.original_image_url || item.image_url || null); setPhotoEditorOpen(true); } }}
+                       onKeyDown={(e) => { if (canEditPhoto && user && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); setPhotoSource(updatedOriginal || item.original_image_url || item.image_url || null); setPhotoEditorOpen(true); } }}
                       onLoad={(e) => {
                         const img = e.currentTarget;
                         if (img.naturalWidth < 10 || img.naturalHeight < 10) {
