@@ -336,7 +336,8 @@ export const getTopIndexItems = async (userId: string, limit: number = 10): Prom
 export const addToCollection = async (
   userId: string,
   itemData: Omit<Item, "id" | "created_at"> & { estimated_value_min?: number | null; estimated_value_max?: number | null },
-  imageUrl?: string
+  imageUrl?: string,
+  originalImageUrl?: string
 ): Promise<CollectionItem> => {
   // First create the item
   const { data: item, error: itemError } = await supabase
@@ -374,6 +375,7 @@ export const addToCollection = async (
       user_id: userId,
       item_id: item.id,
       image_url: imageUrl,
+      original_image_url: originalImageUrl,
     })
     .select()
     .single();

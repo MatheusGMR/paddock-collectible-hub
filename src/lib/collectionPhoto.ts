@@ -1,4 +1,3 @@
-import { supabase } from "@/integrations/supabase/client";
 import { isBase64DataUri, uploadCollectionImage } from "@/lib/uploadImage";
 
 export async function storeCollectionPhotos(userId: string, display: string | undefined, original: string | undefined) {
@@ -12,12 +11,4 @@ export async function storeCollectionPhotos(userId: string, display: string | un
   const originalUrl = await store(original);
   const imageUrl = display === original ? originalUrl : await store(display);
   return { imageUrl, originalUrl };
-}
-
-export async function saveOriginalPhoto(collectionId: string, userId: string, originalUrl: string | undefined) {
-  if (!originalUrl) return;
-  const { error } = await supabase.from("user_collection")
-    .update({ original_image_url: originalUrl })
-    .eq("id", collectionId).eq("user_id", userId);
-  if (error) throw error;
 }

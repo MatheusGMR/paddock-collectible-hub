@@ -7,8 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { addToCollection } from "@/lib/database";
-import { uploadCollectionImage, isBase64DataUri } from "@/lib/uploadImage";
-import { storeCollectionPhotos, saveOriginalPhoto } from "@/lib/collectionPhoto";
+import { storeCollectionPhotos } from "@/lib/collectionPhoto";
 import { LoadingFacts } from "@/components/scanner/LoadingFacts";
 import { useNavigate } from "react-router-dom";
 import {
@@ -569,9 +568,7 @@ export const PhotoUploadSheet = ({
         real_car_photos: result.realCarPhotos || null,
         estimated_value_min: result.marketValue?.min || null,
         estimated_value_max: result.marketValue?.max || null,
-      }, photos.imageUrl);
-      try { await saveOriginalPhoto(collectionItem.id, user.id, photos.originalUrl); }
-      catch (error) { console.warn("[BatchUpload] Original photo could not be linked:", error); }
+      }, photos.imageUrl, photos.originalUrl);
       setAddedIndices(prev => new Set([...prev, index]));
       toast({ title: t.scanner.addedToCollection, description: `${result.realCar.brand} ${result.realCar.model}` });
       onCollectionUpdated?.();

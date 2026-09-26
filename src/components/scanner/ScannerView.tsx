@@ -11,7 +11,7 @@ import { useGuidedTips } from "@/contexts/GuidedTipsContext";
 import { useThemeColor } from "@/hooks/useThemeColor";
 import { addToCollection, checkDuplicateInCollection } from "@/lib/database";
 import { uploadCollectionImage, isBase64DataUri } from "@/lib/uploadImage";
-import { storeCollectionPhotos, saveOriginalPhoto } from "@/lib/collectionPhoto";
+import { storeCollectionPhotos } from "@/lib/collectionPhoto";
 import { enrichResultsWithPhotos } from "@/lib/api/carPhotos";
 import { useNavigate } from "react-router-dom";
 import { CaptureButton } from "@/components/scanner/CaptureButton";
@@ -2005,10 +2005,9 @@ export const ScannerView = () => {
           estimated_value_min: result.marketValue?.min ?? null,
           estimated_value_max: result.marketValue?.max ?? null,
         },
-        imageUrl
+        imageUrl,
+        photos.originalUrl
       );
-      try { await saveOriginalPhoto(collectionItem.id, user.id, photos.originalUrl); }
-      catch (error) { console.warn("[Scanner] Original photo could not be linked:", error); }
 
       // Get the item_id from the collection item
       const itemId = collectionItem.item_id;
@@ -2090,10 +2089,9 @@ export const ScannerView = () => {
           estimated_value_min: result.marketValue?.min ?? null,
           estimated_value_max: result.marketValue?.max ?? null,
         },
-        imageUrl
+        imageUrl,
+        photos.originalUrl
       );
-      try { await saveOriginalPhoto(collectionItem.id, user.id, photos.originalUrl); }
-      catch (error) { console.warn("[Scanner] Original photo could not be linked:", error); }
 
       setAddedIndices(prev => new Set(prev).add(index));
 
