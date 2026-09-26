@@ -10,7 +10,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { useGuidedTips } from "@/contexts/GuidedTipsContext";
 import { useThemeColor } from "@/hooks/useThemeColor";
 import { addToCollection, checkDuplicateInCollection } from "@/lib/database";
-import { uploadCollectionImage, isBase64DataUri } from "@/lib/uploadImage";
+import { isBase64DataUri } from "@/lib/uploadImage";
 import { storeCollectionPhotos } from "@/lib/collectionPhoto";
 import { enrichResultsWithPhotos } from "@/lib/api/carPhotos";
 import { useNavigate } from "react-router-dom";
