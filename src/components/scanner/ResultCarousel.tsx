@@ -729,6 +729,7 @@ export const ResultCarousel = ({
         open={photoEditorIndex !== null}
         onOpenChange={(value) => { if (!value) setPhotoEditorIndex(null); }}
         source={originalImage || (photoEditorIndex !== null ? results[photoEditorIndex]?.croppedImage : "") || ""}
+        legacy={!originalImage}
         onSave={(image) => { if (photoEditorIndex !== null) onAdjustPhoto(photoEditorIndex, image); }}
       />
     </>

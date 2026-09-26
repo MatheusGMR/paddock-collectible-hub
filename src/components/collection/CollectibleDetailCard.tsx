@@ -119,6 +119,9 @@ export const CollectibleDetailCard = ({ item, open, onOpenChange, onDelete, canE
   const [photoSource, setPhotoSource] = useState<string | null>(null);
   const [updatedImage, setUpdatedImage] = useState<string | null>(null);
   const [updatedOriginal, setUpdatedOriginal] = useState<string | null>(null);
+  useEffect(() => {
+    return () => { if (photoSource?.startsWith("blob:")) URL.revokeObjectURL(photoSource); };
+  }, [photoSource]);
   const [breakdownOpen, setBreakdownOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -412,7 +415,7 @@ export const CollectibleDetailCard = ({ item, open, onOpenChange, onDelete, canE
           open={photoEditorOpen}
           onOpenChange={setPhotoEditorOpen}
           source={photoSource || resolvedImageUrl}
-          legacy={!updatedOriginal && !item.original_image_url}
+          legacy={!updatedOriginal && !item.original_image_url && !photoSource?.startsWith("blob:")}
           onReplace={(file) => { setPhotoSource(URL.createObjectURL(file)); }}
           onSave={async (image) => {
             if (!item || !user) throw new Error("Faça login para ajustar esta foto.");

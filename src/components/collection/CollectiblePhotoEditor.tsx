@@ -64,7 +64,7 @@ export function CollectiblePhotoEditor({ open, onOpenChange, source, onSave, leg
       onOpenChange(false);
     } catch (error) {
       console.error("Photo adjustment failed:", error);
-      toast.error("Não foi possível salvar a foto. Tente novamente.");
+      toast.error(error instanceof Error ? error.message : "Não foi possível salvar a foto. Tente novamente.");
     } finally { setSaving(false); }
   };
 

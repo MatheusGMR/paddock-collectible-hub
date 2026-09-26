@@ -547,7 +547,7 @@ export const PhotoUploadSheet = ({
       if (!imageToSave && mediaItem?.base64) imageToSave = mediaItem.base64;
       const original = mediaItem?.isVideo ? undefined : mediaItem?.base64;
       const photos = await storeCollectionPhotos(user.id, imageToSave, original);
-      const collectionItem = await addToCollection(user.id, {
+      await addToCollection(user.id, {
         real_car_brand: result.realCar.brand,
         real_car_model: result.realCar.model,
         real_car_year: result.realCar.year,

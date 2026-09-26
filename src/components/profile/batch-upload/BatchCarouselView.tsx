@@ -496,6 +496,7 @@ export function BatchCarouselView({
         open={photoEditorIndex !== null}
         onOpenChange={(value) => { if (!value) setPhotoEditorIndex(null); }}
         source={photoEditorIndex !== null ? (getOriginalPhoto(photoEditorIndex) || results[photoEditorIndex]?.croppedImage || "") : ""}
+        legacy={photoEditorIndex !== null && !getOriginalPhoto(photoEditorIndex)}
         onSave={(image) => { if (photoEditorIndex !== null) onAdjustPhoto(photoEditorIndex, image); }}
       />
     </>
