@@ -7,6 +7,9 @@ import { Badge } from "@/components/ui/badge";
 import { AdminUser } from "@/hooks/useAdmin";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { Button } from "@/components/ui/button";
+import { AdminUserActions } from "./AdminUserActions";
+import { downloadCsv } from "./adminUtils";
 
 interface AdminUsersTableProps {
   users: AdminUser[];
@@ -20,6 +23,7 @@ export const AdminUsersTable = ({ users, isLoading }: AdminUsersTableProps) => {
   const [search, setSearch] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("created_at");
   const [sortOrder, setSortOrder] = useState<SortOrder>("desc");
+  const [selected, setSelected] = useState<AdminUser | null>(null);
 
   const handleSort = (key: SortKey) => {
     if (sortKey === key) {
@@ -125,7 +129,8 @@ export const AdminUsersTable = ({ users, isLoading }: AdminUsersTableProps) => {
           filteredUsers.map(user => (
             <div
               key={user.id}
-              className="grid grid-cols-12 gap-2 items-center p-3 rounded-lg hover:bg-muted/50 transition-colors"
+              onClick={() => setSelected(user)}
+              className="grid grid-cols-12 gap-2 items-center p-3 rounded-lg hover:bg-muted/50 transition-colors cursor-pointer"
             >
               <div className="col-span-5 flex items-center gap-3">
                 <Avatar className="h-10 w-10">
@@ -161,9 +166,13 @@ export const AdminUsersTable = ({ users, isLoading }: AdminUsersTableProps) => {
         )}
       </div>
 
-      <p className="text-xs text-muted-foreground text-center">
-        {filteredUsers.length} de {users.length} usuários
-      </p>
+      <div className="flex items-center justify-between">
+        <p className="text-xs text-muted-foreground">
+          {filteredUsers.length} de {users.length} usuários · toque para gerenciar
+        </p>
+        <Button size="sm" variant="outline" onClick={() => downloadCsv("usuarios.csv", filteredUsers as unknown as Record<string, unknown>[])}>CSV</Button>
+      </div>
+      <AdminUserActions user={selected} onClose={() => setSelected(null)} />
     </div>
   );
 };

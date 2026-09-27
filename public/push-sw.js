@@ -24,7 +24,7 @@ self.addEventListener('push', (event) => {
       articleId: data.articleId,
     },
     actions: [
-      { action: 'open', title: 'Ver notícia' },
+      { action: 'open', title: 'Abrir' },
       { action: 'close', title: 'Fechar' },
     ],
     vibrate: [200, 100, 200],

@@ -36,6 +36,11 @@ import { AdminAnalyticsSection } from "@/components/admin/AdminAnalyticsSection"
 import { AdminAIUsageSection } from "@/components/admin/AdminAIUsageSection";
 import { AdminPushSection } from "@/components/admin/AdminPushSection";
 import { AdminPerformanceSection } from "@/components/admin/AdminPerformanceSection";
+import { AdminKpisSection } from "@/components/admin/AdminKpisSection";
+import { AdminCampaignsSection } from "@/components/admin/AdminCampaignsSection";
+import { AdminTriggersSection } from "@/components/admin/AdminTriggersSection";
+import { AdminMarketplaceSection } from "@/components/admin/AdminMarketplaceSection";
+import { AdminContentSection } from "@/components/admin/AdminContentSection";
 import { useAuth } from "@/contexts/AuthContext";
 
 const Admin = () => {
@@ -52,6 +57,7 @@ const Admin = () => {
   const { stats: aiStats, isLoading: isLoadingAI, refetch: refetchAI } = useAdminAIUsage(aiDays);
   const [perfDays, setPerfDays] = useState(7);
   const { stats: perfStats, isLoading: isLoadingPerf, refetch: refetchPerf } = useAdminScannerPerformance(perfDays);
+  const [kpiDays, setKpiDays] = useState(30);
 
   // Redirect if not admin
   useEffect(() => {
@@ -126,25 +132,28 @@ const Admin = () => {
       <div className="p-4 space-y-6">
         {/* Tabs for different sections */}
         <Tabs defaultValue="overview" className="w-full">
-          <TabsList className="grid w-full grid-cols-6">
-            <TabsTrigger value="overview" className="text-xs px-1">Geral</TabsTrigger>
-            <TabsTrigger value="analytics" className="text-xs px-1">Analytics</TabsTrigger>
-            <TabsTrigger value="ai" className="text-xs px-1 gap-1">
-              <Bot className="h-3 w-3" />
-              IA
-            </TabsTrigger>
-            <TabsTrigger value="performance" className="text-xs px-1 gap-1">
-              <Activity className="h-3 w-3" />
-              Perf
-            </TabsTrigger>
-            <TabsTrigger value="push" className="text-xs px-1 gap-1">
+          <TabsList className="flex w-full justify-start overflow-x-auto scrollbar-hide">
+            <TabsTrigger value="overview" className="text-xs px-3">Geral</TabsTrigger>
+            <TabsTrigger value="push" className="text-xs px-3 gap-1">
               <Bell className="h-3 w-3" />
               Push
             </TabsTrigger>
-            <TabsTrigger value="users" className="text-xs px-1">Usuários</TabsTrigger>
+            <TabsTrigger value="users" className="text-xs px-3">Usuários</TabsTrigger>
+            <TabsTrigger value="market" className="text-xs px-3">Mercado</TabsTrigger>
+            <TabsTrigger value="content" className="text-xs px-3">Conteúdo</TabsTrigger>
+            <TabsTrigger value="analytics" className="text-xs px-3">Analytics</TabsTrigger>
+            <TabsTrigger value="ai" className="text-xs px-3 gap-1">
+              <Bot className="h-3 w-3" />
+              IA
+            </TabsTrigger>
+            <TabsTrigger value="performance" className="text-xs px-3 gap-1">
+              <Activity className="h-3 w-3" />
+              Perf
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="space-y-6 mt-4">
+            <AdminKpisSection days={kpiDays} onDaysChange={setKpiDays} />
             {/* Stats Grid */}
             <section>
               <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
@@ -280,8 +289,20 @@ const Admin = () => {
           </TabsContent>
 
           <TabsContent value="push" className="mt-4">
-            <AdminPushSection />
+            <Tabs defaultValue="campaigns">
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="campaigns" className="text-xs">Campanhas</TabsTrigger>
+                <TabsTrigger value="triggers" className="text-xs">Gatilhos</TabsTrigger>
+                <TabsTrigger value="quick" className="text-xs">Envio rápido</TabsTrigger>
+              </TabsList>
+              <TabsContent value="campaigns" className="mt-4"><AdminCampaignsSection /></TabsContent>
+              <TabsContent value="triggers" className="mt-4"><AdminTriggersSection /></TabsContent>
+              <TabsContent value="quick" className="mt-4"><AdminPushSection /></TabsContent>
+            </Tabs>
           </TabsContent>
+
+          <TabsContent value="market" className="mt-4"><AdminMarketplaceSection /></TabsContent>
+          <TabsContent value="content" className="mt-4"><AdminContentSection /></TabsContent>
 
           <TabsContent value="users" className="mt-4">
             <Card>

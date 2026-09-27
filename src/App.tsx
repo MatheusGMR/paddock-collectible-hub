@@ -61,6 +61,19 @@ const queryClient = new QueryClient({
 // Analytics tracker component
 const AnalyticsTracker = () => {
   usePageTracking();
+  // Registra o toque em notificações (?pd=<entrega>) para a taxa de abertura.
+  const { user: pushUser } = useAuth();
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const pd = params.get("pd");
+    if (!pd || !pushUser) return;
+    import("@/integrations/supabase/client").then(({ supabase }) =>
+      (supabase as unknown as { rpc: (f: string, a: object) => Promise<unknown> }).rpc("mark_push_clicked", { p_delivery_id: pd }),
+    );
+    params.delete("pd");
+    const qs = params.toString();
+    window.history.replaceState(null, "", window.location.pathname + (qs ? `?${qs}` : ""));
+  }, [pushUser]);
   return null;
 };
 

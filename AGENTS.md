@@ -4,4 +4,4 @@
 - Reuse `CollectiblePhotoEditor` for scanner review, batch review, and owned collection details so framing behavior stays consistent.
 - Share the `RarityContext` shape between scanner review and collection details so special-edition facts persist consistently.
 - Open feed collectibles using their `collection_item_id` and the shared collection detail drawer so one tap shows the same item information as the profile.
-- Keep route modules warm in browser memory after authentication and use user-scoped, non-persistent query caches for personal data so navigation is fast without exposing previous accounts.
+- Keep route modules warm in browser memory after authentication and use user-scoped, non-persistent query caches for personal data so navigation is fast without exposing previous accounts.- Send all pushes through `supabase/functions/_shared/push.ts` (VAPID-encrypted web push + APNs, logged in `push_deliveries` with unique trigger_key/ref_key), with `push-scheduler` every 5 min handling scheduled campaigns and automatic triggers, so delivery, dedupe and open-rate tracking stay in one place.
