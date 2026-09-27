@@ -20,6 +20,7 @@ import { ChallengeCelebrationModal } from "@/components/challenge/ChallengeCeleb
 import { BiometricPrompt } from "@/components/auth/BiometricPrompt";
 import { usePageTracking } from "@/hooks/usePageTracking";
 import { Loader2 } from "lucide-react";
+import { preloadRoute } from "@/lib/routePreload";
 
 // Lazy-loaded route components for code splitting
 const Index = lazy(() => import("./pages/Index"));
@@ -310,6 +311,18 @@ const AppContent = () => {
   const location = useLocation();
   const { user, loading } = useAuth();
   const navigate = useNavigate();
+
+  // Warm common tabs only after login, without loading the scanner/camera on idle.
+  useEffect(() => {
+    if (!user || loading) return;
+    const warm = () => ["/", "/mercado", "/notifications", "/profile"].forEach(preloadRoute);
+    if ("requestIdleCallback" in window) {
+      const id = window.requestIdleCallback(warm, { timeout: 2500 });
+      return () => window.cancelIdleCallback(id);
+    }
+    const id = window.setTimeout(warm, 1500);
+    return () => window.clearTimeout(id);
+  }, [user?.id, loading]);
   
   // Skip splash for public-facing routes (listing, store, privacy)
   const publicViewRoutes = ["/listing", "/store", "/privacy"];

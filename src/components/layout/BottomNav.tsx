@@ -1,6 +1,7 @@
 import { Home, ShoppingBag, Camera, Bell, User } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { preloadRoute } from "@/lib/routePreload";
 
 export const BottomNav = () => {
   const { t } = useLanguage();
@@ -23,6 +24,9 @@ export const BottomNav = () => {
             className="nav-item flex-1"
             activeClassName="nav-item-active"
             data-tip={item.isCenter ? "scanner-nav" : undefined}
+            onPointerEnter={() => preloadRoute(item.path)}
+            onTouchStart={() => preloadRoute(item.path)}
+            onFocus={() => preloadRoute(item.path)}
           >
             {item.isCenter ? (
               <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary scanner-glow transition-transform active:scale-95">
