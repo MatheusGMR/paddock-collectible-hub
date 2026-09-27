@@ -20,6 +20,7 @@ import { ChallengeCelebrationModal } from "@/components/challenge/ChallengeCeleb
 import { BiometricPrompt } from "@/components/auth/BiometricPrompt";
 import { usePageTracking } from "@/hooks/usePageTracking";
 import { Loader2 } from "lucide-react";
+import { preloadRoute } from "@/lib/routePreload";
 
 // Lazy-loaded route components for code splitting
 const Index = lazy(() => import("./pages/Index"));
@@ -257,7 +258,7 @@ const SubscriptionFlow = ({ children }: { children: React.ReactNode }) => {
   // Wait for both auth and subscription loading to complete
   // Show blank screen to avoid flashing main content before onboarding
   if (authLoading || subLoading) {
-    return <div className="min-h-screen bg-background" />;
+    return <RouteFallback />;
   }
 
   // Show biometric prompt
@@ -310,6 +311,14 @@ const AppContent = () => {
   const location = useLocation();
   const { user, loading } = useAuth();
   const navigate = useNavigate();
+
+  // Warm common tabs only after login, without loading the scanner/camera on idle.
+  useEffect(() => {
+    if (!user || loading) return;
+    const warm = () => ["/", "/mercado", "/notifications", "/profile"].forEach(preloadRoute);
+    const id = globalThis.setTimeout(warm, 1200);
+    return () => globalThis.clearTimeout(id);
+  }, [user?.id, loading]);
   
   // Skip splash for public-facing routes (listing, store, privacy)
   const publicViewRoutes = ["/listing", "/store", "/privacy"];

@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ProfileHeader } from "@/components/profile/ProfileHeader";
 import { ProfileTabs } from "@/components/profile/ProfileTabs";
 import { PostGrid } from "@/components/profile/PostGrid";
@@ -9,59 +10,48 @@ import { EditProfileSheet, ProfileData } from "@/components/profile/EditProfileS
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useScreenTips } from "@/hooks/useScreenTips";
-import { getProfile, getCollectionWithIndex, getFollowCounts, getCollectionCount, updateProfile, togglePinItem, deleteFromCollection, Profile, CollectionItemWithIndex } from "@/lib/database";
+import { getProfile, getCollectionWithIndex, getFollowCounts, getCollectionCount, updateProfile, deleteFromCollection } from "@/lib/database";
 import { Loader2 } from "lucide-react";
 
 const ProfilePage = () => {
   // Trigger guided tips for profile screen
   useScreenTips("profile", 600);
   const [activeTab, setActiveTab] = useState<"posts" | "collection" | "index">("posts");
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [collection, setCollection] = useState<CollectionItemWithIndex[]>([]);
-  const [stats, setStats] = useState({ followers: 0, following: 0, collection: 0 });
-  const [loading, setLoading] = useState(true);
   const [editSheetOpen, setEditSheetOpen] = useState(false);
   
   const { user, signOut } = useAuth();
   const { t } = useLanguage();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const profileKey = ["own-profile", user?.id];
 
-  const loadProfile = useCallback(async () => {
-    if (!user) return;
-    
-    try {
+  const { data, isPending: loading } = useQuery({
+    queryKey: profileKey,
+    enabled: !!user,
+    refetchOnMount: "always",
+    queryFn: async () => {
+      if (!user) throw new Error("Sessão indisponível");
       const [profileData, collectionData, followCounts, collectionCount] = await Promise.all([
         getProfile(user.id),
         getCollectionWithIndex(user.id),
         getFollowCounts(user.id),
         getCollectionCount(user.id),
       ]);
-
-      setProfile(profileData);
-      setCollection(collectionData);
-      setStats({
+      return { profile: profileData, collection: collectionData, stats: {
         followers: followCounts.followers,
         following: followCounts.following,
         collection: collectionCount,
-      });
-    } catch (error) {
-      console.error("Error loading profile:", error);
-    } finally {
-      setLoading(false);
-    }
-  }, [user]);
-
-  useEffect(() => {
-    if (!user) {
-      navigate("/auth");
-      return;
-    }
-
-    loadProfile();
-  }, [user, navigate, loadProfile]);
+      } };
+    },
+  });
+  const profile = data?.profile ?? null;
+  const collection = data?.collection ?? [];
+  const stats = data?.stats ?? { followers: 0, following: 0, collection: 0 };
+  const loadProfile = () => { void queryClient.invalidateQueries({ queryKey: profileKey }); };
 
   const handleSignOut = async () => {
     await signOut();
+    queryClient.clear();
     navigate("/auth");
   };
 
@@ -70,9 +60,7 @@ const ProfilePage = () => {
     
     await updateProfile(user.id, updates);
     
-    // Refresh profile data
-    const updatedProfile = await getProfile(user.id);
-    setProfile(updatedProfile);
+    await queryClient.invalidateQueries({ queryKey: profileKey });
   };
 
   if (!user) {
