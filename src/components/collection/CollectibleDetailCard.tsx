@@ -432,6 +432,11 @@ export const CollectibleDetailCard = ({ item, open, onOpenChange, onDelete, canE
               .update({ image_url: imageUrl, ...(originalUrl ? { original_image_url: originalUrl } : {}) })
               .eq("id", item.id).eq("user_id", user.id).select("id").maybeSingle();
             if (error || !saved) throw error || new Error("Não foi possível atualizar este carrinho.");
+            // Keep existing post snapshots aligned with the collection photo as well.
+            const { error: postError } = await supabase.from("posts")
+              .update({ image_url: imageUrl })
+              .eq("collection_item_id", item.id).eq("user_id", user.id);
+            if (postError) console.warn("Could not synchronize post photo:", postError);
             setUpdatedImage(imageUrl);
             if (originalUrl) setUpdatedOriginal(originalUrl);
             setImageLoaded(false);
