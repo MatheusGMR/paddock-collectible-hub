@@ -543,9 +543,8 @@ export const PhotoUploadSheet = ({
     setIsAddingToCollection(true);
     try {
       const mediaItem = mediaQueue.find(m => m.id === result.mediaId);
-      let imageToSave = result.croppedImage;
-      if (!imageToSave && mediaItem?.base64) imageToSave = mediaItem.base64;
-      const original = mediaItem?.isVideo ? undefined : mediaItem?.base64;
+      const original = (mediaItem?.isVideo ? undefined : mediaItem?.base64) || result.originalImage;
+      const imageToSave = result.croppedImage || original;
       const photos = await storeCollectionPhotos(user.id, imageToSave, original);
       await addToCollection(user.id, {
         real_car_brand: result.realCar.brand,
@@ -628,9 +627,20 @@ export const PhotoUploadSheet = ({
       toast({ title: "Processando...", description: "Aguarde a conclusão da análise" });
       return;
     }
-    if (consolidatedResults.length > 0) saveResults(consolidatedResults);
+    if (consolidatedResults.length > 0) {
+      const remaining = consolidatedResults
+        .filter((_, i) => !addedIndices.has(i) && !skippedIndices.has(i))
+        .map((r) => {
+          const media = mediaQueue.find((m) => m.id === r.mediaId && !m.isVideo);
+          return { ...r, originalImage: r.originalImage || media?.base64 };
+        });
+      saveResults(remaining);
+      setConsolidatedResults(remaining);
+      setAddedIndices(new Set());
+      setSkippedIndices(new Set());
+    }
     onOpenChange(false);
-  }, [consolidatedResults, isProcessing, isCounting, saveResults, onOpenChange, toast]);
+  }, [consolidatedResults, isProcessing, isCounting, saveResults, onOpenChange, toast, addedIndices, skippedIndices, mediaQueue]);
 
   return (
     <Sheet
@@ -815,7 +825,7 @@ export const PhotoUploadSheet = ({
           {phase === "reviewing" && (
             <BatchCarouselView
               results={consolidatedResults}
-              getOriginalPhoto={(index) => mediaQueue.find((media) => media.id === consolidatedResults[index]?.mediaId && !media.isVideo)?.base64}
+              getOriginalPhoto={(index) => mediaQueue.find((media) => media.id === consolidatedResults[index]?.mediaId && !media.isVideo)?.base64 || consolidatedResults[index]?.originalImage}
               onAdjustPhoto={(index, image) => {
                 setConsolidatedResults((previous) => {
                   const updated = previous.map((result, i) => i === index ? { ...result, croppedImage: image, photoAdjusted: true } : result);
