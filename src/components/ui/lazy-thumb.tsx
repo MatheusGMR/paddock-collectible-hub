@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 /** Converte URL pública do storage em miniatura redimensionada (com fallback ao original). */
 export function thumbUrl(src: string, width = 400) {
   if (!src.includes("/storage/v1/object/public/")) return src;
-  return `${src.replace("/storage/v1/object/public/", "/storage/v1/render/image/public/")}${src.includes("?") ? "&" : "?"}width=${width}&quality=60&resize=contain`;
+  return `${src.replace("/storage/v1/object/public/", "/storage/v1/render/image/public/")}${src.includes("?") ? "&" : "?"}width=${width}&quality=60&resize=cover`;
 }
 
 interface Props {

@@ -646,8 +646,10 @@ export const PhotoUploadSheet = ({
     <Sheet
       open={open}
       onOpenChange={(val) => {
-        if (!val) handleSheetClose();
-        else onOpenChange(val);
+        // A revisão só pode ser encerrada pelos comandos explícitos da tela.
+        // Isso evita que gestos do Sheet ou o fechamento de diálogos internos
+        // desmontem o lote enquanto o usuário adiciona vários itens.
+        if (val) onOpenChange(true);
       }}
     >
       <SheetContent side="bottom" className="h-[90vh] p-0 rounded-t-2xl flex flex-col" onInteractOutside={(e) => e.preventDefault()} onPointerDownOutside={(e) => e.preventDefault()} onEscapeKeyDown={(e) => e.preventDefault()}>

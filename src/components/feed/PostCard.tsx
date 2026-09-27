@@ -234,7 +234,7 @@ export const PostCard = ({ post }: PostCardProps) => {
       {/* Image */}
       <div className="relative aspect-[4/3] w-full bg-muted overflow-hidden">
         {post.collectionItemId && <button type="button" className="absolute inset-0 z-10 w-full" aria-label="Abrir detalhes do colecionável" onClick={() => void openCollectible()} />}
-        {post.image && <LazyThumb src={post.image} alt={post.caption || "Colecionável"} className="block h-full w-full object-contain" width={800} />}
+        {post.image && <LazyThumb src={post.image} alt={post.caption || "Colecionável"} className="block h-full w-full object-cover" width={800} />}
       </div>
 
       {/* Actions - hide for curiosity posts */}
