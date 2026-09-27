@@ -18,7 +18,7 @@ export const AdminContentSection = () => {
       ]);
       const ids = [...new Set((posts || []).map((p: Post) => p.user_id))];
       const { data: profiles } = ids.length ? await adminDb.from("profiles").select("user_id,username").in("user_id", ids) : { data: [] };
-      const names = new Map((profiles || []).map((p: { user_id: string; username: string }) => [p.user_id, p.username]));
+      const names = new Map<string, string>((profiles || []).map((p: { user_id: string; username: string }) => [p.user_id, p.username]));
       return { posts: (posts || []) as Post[], sources: sources || [], names };
     },
   });
