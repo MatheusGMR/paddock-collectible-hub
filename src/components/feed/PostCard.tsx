@@ -159,7 +159,7 @@ export const PostCard = ({ post }: PostCardProps) => {
         user_context: data.user_context as RarityContext | null,
         item: {
           ...data.item,
-          index_breakdown: data.item.index_breakdown as PriceIndexBreakdown | null,
+          index_breakdown: data.item.index_breakdown as unknown as PriceIndexBreakdown | null,
           real_car_photos: data.item.real_car_photos as string[] | null,
         },
       });
@@ -219,6 +219,7 @@ export const PostCard = ({ post }: PostCardProps) => {
 
       {/* Image */}
       <div className="relative aspect-square w-full bg-muted">
+        {post.collectionItemId && <button type="button" className="absolute inset-0 z-10 w-full" aria-label="Abrir detalhes do colecionável" onClick={() => void openCollectible()} />}
         <img 
           src={post.image} 
           alt={post.caption || "Post"}
