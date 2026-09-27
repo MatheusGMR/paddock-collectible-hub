@@ -90,7 +90,7 @@ const HighlightedImage = ({ originalImage, croppedImage, boundingBox, carName, c
             <img
               src={originalImage}
               alt="Foto original"
-              className="w-full h-full object-contain bg-muted cursor-pointer"
+              className="w-full h-full object-cover bg-muted cursor-pointer"
               role="button" tabIndex={0} aria-label="Ajustar foto do carrinho" onClick={onEdit}
               onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onEdit(); } }}
             />
@@ -127,7 +127,7 @@ const HighlightedImage = ({ originalImage, croppedImage, boundingBox, carName, c
               <img
                 src={croppedImage}
                 alt={carName}
-                className="w-full h-full object-contain bg-muted cursor-pointer"
+                className="w-full h-full object-cover bg-muted cursor-pointer"
                 role="button" tabIndex={0} aria-label="Ajustar foto do carrinho" onClick={onEdit}
                 onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onEdit(); } }}
               />
@@ -152,7 +152,7 @@ const HighlightedImage = ({ originalImage, croppedImage, boundingBox, carName, c
         <img
           src={displayImage}
           alt={carName}
-          className="w-full h-full object-contain bg-muted cursor-pointer"
+          className="w-full h-full object-cover bg-muted cursor-pointer"
           role="button" tabIndex={0} aria-label="Ajustar foto do carrinho" onClick={onEdit}
           onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onEdit(); } }}
         />

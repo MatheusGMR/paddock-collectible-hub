@@ -256,7 +256,7 @@ export function BatchCarouselView({
                   <img
                     src={displayImage}
                     alt={`${result.realCar.brand} ${result.realCar.model}`}
-                    className="w-full h-full object-contain object-center bg-muted cursor-pointer"
+                    className="w-full h-full object-cover object-center bg-muted cursor-pointer"
                     role="button" tabIndex={0} aria-label="Ajustar foto do carrinho" onClick={() => setPhotoEditorIndex(originalIndex)}
                     onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setPhotoEditorIndex(originalIndex); } }}
                   />

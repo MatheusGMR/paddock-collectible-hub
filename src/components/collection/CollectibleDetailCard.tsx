@@ -217,7 +217,7 @@ export const CollectibleDetailCard = ({ item, open, onOpenChange, onDelete, canE
           
           <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain scrollbar-hide px-4 touch-pan-y">
             <div className="py-4 space-y-4">
-              {/* Hero Image - square format with object-contain to show full vehicle */}
+              {/* Hero Image */}
               <div className="relative aspect-[4/3] rounded-xl overflow-hidden bg-muted">
                 {imageFailed ? (
                   <div className="w-full h-full flex flex-col items-center justify-center">
@@ -235,7 +235,7 @@ export const CollectibleDetailCard = ({ item, open, onOpenChange, onDelete, canE
                       src={resolvedImageUrl}
                       alt={`${data.real_car_brand} ${data.real_car_model}`}
                       className={cn(
-                         "w-full h-full object-contain object-center transition-opacity",
+                         "w-full h-full object-cover object-center transition-opacity",
                          canEditPhoto && user && "cursor-pointer",
                         imageLoaded ? "opacity-100" : "opacity-0"
                       )}

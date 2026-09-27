@@ -4,3 +4,5 @@
 - [x] Reutilizar dados recentes do perfil e do mercado entre telas, com atualização segura.
 - [x] Ajustar as imagens da home ao espaço disponível e abrir detalhes com um toque.
 - [x] Mostrar a foto do carrinho no detalhe e refletir ajustes nas imagens grandes e reduzidas.
+- [x] Impedir que a revisão múltipla feche durante adições sequenciais.
+- [x] Fazer fotos de colecionáveis preencherem cards e miniaturas sem faixas.
