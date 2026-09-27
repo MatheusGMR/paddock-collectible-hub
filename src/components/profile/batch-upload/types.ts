@@ -107,6 +107,7 @@ export interface ConsolidatedResult extends AnalysisResult {
   mediaId: string;
   mediaIndex: number;
   isSelected: boolean;
+  originalImage?: string;
 }
 
 export interface BatchUploadState {
