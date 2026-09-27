@@ -1,8 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Slider } from "@/components/ui/slider";
-import { RotateCcw, Loader2 } from "lucide-react";
+import { RotateCcw, Loader2, Minus, Plus } from "lucide-react";
 import { toast } from "sonner";
 
 interface Props {
@@ -18,16 +17,51 @@ export function CollectiblePhotoEditor({ open, onOpenChange, source, onSave, leg
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const imageRef = useRef<HTMLImageElement | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const dragRef = useRef<{ x: number; y: number; offsetX: number; offsetY: number } | null>(null);
+  const pointersRef = useRef(new Map<number, { x: number; y: number }>());
+  const gestureRef = useRef<
+    | { type: "drag"; x: number; y: number; offsetX: number; offsetY: number }
+    | { type: "pinch"; distance: number; centerX: number; centerY: number; zoom: number; offsetX: number; offsetY: number }
+    | null
+  >(null);
+  const transformRef = useRef({ zoom: 1, offset: { x: 0, y: 0 } });
   const [zoom, setZoom] = useState(1);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [ready, setReady] = useState(false);
   const [saving, setSaving] = useState(false);
 
+  const updateTransform = (nextZoom: number, nextOffset: { x: number; y: number }) => {
+    transformRef.current = { zoom: nextZoom, offset: nextOffset };
+    setZoom(nextZoom);
+    setOffset(nextOffset);
+  };
+
+  const startGesture = (canvas: HTMLCanvasElement) => {
+    const pointers = [...pointersRef.current.values()];
+    const { zoom: currentZoom, offset: currentOffset } = transformRef.current;
+    if (pointers.length >= 2) {
+      const rect = canvas.getBoundingClientRect();
+      const [a, b] = pointers;
+      gestureRef.current = {
+        type: "pinch",
+        distance: Math.hypot(b.x - a.x, b.y - a.y),
+        centerX: ((a.x + b.x) / 2 - rect.left) / rect.width,
+        centerY: ((a.y + b.y) / 2 - rect.top) / rect.height,
+        zoom: currentZoom,
+        offsetX: currentOffset.x,
+        offsetY: currentOffset.y,
+      };
+    } else if (pointers.length === 1) {
+      gestureRef.current = { type: "drag", x: pointers[0].x, y: pointers[0].y, offsetX: currentOffset.x, offsetY: currentOffset.y };
+    } else {
+      gestureRef.current = null;
+    }
+  };
+
   useEffect(() => {
     if (!open) return;
-    setZoom(1);
-    setOffset({ x: 0, y: 0 });
+    pointersRef.current.clear();
+    gestureRef.current = null;
+    updateTransform(1, { x: 0, y: 0 });
     setReady(false);
     const image = new Image();
     image.crossOrigin = "anonymous";
@@ -76,31 +110,47 @@ export function CollectiblePhotoEditor({ open, onOpenChange, source, onSave, leg
         <div className="relative w-full aspect-[4/3] overflow-hidden rounded-md bg-muted">
           <canvas
             ref={canvasRef} width={1200} height={900}
-            aria-label="Arraste para posicionar o carrinho"
+            aria-label="Arraste para posicionar; use dois dedos para ampliar ou reduzir a foto"
             className="w-full h-full touch-none cursor-move"
             onPointerDown={(e) => {
               if (!ready) return;
-              dragRef.current = { x: e.clientX, y: e.clientY, offsetX: offset.x, offsetY: offset.y };
+              pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
               e.currentTarget.setPointerCapture(e.pointerId);
+              startGesture(e.currentTarget);
             }}
             onPointerMove={(e) => {
-              const drag = dragRef.current;
-              if (!drag) return;
+              if (!pointersRef.current.has(e.pointerId)) return;
+              pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+              const gesture = gestureRef.current;
+              if (!gesture) return;
               const rect = e.currentTarget.getBoundingClientRect();
-              setOffset({ x: drag.offsetX + (e.clientX - drag.x) / rect.width, y: drag.offsetY + (e.clientY - drag.y) / rect.height });
+              if (gesture.type === "drag" && pointersRef.current.size === 1) {
+                updateTransform(transformRef.current.zoom, {
+                  x: gesture.offsetX + (e.clientX - gesture.x) / rect.width,
+                  y: gesture.offsetY + (e.clientY - gesture.y) / rect.height,
+                });
+              } else if (gesture.type === "pinch" && pointersRef.current.size >= 2 && gesture.distance > 0) {
+                const [a, b] = [...pointersRef.current.values()];
+                const nextZoom = Math.min(8, Math.max(0.5, gesture.zoom * Math.hypot(b.x - a.x, b.y - a.y) / gesture.distance));
+                const ratio = nextZoom / gesture.zoom;
+                const centerX = ((a.x + b.x) / 2 - rect.left) / rect.width;
+                const centerY = ((a.y + b.y) / 2 - rect.top) / rect.height;
+                updateTransform(nextZoom, {
+                  x: centerX - 0.5 + (gesture.offsetX + 0.5 - gesture.centerX) * ratio,
+                  y: centerY - 0.5 + (gesture.offsetY + 0.5 - gesture.centerY) * ratio,
+                });
+              }
             }}
-            onPointerUp={() => { dragRef.current = null; }}
-            onPointerCancel={() => { dragRef.current = null; }}
+            onPointerUp={(e) => { pointersRef.current.delete(e.pointerId); startGesture(e.currentTarget); }}
+            onPointerCancel={(e) => { pointersRef.current.delete(e.pointerId); startGesture(e.currentTarget); }}
           />
           {!ready && <Loader2 className="absolute left-1/2 top-1/2 h-6 w-6 -translate-x-1/2 -translate-y-1/2 animate-spin text-muted-foreground" />}
         </div>
-        <div className="space-y-2">
-          <div className="flex justify-between text-sm"><span>Tamanho</span><span>{Math.round(zoom * 100)}%</span></div>
-          <Slider aria-label="Tamanho da foto" value={[zoom]} onValueChange={([value]) => setZoom(value)} min={0.5} max={8} step={0.05} disabled={!ready} />
-          <p className="text-xs text-muted-foreground">Diminua para criar margem; arraste para centralizar o carrinho.</p>
-        </div>
+        <p className="text-xs text-muted-foreground">Use dois dedos para ampliar ou reduzir. Arraste para posicionar o carrinho.</p>
         <div className="flex flex-wrap items-center gap-2">
-          <Button type="button" variant="ghost" size="icon" title="Restaurar enquadramento" aria-label="Restaurar enquadramento" onClick={() => { setZoom(1); setOffset({ x: 0, y: 0 }); }}><RotateCcw className="h-4 w-4" /></Button>
+          <Button type="button" variant="ghost" size="icon" title="Reduzir foto" aria-label="Reduzir foto" disabled={!ready || zoom <= 0.5} onClick={() => updateTransform(Math.max(0.5, transformRef.current.zoom / 1.2), transformRef.current.offset)}><Minus className="h-4 w-4" /></Button>
+          <Button type="button" variant="ghost" size="icon" title="Ampliar foto" aria-label="Ampliar foto" disabled={!ready || zoom >= 8} onClick={() => updateTransform(Math.min(8, transformRef.current.zoom * 1.2), transformRef.current.offset)}><Plus className="h-4 w-4" /></Button>
+          <Button type="button" variant="ghost" size="icon" title="Restaurar enquadramento" aria-label="Restaurar enquadramento" onClick={() => updateTransform(1, { x: 0, y: 0 })}><RotateCcw className="h-4 w-4" /></Button>
           {onReplace && <><input ref={inputRef} type="file" accept="image/*" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (file) onReplace(file); e.target.value = ""; }} /><Button type="button" variant="outline" size="sm" onClick={() => inputRef.current?.click()}>Outra foto</Button></>}
           <div className="flex-1" />
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
