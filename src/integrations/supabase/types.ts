@@ -993,6 +993,131 @@ export type Database = {
         }
         Relationships: []
       }
+      push_campaigns: {
+        Row: {
+          audience: Json
+          body: string
+          click_count: number
+          created_at: string
+          created_by: string | null
+          failed_count: number
+          id: string
+          image_url: string | null
+          scheduled_at: string | null
+          sent_at: string | null
+          sent_count: number
+          status: string
+          target_count: number
+          title: string
+          updated_at: string
+          url: string
+        }
+        Insert: {
+          audience?: Json
+          body: string
+          click_count?: number
+          created_at?: string
+          created_by?: string | null
+          failed_count?: number
+          id?: string
+          image_url?: string | null
+          scheduled_at?: string | null
+          sent_at?: string | null
+          sent_count?: number
+          status?: string
+          target_count?: number
+          title: string
+          updated_at?: string
+          url?: string
+        }
+        Update: {
+          audience?: Json
+          body?: string
+          click_count?: number
+          created_at?: string
+          created_by?: string | null
+          failed_count?: number
+          id?: string
+          image_url?: string | null
+          scheduled_at?: string | null
+          sent_at?: string | null
+          sent_count?: number
+          status?: string
+          target_count?: number
+          title?: string
+          updated_at?: string
+          url?: string
+        }
+        Relationships: []
+      }
+      push_deliveries: {
+        Row: {
+          campaign_id: string | null
+          clicked_at: string | null
+          created_at: string
+          id: string
+          ref_key: string | null
+          status: string
+          trigger_key: string | null
+          user_id: string | null
+        }
+        Insert: {
+          campaign_id?: string | null
+          clicked_at?: string | null
+          created_at?: string
+          id?: string
+          ref_key?: string | null
+          status?: string
+          trigger_key?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          campaign_id?: string | null
+          clicked_at?: string | null
+          created_at?: string
+          id?: string
+          ref_key?: string | null
+          status?: string
+          trigger_key?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "push_deliveries_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "push_campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      push_settings: {
+        Row: {
+          id: number
+          last_event_scan: string
+          max_per_day: number
+          quiet_end: number
+          quiet_start: number
+          updated_at: string
+        }
+        Insert: {
+          id?: number
+          last_event_scan?: string
+          max_per_day?: number
+          quiet_end?: number
+          quiet_start?: number
+          updated_at?: string
+        }
+        Update: {
+          id?: number
+          last_event_scan?: string
+          max_per_day?: number
+          quiet_end?: number
+          quiet_start?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       push_subscriptions: {
         Row: {
           auth: string
@@ -1023,6 +1148,48 @@ export type Database = {
           topics?: string[] | null
           updated_at?: string | null
           user_id?: string | null
+        }
+        Relationships: []
+      }
+      push_triggers: {
+        Row: {
+          body: string
+          click_count: number
+          created_at: string
+          description: string | null
+          enabled: boolean
+          key: string
+          label: string
+          sent_count: number
+          title: string
+          updated_at: string
+          url: string
+        }
+        Insert: {
+          body: string
+          click_count?: number
+          created_at?: string
+          description?: string | null
+          enabled?: boolean
+          key: string
+          label: string
+          sent_count?: number
+          title: string
+          updated_at?: string
+          url?: string
+        }
+        Update: {
+          body?: string
+          click_count?: number
+          created_at?: string
+          description?: string | null
+          enabled?: boolean
+          key?: string
+          label?: string
+          sent_count?: number
+          title?: string
+          updated_at?: string
+          url?: string
         }
         Relationships: []
       }
@@ -1287,6 +1454,30 @@ export type Database = {
           },
         ]
       }
+      user_moderation: {
+        Row: {
+          blocked: boolean
+          reason: string | null
+          updated_at: string
+          updated_by: string | null
+          user_id: string
+        }
+        Insert: {
+          blocked?: boolean
+          reason?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          user_id: string
+        }
+        Update: {
+          blocked?: boolean
+          reason?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_news_preferences: {
         Row: {
           categories: string[] | null
@@ -1415,6 +1606,8 @@ export type Database = {
         }[]
       }
       get_admin_ai_usage_stats: { Args: { days_back?: number }; Returns: Json }
+      get_admin_kpis: { Args: { days_back?: number }; Returns: Json }
+      get_admin_marketplace_stats: { Args: never; Returns: Json }
       get_admin_page_analytics: { Args: { days_back?: number }; Returns: Json }
       get_admin_scanner_performance: {
         Args: { days_back?: number }
@@ -1424,6 +1617,12 @@ export type Database = {
       get_admin_subscription_stats: { Args: never; Returns: Json }
       get_admin_user_growth: { Args: never; Returns: Json }
       get_admin_users: { Args: never; Returns: Json }
+      get_push_audience: {
+        Args: { p_audience: Json }
+        Returns: {
+          user_id: string
+        }[]
+      }
       get_refined_market_value: { Args: { p_item_id: string }; Returns: Json }
       get_relevant_corrections: {
         Args: { p_brand?: string; p_limit?: number; p_manufacturer?: string }
@@ -1453,6 +1652,7 @@ export type Database = {
         Returns: boolean
       }
       is_admin: { Args: never; Returns: boolean }
+      mark_push_clicked: { Args: { p_delivery_id: string }; Returns: undefined }
       record_ab_result: {
         Args: {
           p_error_field?: string
