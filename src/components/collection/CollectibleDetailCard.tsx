@@ -26,6 +26,7 @@ import { CollectiblePhotoEditor } from "@/components/collection/CollectiblePhoto
 import { useAuth } from "@/contexts/AuthContext";
 import { uploadCollectionImage } from "@/lib/uploadImage";
 import { RarityContext } from "@/lib/rarityContext";
+import { useQueryClient } from "@tanstack/react-query";
 
 export interface CollectibleDetailItem {
   id: string;
@@ -107,6 +108,7 @@ const DetailRow = ({ label, value }: { label: string; value: string | null | und
 
 export const CollectibleDetailCard = ({ item, open, onOpenChange, onDelete, canEditPhoto = false, onPhotoUpdated }: CollectibleDetailCardProps) => {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [photoEditorOpen, setPhotoEditorOpen] = useState(false);
   const [photoSource, setPhotoSource] = useState<string | null>(null);
   const [updatedImage, setUpdatedImage] = useState<string | null>(null);
@@ -434,6 +436,9 @@ export const CollectibleDetailCard = ({ item, open, onOpenChange, onDelete, canE
             if (originalUrl) setUpdatedOriginal(originalUrl);
             setImageLoaded(false);
             setImageFailed(false);
+            void queryClient.invalidateQueries({ queryKey: ["feed-posts"] });
+            localStorage.removeItem("paddock_curiosity_of_day");
+            window.dispatchEvent(new CustomEvent("collection-photo-updated", { detail: { id: item.id, imageUrl } }));
             onPhotoUpdated?.();
             toast.success("Foto atualizada");
           }}

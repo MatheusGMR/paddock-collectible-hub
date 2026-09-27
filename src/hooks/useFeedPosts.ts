@@ -160,6 +160,7 @@ const mapPostsToFeedPosts = async (
       .from("user_collection")
       .select(`
         id,
+        image_url,
         item:items (
           real_car_brand, real_car_model, real_car_year,
           collectible_scale, collectible_manufacturer, historical_fact
@@ -167,7 +168,7 @@ const mapPostsToFeedPosts = async (
       `)
       .in("id", collectionItemIds);
 
-    collectionItems?.forEach(ci => itemsMap.set(ci.id, ci.item));
+    collectionItems?.forEach(ci => itemsMap.set(ci.id, ci));
   }
 
   // Fetch top comments
@@ -202,7 +203,8 @@ const mapPostsToFeedPosts = async (
 
   return postsData.map(post => {
     const profile = profilesMap.get(post.user_id);
-    const item = post.collection_item_id ? itemsMap.get(post.collection_item_id) : null;
+    const collectionItem = post.collection_item_id ? itemsMap.get(post.collection_item_id) : null;
+    const item = collectionItem?.item;
     const topComment = topCommentMap.get(post.id) || null;
 
     return {
@@ -213,7 +215,7 @@ const mapPostsToFeedPosts = async (
         username: profile?.username || "Usuário",
         avatar: profile?.avatar_url || "",
       },
-      image: post.image_url,
+      image: collectionItem?.image_url || post.image_url,
       caption: post.caption,
       historicalFact: item?.historical_fact || null,
       likes: post.likes_count,

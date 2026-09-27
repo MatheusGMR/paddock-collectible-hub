@@ -65,6 +65,20 @@ export const useFeaturedCuriosity = () => {
   const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
 
+  useEffect(() => {
+    const onPhotoUpdated = (event: Event) => {
+      const { id, imageUrl } = (event as CustomEvent<{ id: string; imageUrl: string }>).detail;
+      setCuriosity(previous => {
+        if (!previous || previous.id !== id) return previous;
+        const next = { ...previous, imageUrl };
+        saveCuriosity(next);
+        return next;
+      });
+    };
+    window.addEventListener("collection-photo-updated", onPhotoUpdated);
+    return () => window.removeEventListener("collection-photo-updated", onPhotoUpdated);
+  }, []);
+
   const fetchRandomCuriosity = useCallback(async (forceRefresh = false) => {
     // If we already have today's cached curiosity and not forcing, skip fetch
     if (!forceRefresh && curiosity) {
