@@ -35,15 +35,32 @@ if (storedBuild && storedBuild !== currentBuild) {
   void purgeAndReload();
 }
 
-// Chunk antigo removido após nova publicação: limpa cache e recarrega uma vez.
+// Falha ao baixar uma tela: recarrega uma única vez por sessão, sem apagar caches,
+// e nunca quando está offline ou com trabalho em andamento (revisão de lote/scanner).
+function hasWorkInProgress(): boolean {
+  try {
+    return (
+      localStorage.getItem("paddock_batch_review_active") === "1" ||
+      !!localStorage.getItem("paddock_scanner_pending_results")
+    );
+  } catch {
+    return false;
+  }
+}
+function recoverFromChunkError(): boolean {
+  if (!navigator.onLine || hasWorkInProgress()) return false;
+  if (sessionStorage.getItem(RECOVERY_FLAG)) return false;
+  sessionStorage.setItem(RECOVERY_FLAG, "1");
+  window.location.reload();
+  return true;
+}
 window.addEventListener("vite:preloadError", (event) => {
-  event.preventDefault();
-  void purgeAndReload();
+  if (recoverFromChunkError()) event.preventDefault();
 });
 window.addEventListener("unhandledrejection", (event) => {
   const msg = String((event.reason as Error)?.message || event.reason || "");
   if (/Importing a module script failed|Failed to fetch dynamically imported module|error loading dynamically imported module/i.test(msg)) {
-    void purgeAndReload();
+    recoverFromChunkError();
   }
 });
 
@@ -53,7 +70,6 @@ window.addEventListener("load", () => {
 
 try {
   createRoot(document.getElementById("root")!).render(<App />);
-  setTimeout(() => sessionStorage.removeItem(RECOVERY_FLAG), 10000);
 } catch (e) {
   console.error("[App] Render failed:", e);
   void purgeAndReload();
