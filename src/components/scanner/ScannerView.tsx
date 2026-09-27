@@ -20,6 +20,7 @@ import { ImageQualityError, ImageQualityIssue } from "@/components/scanner/Image
 import { RealCarResults } from "@/components/scanner/RealCarResults";
 import { LoadingFacts } from "@/components/scanner/LoadingFacts";
 import { PriceIndex } from "@/lib/priceIndex";
+import { RarityContext, hasRarityContext } from "@/lib/rarityContext";
 import { cropImageByBoundingBox, BoundingBox, extractFrameFromVideo } from "@/lib/imageCrop";
 import { PaddockLogo } from "@/components/icons/PaddockLogo";
 import { trackInteraction, trackEvent } from "@/lib/analytics";
@@ -132,6 +133,7 @@ interface AnalysisResult {
   realCarPhotos?: string[];
   croppedImage?: string; // Will be populated after cropping
   photoAdjusted?: boolean;
+  userContext?: RarityContext;
   isDuplicate?: boolean; // Duplicate detection flag
   existingItemImage?: string; // Image of existing item if duplicate
   marketValue?: { min: number; max: number; currency: string; source: string; confidence: 'high' | 'medium' | 'low' };
@@ -316,6 +318,9 @@ export const ScannerView = () => {
   const [useNativeFallback, setUseNativeFallback] = useState(false);
   // Track if using embedded camera preview (iOS/Android)
   const [useCameraPreview, setUseCameraPreview] = useState(false);
+  useEffect(() => {
+    if (useCameraPreview) void cameraPreview.setZoom(zoomLevel);
+  }, [zoomLevel, useCameraPreview, cameraPreview.setZoom]);
   // Batch upload sheet for multiple photo selection
   const [showBatchUpload, setShowBatchUpload] = useState(false);
   // Post dialog state for "Add & Post" flow
@@ -1954,6 +1959,19 @@ export const ScannerView = () => {
     capturePhoto();
   }, [isScanning, cameraActive, capturePhoto]);
 
+  const updateSavedRarity = async (collectionId: string, context?: RarityContext) => {
+    if (!hasRarityContext(context)) return;
+    try {
+      const { data, error } = await supabase.functions.invoke("recalculate-index", { body: { collectionIds: [collectionId] } });
+      if (error || data?.error || !data?.results?.some((entry: { id: string; score?: number }) => entry.id === collectionId && typeof entry.score === "number")) {
+        throw error || new Error("Não foi possível atualizar a raridade");
+      }
+    } catch (error) {
+      console.warn("Raridade pendente de recálculo:", error);
+      toast({ title: "Informações salvas", description: "Não foi possível atualizar a raridade agora. Tente novamente no detalhe do carrinho." });
+    }
+  };
+
   const handleAddToCollection = async (index: number): Promise<string | void> => {
     // Prevent duplicate adds
     if (addedIndices.has(index)) return;
@@ -2006,8 +2024,11 @@ export const ScannerView = () => {
           estimated_value_max: result.marketValue?.max ?? null,
         },
         imageUrl,
-        photos.originalUrl
+        photos.originalUrl,
+        result.userContext
       );
+
+      await updateSavedRarity(collectionItem.id, result.userContext);
 
       // Get the item_id from the collection item
       const itemId = collectionItem.item_id;
@@ -2090,8 +2111,11 @@ export const ScannerView = () => {
           estimated_value_max: result.marketValue?.max ?? null,
         },
         imageUrl,
-        photos.originalUrl
+        photos.originalUrl,
+        result.userContext
       );
+
+      await updateSavedRarity(collectionItem.id, result.userContext);
 
       setAddedIndices(prev => new Set(prev).add(index));
 
@@ -2534,6 +2558,7 @@ export const ScannerView = () => {
           results={analysisResults}
           originalImage={capturedImage || undefined}
           onAdjustPhoto={(index, image) => setAnalysisResults((previous) => previous.map((result, i) => i === index ? { ...result, croppedImage: image, photoAdjusted: true } : result))}
+          onRarityContextChange={(index, context) => setAnalysisResults((previous) => previous.map((result, i) => i === index ? { ...result, userContext: context } : result))}
           onAddToCollection={handleAddToCollection}
           onAddAndPost={handleAddAndPost}
           onSkip={handleSkipItem}

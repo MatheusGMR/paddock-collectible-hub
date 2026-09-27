@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from "react";
-import { Check, Plus, RotateCcw, ChevronLeft, ChevronRight, Loader2, CheckCircle2, SkipForward, AlertTriangle, Car, Package, History, ChevronDown, ChevronUp, Send } from "lucide-react";
+import { Check, Plus, RotateCcw, ChevronLeft, ChevronRight, Loader2, CheckCircle2, SkipForward, AlertTriangle, Car, Package, History, ChevronDown, ChevronUp, Send, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -14,6 +14,7 @@ import { MarketValueCard } from "./MarketValueCard";
 
 import { BoundingBox } from "@/lib/imageCrop";
 import { CollectiblePhotoEditor } from "@/components/collection/CollectiblePhotoEditor";
+import { RarityContext } from "@/lib/rarityContext";
 
 interface AnalysisResult {
   boundingBox?: BoundingBox;
@@ -40,6 +41,7 @@ interface AnalysisResult {
   realCarPhotos?: string[];
   croppedImage?: string;
   photoAdjusted?: boolean;
+  userContext?: RarityContext;
   isDuplicate?: boolean;
   existingItemImage?: string;
   marketValue?: MarketValue;
@@ -49,6 +51,7 @@ interface ResultCarouselProps {
   results: AnalysisResult[];
   originalImage?: string;
   onAdjustPhoto: (index: number, image: string) => void;
+  onRarityContextChange: (index: number, context: RarityContext) => void;
   onAddToCollection: (index: number) => Promise<string | void>; // Returns itemId on success
   onAddAndPost: (index: number) => Promise<void>;
   onSkip: (index: number) => void;
@@ -209,6 +212,7 @@ export const ResultCarousel = ({
   results,
   originalImage,
   onAdjustPhoto,
+  onRarityContextChange,
   onAddToCollection,
   onAddAndPost,
   onSkip,
@@ -508,6 +512,36 @@ export const ResultCarousel = ({
                 tier={result.priceIndex.tier}
                 onClick={() => openBreakdown(result)}
               />
+            )}
+
+            {results.length === 1 && (
+              <Collapsible className="border border-border/50 rounded-lg p-3">
+                <CollapsibleTrigger asChild>
+                  <Button type="button" variant="ghost" className="w-full justify-between px-1">
+                    <span className="flex items-center gap-2"><Sparkles className="h-4 w-4" /> Informações especiais</span>
+                    <ChevronDown className="h-4 w-4" />
+                  </Button>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="pt-3 space-y-3">
+                  {([
+                    ["special_edition", "Edição especial / licenciada"],
+                    ["numbered", "Numerada / tiragem limitada"],
+                    ["unique", "Unidade única"],
+                  ] as const).map(([key, label]) => (
+                    <label key={key} className="flex items-center gap-2 text-sm text-foreground">
+                      <input type="checkbox" className="accent-primary h-4 w-4" checked={!!result.userContext?.[key]}
+                        onChange={(event) => onRarityContextChange(originalIndex, { ...result.userContext, [key]: event.target.checked })} />
+                      {label}
+                    </label>
+                  ))}
+                  <input className="w-full rounded-lg bg-muted px-3 py-2 text-sm text-foreground" placeholder="Importado de (ex.: Estados Unidos)"
+                    value={result.userContext?.imported_from ?? ""} onChange={(event) => onRarityContextChange(originalIndex, { ...result.userContext, imported_from: event.target.value.slice(0, 60) })} />
+                  <textarea className="w-full rounded-lg bg-muted px-3 py-2 text-sm text-foreground resize-none" rows={2}
+                    placeholder="Observação (ex.: edição Elvis Presley)" value={result.userContext?.notes ?? ""}
+                    onChange={(event) => onRarityContextChange(originalIndex, { ...result.userContext, notes: event.target.value.slice(0, 300) })} />
+                  <p className="text-xs text-muted-foreground">A pontuação será recalculada ao adicionar à coleção.</p>
+                </CollapsibleContent>
+              </Collapsible>
             )}
 
             {/* Market Value Card - below rarity index */}

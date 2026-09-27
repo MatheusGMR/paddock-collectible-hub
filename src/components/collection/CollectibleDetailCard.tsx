@@ -26,20 +26,13 @@ import { Sparkles, RefreshCw } from "lucide-react";
 import { CollectiblePhotoEditor } from "@/components/collection/CollectiblePhotoEditor";
 import { useAuth } from "@/contexts/AuthContext";
 import { uploadCollectionImage } from "@/lib/uploadImage";
-
-interface UserContext {
-  special_edition?: boolean;
-  numbered?: boolean;
-  unique?: boolean;
-  imported_from?: string;
-  notes?: string;
-}
+import { RarityContext } from "@/lib/rarityContext";
 
 export interface CollectibleDetailItem {
   id: string;
   image_url: string | null;
   original_image_url?: string | null;
-  user_context?: UserContext | null;
+  user_context?: RarityContext | null;
   item: {
     real_car_brand: string;
     real_car_model: string;
@@ -130,14 +123,14 @@ export const CollectibleDetailCard = ({ item, open, onOpenChange, onDelete, canE
   const [override, setOverride] = useState<{ score: number; breakdown: PriceIndexBreakdown } | null>(null);
   const [recalculating, setRecalculating] = useState(false);
   const [ctxOpen, setCtxOpen] = useState(false);
-  const [ctx, setCtx] = useState<UserContext>({});
+  const [ctx, setCtx] = useState<RarityContext>({});
 
   useEffect(() => {
     setOverride(null);
     setCtx(item?.user_context ?? {});
     if (!item?.user_context) {
       supabase.from("user_collection").select("user_context").eq("id", item?.id ?? "").maybeSingle()
-        .then(({ data }) => { if (data?.user_context) setCtx(data.user_context as UserContext); });
+        .then(({ data }) => { if (data?.user_context) setCtx(data.user_context as RarityContext); });
     }
   }, [item?.id]);
 
