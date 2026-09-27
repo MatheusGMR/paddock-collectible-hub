@@ -179,6 +179,11 @@ export const CollectibleDetailCard = ({ item, open, onOpenChange, onDelete, canE
     if (realPhotos && realPhotos.length > 0 && typeof realPhotos[0] === "string") return realPhotos[0];
     return "/placeholder.svg";
   })();
+
+  useEffect(() => {
+    setImageLoaded(false);
+    setImageFailed(false);
+  }, [resolvedImageUrl]);
   
   if (!item?.item) return null;
   

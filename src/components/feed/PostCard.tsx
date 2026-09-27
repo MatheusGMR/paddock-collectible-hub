@@ -169,6 +169,7 @@ export const PostCard = ({ post }: PostCardProps) => {
       }
       setDetailItem({
         ...data,
+        image_url: data.image_url || post.image,
         user_context: data.user_context as RarityContext | null,
         item: {
           ...data.item,
