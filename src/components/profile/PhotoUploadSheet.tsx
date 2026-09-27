@@ -81,6 +81,32 @@ export const PhotoUploadSheet = ({
     }
   }, [open, hasPendingResults, pendingResults, phase]);
 
+  // Marca a revisão como ativa para reabrir automaticamente se a tela recarregar.
+  useEffect(() => {
+    try {
+      if (open && phase === "reviewing") localStorage.setItem("paddock_batch_review_active", "1");
+    } catch { /* ignore */ }
+  }, [open, phase]);
+
+  // Salva o progresso a cada carrinho adicionado/descartado, para não recomeçar o fluxo.
+  useEffect(() => {
+    if (phase !== "reviewing" || consolidatedResults.length === 0) return;
+    if (addedIndices.size === 0 && skippedIndices.size === 0) return;
+    const remaining = consolidatedResults
+      .filter((_, i) => !addedIndices.has(i) && !skippedIndices.has(i))
+      .map((r) => {
+        const media = mediaQueue.find((m) => m.id === r.mediaId && !m.isVideo);
+        return { ...r, originalImage: r.originalImage || media?.base64 };
+      });
+    if (remaining.length === 0) {
+      clearResults();
+      try { localStorage.removeItem("paddock_batch_review_active"); } catch { /* ignore */ }
+    } else {
+      saveResults(remaining);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [addedIndices, skippedIndices]);
+
   const fileToBase64 = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -591,6 +617,7 @@ export const PhotoUploadSheet = ({
   
   const handleComplete = () => {
     clearResults();
+    try { localStorage.removeItem("paddock_batch_review_active"); } catch { /* ignore */ }
     resetState();
     onOpenChange(false);
     onCollectionUpdated?.();
@@ -598,6 +625,7 @@ export const PhotoUploadSheet = ({
 
   const handleSkipAll = () => {
     clearResults();
+    try { localStorage.removeItem("paddock_batch_review_active"); } catch { /* ignore */ }
     resetState();
   };
 
@@ -639,6 +667,7 @@ export const PhotoUploadSheet = ({
       setAddedIndices(new Set());
       setSkippedIndices(new Set());
     }
+    try { localStorage.removeItem("paddock_batch_review_active"); } catch { /* ignore */ }
     onOpenChange(false);
   }, [consolidatedResults, isProcessing, isCounting, saveResults, onOpenChange, toast, addedIndices, skippedIndices, mediaQueue]);
 
