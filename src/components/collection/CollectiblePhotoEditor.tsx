@@ -144,7 +144,11 @@ export function CollectiblePhotoEditor({ open, onOpenChange, source, onSave, leg
             onPointerUp={(e) => { pointersRef.current.delete(e.pointerId); startGesture(e.currentTarget); }}
             onPointerCancel={(e) => { pointersRef.current.delete(e.pointerId); startGesture(e.currentTarget); }}
           />
-          {!ready && <Loader2 className="absolute left-1/2 top-1/2 h-6 w-6 -translate-x-1/2 -translate-y-1/2 animate-spin text-muted-foreground" />}
+          {!ready && (
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none" role="status" aria-label="Carregando foto">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          )}
         </div>
         <p className="text-xs text-muted-foreground">Use dois dedos para ampliar ou reduzir. Arraste para posicionar o carrinho.</p>
         <div className="flex flex-wrap items-center gap-2">
