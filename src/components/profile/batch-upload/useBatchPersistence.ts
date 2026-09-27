@@ -6,12 +6,37 @@ import {
   BATCH_UPLOAD_EXPIRY_HOURS,
 } from "./types";
 
+const DB_NAME = "paddock_batch";
+const STORE = "kv";
+function idb<T>(mode: IDBTransactionMode, fn: (s: IDBObjectStore) => IDBRequest): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const open = indexedDB.open(DB_NAME, 1);
+    open.onupgradeneeded = () => open.result.createObjectStore(STORE);
+    open.onerror = () => reject(open.error);
+    open.onsuccess = () => {
+      const tx = open.result.transaction(STORE, mode);
+      const req = fn(tx.objectStore(STORE));
+      req.onsuccess = () => resolve(req.result as T);
+      req.onerror = () => reject(req.error);
+    };
+  });
+}
+const idbGet = () => idb<StoredBatchUpload | undefined>("readonly", (s) => s.get(BATCH_UPLOAD_STORAGE_KEY));
+const idbSet = (v: StoredBatchUpload) => idb("readwrite", (s) => s.put(v, BATCH_UPLOAD_STORAGE_KEY));
+const idbDel = () => idb("readwrite", (s) => s.delete(BATCH_UPLOAD_STORAGE_KEY));
+
 export function useBatchPersistence() {
   const [hasPendingResults, setHasPendingResults] = useState(false);
   const [pendingResults, setPendingResults] = useState<ConsolidatedResult[]>([]);
 
   // Check for pending results on mount
   useEffect(() => {
+    idbGet().then((data) => {
+      if (!data?.results?.length) return;
+      if (Date.now() - data.timestamp > BATCH_UPLOAD_EXPIRY_HOURS * 3600000) { void idbDel().catch(() => {}); return; }
+      setPendingResults(data.results);
+      setHasPendingResults(true);
+    }).catch(() => {});
     const stored = localStorage.getItem(BATCH_UPLOAD_STORAGE_KEY);
     if (stored) {
       try {
@@ -35,6 +60,7 @@ export function useBatchPersistence() {
 
   const saveResults = useCallback((results: ConsolidatedResult[]) => {
     if (results.length === 0) {
+      void idbDel().catch(() => {});
       try {
         localStorage.removeItem(BATCH_UPLOAD_STORAGE_KEY);
       } catch (e) {
@@ -56,26 +82,19 @@ export function useBatchPersistence() {
 
     // Versão leve: sem as imagens pesadas que estouram a cota do navegador.
     const lightweight = (payload: ConsolidatedResult[]) =>
-      payload.map(({ croppedImage: _c, existingItemImage: _e, realCarPhotos: _p, ...rest }) => rest as ConsolidatedResult);
+      payload.map(({ croppedImage: _c, existingItemImage: _e, realCarPhotos: _p, originalImage: _o, ...rest }) => rest as ConsolidatedResult);
 
+    void idbSet({ results, timestamp: Date.now() }).catch((e) => console.warn("[BatchPersistence] IDB failed:", e));
     try {
-      write(results);
+      write(lightweight(results));
     } catch (e) {
       console.warn("[BatchPersistence] Storage full, retrying without images:", e);
-      try {
-        write(lightweight(results));
-      } catch (e2) {
-        console.warn("[BatchPersistence] Could not persist batch results:", e2);
-        try {
-          localStorage.removeItem(BATCH_UPLOAD_STORAGE_KEY);
-        } catch {
-          /* ignore */
-        }
-      }
+      try { localStorage.removeItem(BATCH_UPLOAD_STORAGE_KEY); } catch { /* ignore */ }
     }
   }, []);
 
   const clearResults = useCallback(() => {
+    void idbDel().catch(() => {});
     localStorage.removeItem(BATCH_UPLOAD_STORAGE_KEY);
     setHasPendingResults(false);
     setPendingResults([]);
