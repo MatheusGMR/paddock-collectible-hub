@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { X, Car, Package, History, ChevronDown, ChevronUp, Trash2, Loader2, ImageOff, TrendingUp } from "lucide-react";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerClose } from "@/components/ui/drawer";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { Button } from "@/components/ui/button";
 import {
@@ -209,7 +208,7 @@ export const CollectibleDetailCard = ({ item, open, onOpenChange, onDelete, canE
             </DrawerClose>
           </DrawerHeader>
           
-          <ScrollArea className="flex-1 px-4">
+          <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain scrollbar-hide px-4 touch-pan-y">
             <div className="py-4 space-y-4">
               {/* Hero Image - square format with object-contain to show full vehicle */}
               <div className="relative aspect-[4/3] rounded-xl overflow-hidden bg-muted">
@@ -400,7 +399,7 @@ export const CollectibleDetailCard = ({ item, open, onOpenChange, onDelete, canE
               {/* Bottom padding for safe area */}
               <div className="h-8" />
             </div>
-          </ScrollArea>
+          </div>
         </DrawerContent>
       </Drawer>
       {canEditPhoto && user && (

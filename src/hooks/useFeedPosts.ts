@@ -5,6 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 
 export interface FeedPost {
   id: string;
+  collectionItemId?: string | null;
   user: {
     id?: string;
     username: string;
@@ -206,6 +207,7 @@ const mapPostsToFeedPosts = async (
 
     return {
       id: post.id,
+      collectionItemId: post.collection_item_id,
       user: {
         id: post.user_id,
         username: profile?.username || "Usuário",

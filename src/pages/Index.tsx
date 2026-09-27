@@ -75,6 +75,7 @@ const Index = () => {
     if (!curiosity) return null;
     return {
       id: `curiosity-${curiosity.id}`,
+      collectionItemId: curiosity.id,
       user: {
         id: undefined,
         username: "Coleções de Destaque",
