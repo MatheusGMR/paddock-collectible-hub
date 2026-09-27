@@ -640,7 +640,7 @@ export const PhotoUploadSheet = ({
         else onOpenChange(val);
       }}
     >
-      <SheetContent side="bottom" className="h-[90vh] p-0 rounded-t-2xl flex flex-col">
+      <SheetContent side="bottom" className="h-[90vh] p-0 rounded-t-2xl flex flex-col" onInteractOutside={(e) => e.preventDefault()} onPointerDownOutside={(e) => e.preventDefault()} onEscapeKeyDown={(e) => e.preventDefault()}>
         <SheetHeader className="px-4 py-3 border-b border-border flex-shrink-0">
           <div className="flex items-center justify-between">
             <SheetTitle className="text-lg font-semibold">
