@@ -1,0 +1,2 @@
+- [x] Abrir o detalhe do colecionável diretamente ao tocar no card da home.
+- [x] Retirar a barra lateral do detalhe, preservando a rolagem vertical.

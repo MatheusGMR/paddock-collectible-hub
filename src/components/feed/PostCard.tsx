@@ -7,6 +7,11 @@ import { trackInteraction } from "@/lib/analytics";
 import { cn } from "@/lib/utils";
 import { likePost, unlikePost, hasLikedPost } from "@/lib/api/notifications";
 import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
+import { CollectibleDetailCard, CollectibleDetailItem } from "@/components/collection/CollectibleDetailCard";
+import { PriceIndexBreakdown } from "@/lib/priceIndex";
+import { RarityContext } from "@/lib/rarityContext";
+import { toast } from "sonner";
 
 // Helper to validate UUID format (prevents API calls with mock post IDs like "1", "2")
 const isValidUUID = (id: string): boolean => {
@@ -17,6 +22,7 @@ const isValidUUID = (id: string): boolean => {
 interface PostCardProps {
   post: {
     id: string;
+    collectionItemId?: string | null;
     user: {
       id?: string;
       username: string;
@@ -55,6 +61,9 @@ export const PostCard = ({ post }: PostCardProps) => {
   const [likeCount, setLikeCount] = useState(post.likes);
   const [saved, setSaved] = useState(false);
   const [isLiking, setIsLiking] = useState(false);
+  const [detailItem, setDetailItem] = useState<CollectibleDetailItem | null>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [openingDetail, setOpeningDetail] = useState(false);
   const navigate = useNavigate();
   const { user } = useAuth();
 
@@ -128,6 +137,41 @@ export const PostCard = ({ post }: PostCardProps) => {
     }
   };
 
+  const openCollectible = async () => {
+    const collectionId = post.collectionItemId;
+    if (!collectionId || openingDetail) return;
+    if (detailItem?.id === collectionId) {
+      setDetailOpen(true);
+      return;
+    }
+    setOpeningDetail(true);
+    try {
+      const { data, error } = await supabase.from("user_collection")
+        .select("id,image_url,original_image_url,user_context,item:items(real_car_brand,real_car_model,real_car_year,historical_fact,collectible_manufacturer,collectible_scale,collectible_series,collectible_origin,collectible_condition,collectible_year,collectible_notes,price_index,rarity_tier,index_breakdown,music_suggestion,music_selection_reason,real_car_photos,estimated_value_min,estimated_value_max)")
+        .eq("id", collectionId).maybeSingle();
+      if (error) throw error;
+      if (!data?.item) {
+        toast.error("Colecionável indisponível");
+        return;
+      }
+      setDetailItem({
+        ...data,
+        user_context: data.user_context as RarityContext | null,
+        item: {
+          ...data.item,
+          index_breakdown: data.item.index_breakdown as unknown as PriceIndexBreakdown | null,
+          real_car_photos: data.item.real_car_photos as string[] | null,
+        },
+      });
+      setDetailOpen(true);
+    } catch (error) {
+      console.error("Error opening collectible:", error);
+      toast.error("Não foi possível abrir o colecionável");
+    } finally {
+      setOpeningDetail(false);
+    }
+  };
+
   // Determine which text to show - prefer historical fact with owner mention, fallback to caption
   const hasHistoricalFact = post.historicalFact && post.item;
   const displayText = hasHistoricalFact
@@ -135,11 +179,19 @@ export const PostCard = ({ post }: PostCardProps) => {
     : post.caption;
 
   return (
-    <article className="border-b border-border animate-fade-in">
+    <>
+    <article
+      className={cn("border-b border-border animate-fade-in", post.collectionItemId && "cursor-pointer")}
+      onClick={(event) => {
+        if ((event.target as HTMLElement).closest("button, a, [role='button'], [data-user-link]")) return;
+        void openCollectible();
+      }}
+    >
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3">
         <div 
           className="flex items-center gap-3 cursor-pointer"
+          data-user-link
           onClick={handleUserClick}
         >
           <Avatar className={cn(
@@ -167,6 +219,7 @@ export const PostCard = ({ post }: PostCardProps) => {
 
       {/* Image */}
       <div className="relative aspect-square w-full bg-muted">
+        {post.collectionItemId && <button type="button" className="absolute inset-0 z-10 w-full" aria-label="Abrir detalhes do colecionável" onClick={() => void openCollectible()} />}
         <img 
           src={post.image} 
           alt={post.caption || "Post"}
@@ -319,5 +372,7 @@ export const PostCard = ({ post }: PostCardProps) => {
         </p>
       </div>
     </article>
+    <CollectibleDetailCard item={detailItem} open={detailOpen} onOpenChange={setDetailOpen} />
+    </>
   );
 };
