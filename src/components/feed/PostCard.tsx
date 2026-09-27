@@ -12,6 +12,8 @@ import { CollectibleDetailCard, CollectibleDetailItem } from "@/components/colle
 import { PriceIndexBreakdown } from "@/lib/priceIndex";
 import { RarityContext } from "@/lib/rarityContext";
 import { toast } from "sonner";
+import { LazyThumb } from "@/components/ui/lazy-thumb";
+import { useQueryClient } from "@tanstack/react-query";
 
 // Helper to validate UUID format (prevents API calls with mock post IDs like "1", "2")
 const isValidUUID = (id: string): boolean => {
@@ -66,6 +68,7 @@ export const PostCard = ({ post }: PostCardProps) => {
   const [openingDetail, setOpeningDetail] = useState(false);
   const navigate = useNavigate();
   const { user } = useAuth();
+  const queryClient = useQueryClient();
 
   // Check if this is a curiosity post (not a real database post)
   const isCuriosity = post.isCuriosity || post.id.startsWith('curiosity-');
@@ -140,10 +143,19 @@ export const PostCard = ({ post }: PostCardProps) => {
   const openCollectible = async () => {
     const collectionId = post.collectionItemId;
     if (!collectionId || openingDetail) return;
-    if (detailItem?.id === collectionId) {
-      setDetailOpen(true);
-      return;
-    }
+    setDetailOpen(true);
+    if (detailItem?.id === collectionId) return;
+    // Present the photographed car immediately while its full details load.
+    setDetailItem({
+      id: collectionId,
+      image_url: post.image,
+      item: {
+        real_car_brand: post.item?.brand || "Colecionável",
+        real_car_model: post.item?.model || "",
+        real_car_year: post.item?.year,
+        collectible_scale: post.item?.scale,
+      },
+    });
     setOpeningDetail(true);
     try {
       const { data, error } = await supabase.from("user_collection")
@@ -152,10 +164,12 @@ export const PostCard = ({ post }: PostCardProps) => {
       if (error) throw error;
       if (!data?.item) {
         toast.error("Colecionável indisponível");
+        setDetailOpen(false);
         return;
       }
       setDetailItem({
         ...data,
+        image_url: data.image_url || post.image,
         user_context: data.user_context as RarityContext | null,
         item: {
           ...data.item,
@@ -218,14 +232,9 @@ export const PostCard = ({ post }: PostCardProps) => {
       </div>
 
       {/* Image */}
-      <div className="relative aspect-square w-full bg-muted">
+      <div className="relative aspect-[4/3] w-full bg-muted overflow-hidden">
         {post.collectionItemId && <button type="button" className="absolute inset-0 z-10 w-full" aria-label="Abrir detalhes do colecionável" onClick={() => void openCollectible()} />}
-        <img 
-          src={post.image} 
-          alt={post.caption || "Post"}
-          className="post-image"
-          loading="lazy"
-        />
+        {post.image && <LazyThumb src={post.image} alt={post.caption || "Colecionável"} className="block h-full w-full object-contain" width={800} />}
       </div>
 
       {/* Actions - hide for curiosity posts */}
@@ -372,7 +381,13 @@ export const PostCard = ({ post }: PostCardProps) => {
         </p>
       </div>
     </article>
-    <CollectibleDetailCard item={detailItem} open={detailOpen} onOpenChange={setDetailOpen} />
+    <CollectibleDetailCard
+      item={detailItem}
+      open={detailOpen}
+      onOpenChange={setDetailOpen}
+      canEditPhoto={!!user && user.id === (post.isCuriosity ? post.originalOwner?.id : post.user.id)}
+      onPhotoUpdated={() => { void queryClient.invalidateQueries({ queryKey: ["feed-posts"] }); }}
+    />
     </>
   );
 };

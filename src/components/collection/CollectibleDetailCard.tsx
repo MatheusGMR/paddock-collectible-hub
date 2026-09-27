@@ -26,6 +26,7 @@ import { CollectiblePhotoEditor } from "@/components/collection/CollectiblePhoto
 import { useAuth } from "@/contexts/AuthContext";
 import { uploadCollectionImage } from "@/lib/uploadImage";
 import { RarityContext } from "@/lib/rarityContext";
+import { useQueryClient } from "@tanstack/react-query";
 
 export interface CollectibleDetailItem {
   id: string;
@@ -107,6 +108,7 @@ const DetailRow = ({ label, value }: { label: string; value: string | null | und
 
 export const CollectibleDetailCard = ({ item, open, onOpenChange, onDelete, canEditPhoto = false, onPhotoUpdated }: CollectibleDetailCardProps) => {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [photoEditorOpen, setPhotoEditorOpen] = useState(false);
   const [photoSource, setPhotoSource] = useState<string | null>(null);
   const [updatedImage, setUpdatedImage] = useState<string | null>(null);
@@ -177,6 +179,11 @@ export const CollectibleDetailCard = ({ item, open, onOpenChange, onDelete, canE
     if (realPhotos && realPhotos.length > 0 && typeof realPhotos[0] === "string") return realPhotos[0];
     return "/placeholder.svg";
   })();
+
+  useEffect(() => {
+    setImageLoaded(false);
+    setImageFailed(false);
+  }, [resolvedImageUrl]);
   
   if (!item?.item) return null;
   
@@ -430,10 +437,18 @@ export const CollectibleDetailCard = ({ item, open, onOpenChange, onDelete, canE
               .update({ image_url: imageUrl, ...(originalUrl ? { original_image_url: originalUrl } : {}) })
               .eq("id", item.id).eq("user_id", user.id).select("id").maybeSingle();
             if (error || !saved) throw error || new Error("Não foi possível atualizar este carrinho.");
+            // Keep existing post snapshots aligned with the collection photo as well.
+            const { error: postError } = await supabase.from("posts")
+              .update({ image_url: imageUrl })
+              .eq("collection_item_id", item.id).eq("user_id", user.id);
+            if (postError) console.warn("Could not synchronize post photo:", postError);
             setUpdatedImage(imageUrl);
             if (originalUrl) setUpdatedOriginal(originalUrl);
             setImageLoaded(false);
             setImageFailed(false);
+            void queryClient.invalidateQueries({ queryKey: ["feed-posts"] });
+            localStorage.removeItem("paddock_curiosity_of_day");
+            window.dispatchEvent(new CustomEvent("collection-photo-updated", { detail: { id: item.id, imageUrl } }));
             onPhotoUpdated?.();
             toast.success("Foto atualizada");
           }}

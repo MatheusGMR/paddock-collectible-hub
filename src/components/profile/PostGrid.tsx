@@ -96,7 +96,7 @@ export const PostGrid = ({ posts, collectionItems = [], onPinToggle, onDelete, o
                   <span className="text-[10px] text-muted-foreground/50">Sem imagem</span>
                 </div>
               ) : (
-                <LazyThumb src={post.image} className="w-full h-full object-cover" onError={() => handleImageError(post.id)} />
+                 <LazyThumb key={post.image} src={post.image} className="w-full h-full object-contain" onError={() => handleImageError(post.id)} />
               )}
               
               {/* Index Badge - top left */}

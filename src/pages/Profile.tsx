@@ -117,7 +117,7 @@ const ProfilePage = () => {
   // Transform collection items to grid format
   const gridPosts = sortedCollection.map((item) => ({
     id: item.id,
-    image: item.image_url || "https://images.unsplash.com/photo-1594787318286-3d835c1d207f?w=300&h=300&fit=crop",
+    image: item.image_url || "",
     priceIndex: item.item?.price_index || null,
     rarityTier: item.item?.rarity_tier || null,
     isPinned: item.is_pinned || false,
