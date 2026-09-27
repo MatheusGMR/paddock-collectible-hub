@@ -8,7 +8,7 @@ interface SplashScreenProps {
 
 export const SplashScreen = ({ 
   onComplete, 
-  minimumDuration = 1800 
+  minimumDuration = 450 
 }: SplashScreenProps) => {
   const [isVisible, setIsVisible] = useState(true);
   const [isFading, setIsFading] = useState(false);
@@ -21,7 +21,7 @@ export const SplashScreen = ({
       setTimeout(() => {
         setIsVisible(false);
         onComplete();
-      }, 400);
+      }, 180);
     }, minimumDuration);
 
     return () => clearTimeout(timer);

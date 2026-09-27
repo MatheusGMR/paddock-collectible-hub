@@ -258,7 +258,7 @@ const SubscriptionFlow = ({ children }: { children: React.ReactNode }) => {
   // Wait for both auth and subscription loading to complete
   // Show blank screen to avoid flashing main content before onboarding
   if (authLoading || subLoading) {
-    return <div className="min-h-screen bg-background" />;
+    return <RouteFallback />;
   }
 
   // Show biometric prompt
