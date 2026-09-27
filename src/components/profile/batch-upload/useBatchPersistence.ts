@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ConsolidatedResult,
   StoredBatchUpload,
@@ -28,15 +28,18 @@ const idbDel = () => idb("readwrite", (s) => s.delete(BATCH_UPLOAD_STORAGE_KEY))
 export function useBatchPersistence() {
   const [hasPendingResults, setHasPendingResults] = useState(false);
   const [pendingResults, setPendingResults] = useState<ConsolidatedResult[]>([]);
+  const idbLoaded = useRef(false);
 
   // Check for pending results on mount
   useEffect(() => {
     idbGet().then((data) => {
       if (!data?.results?.length) return;
+      idbLoaded.current = true;
       if (Date.now() - data.timestamp > BATCH_UPLOAD_EXPIRY_HOURS * 3600000) { void idbDel().catch(() => {}); return; }
       setPendingResults(data.results);
       setHasPendingResults(true);
-    }).catch(() => {});
+    }).catch(() => {}).finally(() => {
+    if (idbLoaded.current) return;
     const stored = localStorage.getItem(BATCH_UPLOAD_STORAGE_KEY);
     if (stored) {
       try {
@@ -56,6 +59,7 @@ export function useBatchPersistence() {
         localStorage.removeItem(BATCH_UPLOAD_STORAGE_KEY);
       }
     }
+    });
   }, []);
 
   const saveResults = useCallback((results: ConsolidatedResult[]) => {
