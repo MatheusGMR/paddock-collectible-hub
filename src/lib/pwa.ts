@@ -65,13 +65,7 @@ export async function registerServiceWorker(): Promise<void> {
   }
 
   try {
-    const hadController = !!navigator.serviceWorker.controller;
-    let reloaded = false;
-    navigator.serviceWorker.addEventListener("controllerchange", () => {
-      if (!hadController || reloaded) return;
-      reloaded = true;
-      window.location.reload();
-    });
+    // Nova versão assume em segundo plano; aplica na próxima abertura, sem recarregar no meio do uso.
     const registration = await navigator.serviceWorker.register(APP_SW_URL);
     console.log("[PWA] Service worker registered:", registration.scope);
   } catch (error) {
