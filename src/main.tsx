@@ -35,6 +35,18 @@ if (storedBuild && storedBuild !== currentBuild) {
   void purgeAndReload();
 }
 
+// Chunk antigo removido após nova publicação: limpa cache e recarrega uma vez.
+window.addEventListener("vite:preloadError", (event) => {
+  event.preventDefault();
+  void purgeAndReload();
+});
+window.addEventListener("unhandledrejection", (event) => {
+  const msg = String((event.reason as Error)?.message || event.reason || "");
+  if (/Importing a module script failed|Failed to fetch dynamically imported module|error loading dynamically imported module/i.test(msg)) {
+    void purgeAndReload();
+  }
+});
+
 window.addEventListener("load", () => {
   void registerServiceWorker();
 });
