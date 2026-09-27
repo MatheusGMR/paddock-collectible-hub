@@ -316,12 +316,8 @@ const AppContent = () => {
   useEffect(() => {
     if (!user || loading) return;
     const warm = () => ["/", "/mercado", "/notifications", "/profile"].forEach(preloadRoute);
-    if ("requestIdleCallback" in window) {
-      const id = window.requestIdleCallback(warm, { timeout: 2500 });
-      return () => window.cancelIdleCallback(id);
-    }
-    const id = window.setTimeout(warm, 1500);
-    return () => window.clearTimeout(id);
+    const id = globalThis.setTimeout(warm, 1200);
+    return () => globalThis.clearTimeout(id);
   }, [user?.id, loading]);
   
   // Skip splash for public-facing routes (listing, store, privacy)

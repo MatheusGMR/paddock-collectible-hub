@@ -10,7 +10,7 @@ import { EditProfileSheet, ProfileData } from "@/components/profile/EditProfileS
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useScreenTips } from "@/hooks/useScreenTips";
-import { getProfile, getCollectionWithIndex, getFollowCounts, getCollectionCount, updateProfile, togglePinItem, deleteFromCollection, Profile, CollectionItemWithIndex } from "@/lib/database";
+import { getProfile, getCollectionWithIndex, getFollowCounts, getCollectionCount, updateProfile, deleteFromCollection } from "@/lib/database";
 import { Loader2 } from "lucide-react";
 
 const ProfilePage = () => {
