@@ -58,7 +58,7 @@ REGRAS:
 
 Fabricantes: HOT WHEELS, MATCHBOX, GREENLIGHT, M2, MAJORETTE, TOMICA, MINI GT, AUTO WORLD, JOHNNY LIGHTNING, MAISTO, JADA, WELLY.
 
-Para cada (máx 7): boundingBox{x,y,width,height %}, realCar{brand,model,year,historicalFact}, collectible{manufacturer,scale,year,origin,series,condition,color,notes}, priceIndex{score,tier,breakdown}, musicSuggestion, musicSelectionReason, musicListeningTip.
+Para cada (máx 7): boundingBox{x,y,width,height %}, realCar{brand,model,year,historicalFact}, collectible{manufacturer,scale,year,origin,series,condition,packaging,color,notes}, priceIndex{score,tier,breakdown}, musicSuggestion, musicSelectionReason, musicListeningTip.
 
 historicalFact: 2-3 frases fascinantes sobre o carro real (bastidores, recordes, cultura pop, curiosidades).
 
@@ -70,7 +70,8 @@ priceIndex (Brasil, 100pts):
 Breakdown com "score", "max", "reason" para CADA:
 - rarity (máx 35): tiragem/produção (limitada, numerada, chase, STH, unidade única = alto; mainline de varejo = baixo, máx 12)
 - exclusivity (máx 15): edição especial/licenciada/homenagem (celebridades, filmes, pilotos) e importado sem venda no Brasil
-- condition (máx 15): estado visual e embalagem
+- condition (máx 15): estado visual e EMBALAGEM. Observe se o carrinho está dentro da embalagem original (blister/cartela ou caixa). Lacrado na embalagem original = 13-15 (cartela sem amassados = 15); embalagem aberta/danificada = 8-12; solto sem embalagem = conforme pintura/rodas, máx 11. Cite a embalagem no reason.
+- Na embalagem, leia a cartela/caixa: série, número (ex: 5/10), "Treasure Hunt", "Premium", logotipos de licença — use isso em rarity e exclusivity. Peça lacrada de série limitada/antiga soma +2 a +5 em rarity.
 - manufacturer (máx 15): reputação da marca
 - scale (máx 10): raridade da escala
 - age (máx 10): idade e impacto
@@ -84,6 +85,7 @@ Formato: marketValue: {"min": N, "max": N, "currency": "BRL", "source": "descri�
 - source: ex: "Baseado em OLX, Mercado Livre e feiras"
 - confidence: alta se dados abundantes, média se estimativa razoável, baixa se poucos dados
 condition: "Excelente"|"Muito Bom"|"Bom"|"Regular"|"Ruim"
+packaging: "Lacrado na embalagem"|"Embalagem aberta"|"Sem embalagem"
 origin: "Brasil"|"EUA"|"China"|"Japão"|"Tailândia"|etc.
 
 ---
