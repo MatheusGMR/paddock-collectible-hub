@@ -1,3 +1,4 @@
+import { LazyThumb } from "@/components/ui/lazy-thumb";
 import { useState } from "react";
 import { Pin, ImageOff } from "lucide-react";
 import { CollectibleDetailCard, CollectibleDetailItem } from "@/components/collection/CollectibleDetailCard";
@@ -95,13 +96,7 @@ export const PostGrid = ({ posts, collectionItems = [], onPinToggle, onDelete, o
                   <span className="text-[10px] text-muted-foreground/50">Sem imagem</span>
                 </div>
               ) : (
-                <img 
-                  src={post.image} 
-                  alt=""
-                  className="w-full h-full object-cover"
-                  loading="lazy"
-                  onError={() => handleImageError(post.id)}
-                />
+                <LazyThumb src={post.image} className="w-full h-full object-cover" onError={() => handleImageError(post.id)} />
               )}
               
               {/* Index Badge - top left */}
