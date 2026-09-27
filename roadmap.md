@@ -2,5 +2,5 @@
 - [x] Retirar a barra lateral do detalhe, preservando a rolagem vertical.
 - [x] Antecipar a abertura das telas principais sem carregar a câmera antecipadamente.
 - [x] Reutilizar dados recentes do perfil e do mercado entre telas, com atualização segura.
-- [ ] Ajustar as imagens da home ao espaço disponível e abrir detalhes com um toque.
-- [ ] Mostrar a foto do carrinho no detalhe e refletir ajustes nas imagens grandes e reduzidas.
+- [x] Ajustar as imagens da home ao espaço disponível e abrir detalhes com um toque.
+- [x] Mostrar a foto do carrinho no detalhe e refletir ajustes nas imagens grandes e reduzidas.
