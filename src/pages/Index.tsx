@@ -9,7 +9,6 @@ import { useFeedPosts, FeedPost } from "@/hooks/useFeedPosts";
 import { useFeaturedCuriosity } from "@/hooks/useFeaturedCuriosity";
 import { useNewsFeed } from "@/hooks/useNewsFeed";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
-import { useScreenTips } from "@/hooks/useScreenTips";
 import { Loader2, Inbox } from "lucide-react";
 import { NewsArticle } from "@/lib/api/news";
 
@@ -37,7 +36,6 @@ const Index = () => {
     threshold: 80,
   });
   
-  useScreenTips("feed", 800);
 
   // Stable refs for observer
   const hasMoreRef = useRef(hasMore);
