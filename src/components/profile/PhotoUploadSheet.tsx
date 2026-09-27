@@ -667,6 +667,7 @@ export const PhotoUploadSheet = ({
       setAddedIndices(new Set());
       setSkippedIndices(new Set());
     }
+    try { localStorage.removeItem("paddock_batch_review_active"); } catch { /* ignore */ }
     onOpenChange(false);
   }, [consolidatedResults, isProcessing, isCounting, saveResults, onOpenChange, toast, addedIndices, skippedIndices, mediaQueue]);
 

@@ -322,7 +322,10 @@ export const ScannerView = () => {
     if (useCameraPreview) void cameraPreview.setZoom(zoomLevel);
   }, [zoomLevel, useCameraPreview, cameraPreview.setZoom]);
   // Batch upload sheet for multiple photo selection
-  const [showBatchUpload, setShowBatchUpload] = useState(false);
+  const [showBatchUpload, setShowBatchUpload] = useState(() => {
+    // Reabre a revisão múltipla se a tela foi recarregada no meio do fluxo.
+    try { return localStorage.getItem("paddock_batch_review_active") === "1"; } catch { return false; }
+  });
   // Post dialog state for "Add & Post" flow
   const [showPostDialog, setShowPostDialog] = useState(false);
   const [postImageBase64, setPostImageBase64] = useState<string | undefined>();
