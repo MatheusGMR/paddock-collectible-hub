@@ -88,7 +88,7 @@ export const PostGrid = ({ posts, collectionItems = [], onPinToggle, onDelete, o
             <button 
               key={post.id}
               onClick={() => handlePostClick(post.id)}
-              className="aspect-square bg-muted overflow-hidden hover:opacity-90 transition-opacity active:scale-[0.98] relative group"
+              className="aspect-[4/3] bg-muted overflow-hidden hover:opacity-90 transition-opacity active:scale-[0.98] relative group"
             >
               {showPlaceholder ? (
                 <div className="w-full h-full flex flex-col items-center justify-center bg-muted/80">
@@ -96,7 +96,7 @@ export const PostGrid = ({ posts, collectionItems = [], onPinToggle, onDelete, o
                   <span className="text-[10px] text-muted-foreground/50">Sem imagem</span>
                 </div>
               ) : (
-                 <LazyThumb key={post.image} src={post.image} className="w-full h-full object-cover" onError={() => handleImageError(post.id)} />
+                 <LazyThumb key={post.image} src={post.image} resize="contain" className="w-full h-full object-contain" onError={() => handleImageError(post.id)} />
               )}
               
               {/* Index Badge - top left */}
