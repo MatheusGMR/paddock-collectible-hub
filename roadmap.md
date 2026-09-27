@@ -1,4 +1,4 @@
 - [x] Abrir o detalhe do colecionável diretamente ao tocar no card da home.
 - [x] Retirar a barra lateral do detalhe, preservando a rolagem vertical.
-- [ ] Antecipar a abertura das telas principais sem carregar a câmera antecipadamente.
-- [ ] Reutilizar dados recentes do perfil e do mercado entre telas, com atualização segura.
+- [x] Antecipar a abertura das telas principais sem carregar a câmera antecipadamente.
+- [x] Reutilizar dados recentes do perfil e do mercado entre telas, com atualização segura.

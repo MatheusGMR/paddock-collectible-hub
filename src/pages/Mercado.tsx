@@ -1,4 +1,5 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { Search, ShoppingBag, Star, Car, Package } from "lucide-react";
 import { useDebounce } from "@/hooks/useDebounce";
@@ -74,19 +75,14 @@ const Mercado = () => {
   const navigate = useNavigate();
   const { t } = useLanguage();
   const [searchQuery, setSearchQuery] = useState("");
-  const [listings, setListings] = useState<MarketplaceListing[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [hasMore, setHasMore] = useState(true);
-  const [offset, setOffset] = useState(0);
   const debouncedSearch = useDebounce(searchQuery, 400);
 
   const LIMIT = 20;
-
-  const fetchListings = useCallback(async (reset = false) => {
-    setIsLoading(true);
-    const currentOffset = reset ? 0 : offset;
-
-    try {
+  const { data: listings = [], isPending: isLoading, isFetching } = useQuery({
+    queryKey: ["marketplace-listings", debouncedSearch],
+    staleTime: 30_000,
+    refetchOnMount: "always",
+    queryFn: async (): Promise<MarketplaceListing[]> => {
       let query = supabase
         .from("listings")
         .select(`
@@ -102,7 +98,7 @@ const Mercado = () => {
         `)
         .eq("status", "active")
         .order("created_at", { ascending: false })
-        .range(currentOffset, currentOffset + LIMIT - 1);
+        .range(0, LIMIT - 1);
 
       if (debouncedSearch) {
         query = query.ilike("title", `%${debouncedSearch}%`);
@@ -112,7 +108,7 @@ const Mercado = () => {
 
       if (error) throw error;
 
-      const userIds = [...new Set((data || []).filter(l => l.user_id).map(l => l.user_id!))];
+      const userIds = [...new Set((data || []).filter(l => l.user_id).map(l => l.user_id).filter((id): id is string => !!id))];
       let profilesMap = new Map<string, { username: string; avatar_url: string | null; city: string | null }>();
 
       if (userIds.length > 0) {
@@ -130,31 +126,9 @@ const Mercado = () => {
         seller: l.user_id ? profilesMap.get(l.user_id) || null : null,
       }));
 
-      if (reset) {
-        setListings(mapped);
-        setOffset(LIMIT);
-      } else {
-        setListings(prev => [...prev, ...mapped]);
-        setOffset(prev => prev + LIMIT);
-      }
-
-      setHasMore((data || []).length >= LIMIT);
-    } catch (error) {
-      console.error("Error fetching marketplace listings:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [offset, debouncedSearch]);
-
-  useEffect(() => {
-    fetchListings(true);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useEffect(() => {
-    fetchListings(true);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debouncedSearch]);
+      return mapped;
+    },
+  });
 
   return (
     <div className="min-h-screen">
@@ -214,7 +188,7 @@ const Mercado = () => {
               ))}
             </div>
 
-            {isLoading && listings.length > 0 && (
+            {isFetching && listings.length > 0 && (
               <div className="grid grid-cols-2 gap-3 mt-3">
                 {Array.from({ length: 2 }).map((_, i) => (
                   <div key={i} className="space-y-2">
