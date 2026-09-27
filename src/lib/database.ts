@@ -1,6 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { PriceIndexBreakdown } from "./priceIndex";
 import { Json } from "@/integrations/supabase/types";
+import { RarityContext } from "@/lib/rarityContext";
 
 export interface Profile {
   id: string;
@@ -337,7 +338,8 @@ export const addToCollection = async (
   userId: string,
   itemData: Omit<Item, "id" | "created_at"> & { estimated_value_min?: number | null; estimated_value_max?: number | null },
   imageUrl?: string,
-  originalImageUrl?: string
+  originalImageUrl?: string,
+  userContext?: RarityContext
 ): Promise<CollectionItem> => {
   // First create the item
   const { data: item, error: itemError } = await supabase
@@ -376,6 +378,7 @@ export const addToCollection = async (
       item_id: item.id,
       image_url: imageUrl,
       original_image_url: originalImageUrl,
+      user_context: (userContext || {}) as Json,
     })
     .select()
     .single();

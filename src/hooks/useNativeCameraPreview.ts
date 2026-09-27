@@ -17,38 +17,9 @@ export const useNativeCameraPreview = () => {
 
   const getPreviewSize = useCallback(() => {
     const platform = Capacitor.getPlatform();
-    const pixelRatio = window.devicePixelRatio || 1;
-    const viewportWidth = Math.max(
-      window.innerWidth || 0,
-      window.visualViewport?.width || 0,
-      document.documentElement.clientWidth || 0,
-      390
-    );
-    const viewportHeight = Math.max(
-      window.innerHeight || 0,
-      window.visualViewport?.height || 0,
-      document.documentElement.clientHeight || 0,
-      844
-    );
-
-    // Some iOS WebViews expose screen dimensions in physical pixels while the
-    // native preview API expects CSS points. Normalize them before comparing.
-    const normalizeScreenDimension = (value: number, viewportValue: number) =>
-      value > viewportValue * 1.5 && pixelRatio > 1 ? value / pixelRatio : value;
-
-    const width = Math.round(
-      Math.max(
-        viewportWidth,
-        normalizeScreenDimension(screen.width || 0, viewportWidth)
-      )
-    );
-    const height = Math.round(
-      Math.max(
-        viewportHeight,
-        normalizeScreenDimension(screen.height || 0, viewportHeight),
-        normalizeScreenDimension(screen.availHeight || 0, viewportHeight)
-      )
-    );
+    // Native preview coordinates are WebView points, never physical screen pixels.
+    const width = Math.round(window.innerWidth || document.documentElement.clientWidth);
+    const height = Math.round(window.innerHeight || document.documentElement.clientHeight);
 
     return {
       width,
@@ -100,8 +71,7 @@ export const useNativeCameraPreview = () => {
         className: "camera-preview",
         disableAudio: true,
         storeToFile: false,
-        // Let the native plugin be the single sizing authority. It fits the
-        // complete portrait 9:16 frame without enlarging it beyond the screen.
+        // Request a 16:9 camera session; size the preview separately to the full viewport.
         aspectRatio: "16:9",
         initialZoomLevel: 1,
         positioning: "center",
@@ -114,6 +84,14 @@ export const useNativeCameraPreview = () => {
       const startedBounds = await CameraPreview.start(options);
       console.log("[CameraPreview] Started bounds:", JSON.stringify(startedBounds));
 
+      // The plugin fits a 9:16 preview inside tall iPhones by default, leaving
+      // bands. Fill the viewport once with its native aspect-fill layer instead.
+      if (width > 0 && height > 0) {
+        // Explicit dimensions must differ from UIScreen bounds: otherwise the
+        // plugin runs its 9:16 contain calculation again and leaves bands.
+        // One extra point is imperceptible but bypasses that second fit.
+        await CameraPreview.setPreviewSize({ x: -1, y: -1, width: width + 1, height: height + 1 });
+      }
       await CameraPreview.setZoom({ level: 1, ramp: false, autoFocus: true });
 
       isStartedRef.current = true;
@@ -210,6 +188,15 @@ export const useNativeCameraPreview = () => {
     }
   }, [isNative]);
 
+  const setZoom = useCallback(async (level: number): Promise<void> => {
+    if (!isNative || !isStartedRef.current) return;
+    try {
+      await CameraPreview.setZoom({ level, ramp: false, autoFocus: false });
+    } catch (error) {
+      console.warn("[CameraPreview] Could not set zoom:", error);
+    }
+  }, [isNative]);
+
   return useMemo(
     () => ({
       isNative,
@@ -218,10 +205,11 @@ export const useNativeCameraPreview = () => {
       capture,
       flip,
       setFocus,
+      setZoom,
       get isStarted() {
         return isStartedRef.current;
       },
     }),
-    [isNative, start, stop, capture, flip, setFocus]
+    [isNative, start, stop, capture, flip, setFocus, setZoom]
   );
 };
