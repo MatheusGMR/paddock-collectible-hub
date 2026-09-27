@@ -376,7 +376,7 @@ const ItemRow = ({ item, onClick }: { item: CollectibleDetailItem; onClick: () =
       {/* Thumbnail */}
       <div className="h-14 w-14 rounded-lg bg-muted overflow-hidden flex-shrink-0 flex items-center justify-center">
         {hasValidImage ? (
-          <LazyThumb src={item.image_url!} width={160} alt={item.item?.real_car_model || "Item"} className="w-full h-full object-cover" />
+          <LazyThumb src={item.image_url!} width={160} resize="contain" alt={item.item?.real_car_model || "Item"} className="w-full h-full object-contain" />
         ) : (
           <span className="text-[10px] text-muted-foreground/50">Sem img</span>
         )}

@@ -6,3 +6,4 @@
 - [x] Mostrar a foto do carrinho no detalhe e refletir ajustes nas imagens grandes e reduzidas.
 - [x] Impedir que a revisão múltipla feche durante adições sequenciais.
 - [x] Fazer fotos de colecionáveis preencherem cards e miniaturas sem faixas.
+- [x] Mostrar no perfil o enquadramento 4:3 inteiro das fotos ajustadas, sem recortar o carro.

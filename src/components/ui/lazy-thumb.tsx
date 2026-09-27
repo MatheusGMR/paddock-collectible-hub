@@ -2,9 +2,9 @@ import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 
 /** Converte URL pública do storage em miniatura redimensionada (com fallback ao original). */
-export function thumbUrl(src: string, width = 400) {
+export function thumbUrl(src: string, width = 400, resize: "cover" | "contain" = "cover") {
   if (!src.includes("/storage/v1/object/public/")) return src;
-  return `${src.replace("/storage/v1/object/public/", "/storage/v1/render/image/public/")}${src.includes("?") ? "&" : "?"}width=${width}&quality=60&resize=cover`;
+  return `${src.replace("/storage/v1/object/public/", "/storage/v1/render/image/public/")}${src.includes("?") ? "&" : "?"}width=${width}&quality=60&resize=${resize}`;
 }
 
 interface Props {
@@ -12,10 +12,11 @@ interface Props {
   alt?: string;
   className?: string;
   width?: number;
+  resize?: "cover" | "contain";
   onError?: () => void;
 }
 
-export function LazyThumb({ src, alt = "", className, width = 400, onError }: Props) {
+export function LazyThumb({ src, alt = "", className, width = 400, resize = "cover", onError }: Props) {
   const [useOriginal, setUseOriginal] = useState(false);
   const [loaded, setLoaded] = useState(false);
   useEffect(() => {
@@ -24,12 +25,12 @@ export function LazyThumb({ src, alt = "", className, width = 400, onError }: Pr
   }, [src]);
   return (
     <img
-      src={useOriginal ? src : thumbUrl(src, width)}
+      src={useOriginal ? src : thumbUrl(src, width, resize)}
       alt={alt}
       loading="lazy"
       decoding="async"
       onLoad={() => setLoaded(true)}
-      onError={() => { if (!useOriginal && thumbUrl(src, width) !== src) setUseOriginal(true); else onError?.(); }}
+      onError={() => { if (!useOriginal && thumbUrl(src, width, resize) !== src) setUseOriginal(true); else onError?.(); }}
       className={cn("transition-opacity duration-300", loaded ? "opacity-100" : "opacity-0", className)}
     />
   );
