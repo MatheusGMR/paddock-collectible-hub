@@ -227,7 +227,11 @@ export const SettingsSection = ({ onSignOut, isSeller }: SettingsSectionProps) =
           </div>
           {!pushSupported && !Capacitor.isNativePlatform() && (
             <div className="px-4 pb-4">
-              <p className="text-xs text-amber-500">Push não suportado neste navegador</p>
+              <p className="text-xs text-muted-foreground">
+                {/iPhone|iPad/.test(navigator.userAgent)
+                  ? "No iPhone, toque em Compartilhar → Adicionar à Tela de Início e abra o Paddock por lá para receber notificações."
+                  : "Notificações não são suportadas neste navegador."}
+              </p>
             </div>
           )}
         </div>
