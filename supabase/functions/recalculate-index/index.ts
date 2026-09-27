@@ -8,7 +8,7 @@ const PROMPT = `Você avalia miniaturas colecionáveis (diecast) e devolve um í
 Critérios (score, max, reason em cada):
 - rarity (máx 35): tiragem/produção. Unidade única, numerada, chase, Super Treasure Hunt, edição de convenção = alto. Mainline comum de varejo = no máximo 12.
 - exclusivity (máx 15): edição especial, licenciada ou homenagem (celebridades como Elvis Presley, filmes, pilotos); importado sem venda oficial no Brasil pontua mais.
-- condition (máx 15): estado informado (sem informação = 10).
+- condition (máx 15): estado e embalagem informados. Lacrado na embalagem original = 13-15; embalagem aberta = 8-12; sem embalagem máx 11; sem informação = 10. Peça lacrada de série limitada/antiga soma +2 a +5 em rarity.
 - manufacturer (máx 15): reputação/acabamento do fabricante.
 - scale (máx 10): raridade da escala.
 - age (máx 10): idade e relevância histórica.

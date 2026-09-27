@@ -12,6 +12,7 @@ import {
   getTierColor,
   getCriteriaLabel,
   getScorePercentage,
+  normalizeBreakdown,
 } from "@/lib/priceIndex";
 
 interface IndexBreakdownProps {
@@ -19,7 +20,7 @@ interface IndexBreakdownProps {
   onOpenChange: (open: boolean) => void;
   score: number;
   tier: string;
-  breakdown: PriceIndexBreakdown;
+  breakdown: PriceIndexBreakdown | unknown;
 }
 
 export const IndexBreakdown = ({
@@ -27,8 +28,9 @@ export const IndexBreakdown = ({
   onOpenChange,
   score,
   tier,
-  breakdown,
+  breakdown: rawBreakdown,
 }: IndexBreakdownProps) => {
+  const breakdown = (normalizeBreakdown(rawBreakdown) ?? {}) as Partial<PriceIndexBreakdown>;
   // Only show criteria that exist in the breakdown (origin is now deprecated)
   const criteriaOrder: (keyof PriceIndexBreakdown)[] = [
     "rarity",
@@ -75,12 +77,18 @@ export const IndexBreakdown = ({
                   </span>
                 </div>
                 <Progress value={percentage} className="h-2" />
-                <p className="text-xs text-foreground-secondary">
-                  {item.reason}
-                </p>
+                {item.reason && (
+                  <p className="text-xs text-foreground-secondary">
+                    {item.reason}
+                  </p>
+                )}
               </div>
             );
           })}
+
+          {!criteriaOrder.some((k) => breakdown[k]) && (
+            <p className="text-sm text-foreground-secondary">Critérios ainda não calculados para este item. Use "Recalcular" no detalhe do colecionável.</p>
+          )}
 
           <div className="mt-6 p-4 bg-muted rounded-lg">
             <p className="text-xs text-foreground-secondary leading-relaxed">

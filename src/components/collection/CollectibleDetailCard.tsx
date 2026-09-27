@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { IndexBadge } from "@/components/index/IndexBadge";
 import { IndexBreakdown } from "@/components/index/IndexBreakdown";
-import { PriceIndexBreakdown, getRarityTier, formatBRL } from "@/lib/priceIndex";
+import { PriceIndexBreakdown, getRarityTier, formatBRL, normalizeBreakdown } from "@/lib/priceIndex";
 import { MusicPlayer } from "@/components/scanner/MusicPlayer";
 import { RealCarPhotoCarousel } from "@/components/collection/RealCarPhotoCarousel";
 import { cn } from "@/lib/utils";
@@ -190,7 +190,7 @@ export const CollectibleDetailCard = ({ item, open, onOpenChange, onDelete, canE
   const { item: data } = item;
   const score = override?.score ?? data.price_index ?? 0;
   const tier = override ? getRarityTier(override.score) : (data.rarity_tier ?? getRarityTier(score));
-  const breakdown = override?.breakdown ?? data.index_breakdown ?? null;
+  const breakdown = normalizeBreakdown(override?.breakdown ?? data.index_breakdown ?? null);
 
   const handleDelete = async () => {
     if (!onDelete) return;

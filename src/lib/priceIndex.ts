@@ -119,3 +119,23 @@ export const getConfidenceColor = (confidence: string): string => {
   };
   return colors[confidence] || 'text-muted-foreground';
 };
+
+const CRITERIA_MAX: Record<string, number> = { rarity: 35, exclusivity: 15, condition: 15, manufacturer: 15, scale: 10, age: 10 };
+
+/** Accepts any stored breakdown shape (object, numbers only, JSON string) and returns score/max/reason per criterion. */
+export const normalizeBreakdown = (raw: unknown): PriceIndexBreakdown | null => {
+  let src = raw;
+  if (typeof src === 'string') { try { src = JSON.parse(src); } catch { return null; } }
+  if (!src || typeof src !== 'object' || Array.isArray(src)) return null;
+  const out: Record<string, IndexBreakdownItem> = {};
+  for (const [k, v] of Object.entries(src as Record<string, unknown>)) {
+    const defMax = CRITERIA_MAX[k] ?? 10;
+    if (typeof v === 'number' || (typeof v === 'string' && v.trim() !== '' && !isNaN(Number(v)))) {
+      out[k] = { score: Number(v), max: defMax, reason: '' };
+    } else if (v && typeof v === 'object') {
+      const o = v as Record<string, unknown>;
+      out[k] = { score: Number(o.score) || 0, max: Number(o.max) || defMax, reason: typeof o.reason === 'string' ? o.reason : '' };
+    }
+  }
+  return out.rarity || Object.keys(out).length ? (out as unknown as PriceIndexBreakdown) : null;
+};
