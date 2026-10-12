@@ -37,6 +37,7 @@ const ListingDetails = lazy(() => import("./pages/ListingDetails"));
 const PaymentSuccess = lazy(() => import("./pages/PaymentSuccess"));
 const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy"));
 const Install = lazy(() => import("./pages/Install"));
+const Landing = lazy(() => import("./pages/Landing"));
 const PaymentCanceled = lazy(() => import("./pages/PaymentCanceled"));
 const Seller = lazy(() => import("./pages/Seller"));
 const SellerMobile = lazy(() => import("./pages/SellerMobile"));
@@ -260,7 +261,7 @@ const SubscriptionFlow = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   // Bypass subscription flow for admin and auth routes
-  const bypassRoutes = ["/admin", "/auth", "/privacy", "/instalar", "/payment-success", "/payment-canceled", "/subscription-success", "/seller", "/store", "/listing"];
+  const bypassRoutes = ["/admin", "/auth", "/privacy", "/instalar", "/conheca", "/payment-success", "/payment-canceled", "/subscription-success", "/seller", "/store", "/listing"];
   if (bypassRoutes.some(r => location.pathname.startsWith(r))) {
     return <>{children}</>;
   }
@@ -336,7 +337,7 @@ const AppContent = () => {
   }, [user?.id, loading]);
   
   // Skip splash for public-facing routes (listing, store, privacy)
-  const publicViewRoutes = ["/listing", "/store", "/privacy", "/instalar"];
+  const publicViewRoutes = ["/listing", "/store", "/privacy", "/instalar", "/conheca"];
   const isPublicView = publicViewRoutes.some(r => location.pathname.startsWith(r));
   
   const [showSplash, setShowSplash] = useState(!isPublicView);
@@ -382,7 +383,7 @@ const AppContent = () => {
       setInitialAuthChecked(true);
       if (!user) {
         // Allow public routes without auth
-        const publicRoutes = ["/auth", "/store", "/listing", "/privacy", "/instalar"];
+        const publicRoutes = ["/auth", "/store", "/listing", "/privacy", "/instalar", "/conheca"];
         const isPublicRoute = publicRoutes.some(r => location.pathname.startsWith(r));
         if (!isPublicRoute && !hasOAuthCallbackParams) {
           navigate("/auth", { replace: true });
@@ -394,7 +395,7 @@ const AppContent = () => {
   // Handle sign out - redirect to auth when user becomes null AFTER initial check
   useEffect(() => {
     if (initialAuthChecked && !loading && !user) {
-      const publicRoutes = ["/auth", "/store", "/listing", "/privacy", "/instalar"];
+      const publicRoutes = ["/auth", "/store", "/listing", "/privacy", "/instalar", "/conheca"];
       const isPublicRoute = publicRoutes.some(r => location.pathname.startsWith(r));
       if (!isPublicRoute && !hasOAuthCallbackParams) {
         navigate("/auth", { replace: true });
@@ -416,6 +417,7 @@ const AppContent = () => {
             <Route path="/user/:userId" element={<UserProfile />} />
             <Route path="/privacy" element={<PrivacyPolicy />} />
             <Route path="/instalar" element={<Install />} />
+            <Route path="/conheca" element={<Landing />} />
             <Route path="/seller/*" element={<Seller />} />
             <Route path="/store/:sellerId" element={<SellerStorefront />} />
             
