@@ -1,3 +1,10 @@
+import { admin, sendToUsers } from '../_shared/push.ts';
+
+async function pushLaunch(p: { title: string; body: string; url: string; image?: string | null }) {
+  const { data } = await admin().rpc('get_push_audience', { p_audience: { type: 'topic', topic: 'launches' } });
+  return sendToUsers((data || []).map((r: any) => r.user_id), { ...p, tag: 'launches' }, { triggerKey: 'news_launch' });
+}
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -130,52 +137,28 @@ Deno.serve(async (req) => {
       // Group multiple launches into one notification if many
       if (launchArticles.length >= 3) {
         // Send summary notification
-        const sendPushRes = await fetch(
-          `${supabaseUrl}/functions/v1/send-push`,
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${anonKey}`,
-            },
-            body: JSON.stringify({
+        const pushResult = await pushLaunch({
               title: '🚗 Novos Lançamentos!',
               body: `${launchArticles.length} novidades para você conferir`,
               url: '/mercado',
-              topic: 'launches',
-            }),
-          }
-        );
-        
-        if (sendPushRes.ok) {
-          const pushResult = await sendPushRes.json();
-          pushSent = pushResult.sent || 0;
+              
+            });
+          {
+            pushSent = pushResult.sent || 0;
           console.log(`📲 Summary push sent to ${pushSent} users`);
         }
       } else {
         // Send individual notifications for each launch
         for (const article of launchArticles) {
-          const sendPushRes = await fetch(
-            `${supabaseUrl}/functions/v1/send-push`,
-            {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${anonKey}`,
-              },
-              body: JSON.stringify({
+          const pushResult = await pushLaunch({
                 title: '🆕 Novo Lançamento',
                 body: article.title.substring(0, 100),
                 image: article.image_url,
                 url: article.source_url,
-                topic: 'launches',
-                articleId: article.id,
-              }),
-            }
-          );
-          
-          if (sendPushRes.ok) {
-            const pushResult = await sendPushRes.json();
+                
+                
+              });
+          {
             pushSent += pushResult.sent || 0;
           }
         }

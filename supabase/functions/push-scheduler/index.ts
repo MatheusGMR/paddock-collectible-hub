@@ -43,7 +43,7 @@ Deno.serve(async (req) => {
       const t: any = T.get(key);
       if (!t || !uid) return;
       if (!bypass && (quiet || !(await underCap(uid)))) return;
-      const r = await sendToUsers([uid], { title: fill(t.title, vars), body: fill(t.body, vars), url: t.url, tag: key }, { triggerKey: key, refKey: ref });
+      const r = await sendToUsers([uid], { title: fill(t.title, vars), body: fill(t.body, vars), url: t.url, tag: key }, { triggerKey: key, refKey: ref, inApp: !["like", "comment", "follow", "message", "sale", "shipped", "new_listing"].includes(key) });
       if (r.sent) {
         await db.from("push_triggers").update({ sent_count: t.sent_count + r.sent }).eq("key", key);
         t.sent_count += r.sent;
