@@ -461,7 +461,7 @@ const App = () => {
                   <AppContent />
                   <SpotlightOverlay />
                   <ChallengeCelebrationModal />
-                  {!location.pathname.startsWith("/instalar") && <PushPermissionPrompt />}
+                  <PushPermissionPrompt />
                 </BrowserRouter>
               </TooltipProvider>
             </GuidedTipsProvider>
