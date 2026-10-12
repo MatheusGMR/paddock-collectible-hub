@@ -156,14 +156,8 @@ export async function createNotification(params: {
         break;
     }
 
-    await supabase.functions.invoke("send-push", {
-      body: {
-        userId: params.userId,
-        title: pushTitle,
-        body: pushBody,
-        url: "/notifications",
-      },
-    });
+    // Push delivery for like/comment/follow is handled server-side by push-scheduler.
+    void pushTitle; void pushBody;
   } catch (pushError) {
     console.error("Error sending push notification:", pushError);
     // Don't fail the notification creation if push fails
