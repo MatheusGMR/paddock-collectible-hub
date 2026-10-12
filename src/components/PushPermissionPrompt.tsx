@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { Bell, Loader2 } from "lucide-react";
+import { useLocation } from "react-router-dom";
+import { Bell } from "lucide-react";
 import { Capacitor } from "@capacitor/core";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
@@ -11,17 +12,18 @@ const KEY = "paddock_push_prompted";
 export const PushPermissionPrompt = () => {
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
-  const [busy, setBusy] = useState(false);
+  const { pathname } = useLocation();
 
   useEffect(() => {
     if (!user?.id || localStorage.getItem(KEY) || !isPushSupported()) return;
     let cancel = false;
     (async () => {
-      if (await isSubscribedToPush()) return localStorage.setItem(KEY, "1");
+      const withTimeout = <T,>(p: Promise<T>, fb: T) => Promise.race([p, new Promise<T>((r) => setTimeout(() => r(fb), 4000))]);
+      if (await withTimeout(isSubscribedToPush(), false)) return localStorage.setItem(KEY, "1");
       const perm = getPushPermission();
       if (perm === "denied") return localStorage.setItem(KEY, "1");
       if (perm === "granted") {
-        await subscribeToPush(user.id);
+        void subscribeToPush(user.id).catch(() => undefined);
         return localStorage.setItem(KEY, "1");
       }
       const t = setTimeout(() => !cancel && setOpen(true), 1200);
@@ -30,14 +32,14 @@ export const PushPermissionPrompt = () => {
     return () => { cancel = true; };
   }, [user?.id]);
 
-  if (!open || !user) return null;
+  // Nunca sobrepor a câmera: o aviso espera o usuário sair do scanner.
+  if (!open || !user || pathname.startsWith("/scanner")) return null;
 
   const close = () => { localStorage.setItem(KEY, "1"); setOpen(false); };
-  const enable = async () => {
-    setBusy(true);
-    try { await subscribeToPush(user.id); } catch { /* ignore */ }
-    setBusy(false);
+  // Fecha na hora; a inscrição segue em segundo plano para nunca travar a tela.
+  const enable = () => {
     close();
+    void subscribeToPush(user.id).catch(() => undefined);
   };
 
   return (
@@ -50,8 +52,8 @@ export const PushPermissionPrompt = () => {
         <p className="mt-2 text-sm text-muted-foreground">
           Receba curtidas, mensagens, vendas, lançamentos e novidades no seu {Capacitor.isNativePlatform() ? "iPhone" : "celular"}.
         </p>
-        <Button className="mt-5 w-full rounded-xl" onClick={enable} disabled={busy}>
-          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Permitir todas"}
+        <Button className="mt-5 w-full rounded-xl" onClick={enable}>
+          Permitir todas
         </Button>
         <button className="mt-3 text-sm text-muted-foreground" onClick={close}>Agora não</button>
       </div>
