@@ -8,6 +8,7 @@ import { BrowserRouter, Routes, Route, useLocation, useNavigate } from "react-ro
 import { AppLayout } from "@/components/layout/AppLayout";
 import { SplashScreen } from "@/components/SplashScreen";
 import { DeepLinkHandler } from "@/components/DeepLinkHandler";
+import { PushPermissionPrompt } from "@/components/PushPermissionPrompt";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import { SubscriptionProvider, useSubscription } from "@/contexts/SubscriptionContext";
@@ -458,6 +459,7 @@ const App = () => {
                   <AppContent />
                   <SpotlightOverlay />
                   <ChallengeCelebrationModal />
+                  <PushPermissionPrompt />
                 </BrowserRouter>
               </TooltipProvider>
             </GuidedTipsProvider>
