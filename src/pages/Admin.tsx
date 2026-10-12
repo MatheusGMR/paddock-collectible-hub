@@ -18,6 +18,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { AdminInstallLinkCard } from "@/components/admin/AdminInstallLinkCard";
 import { 
   useAdmin, 
   useAdminStats, 
@@ -289,6 +290,7 @@ const Admin = () => {
           </TabsContent>
 
           <TabsContent value="push" className="mt-4">
+            <AdminInstallLinkCard />
             <Tabs defaultValue="campaigns">
               <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="campaigns" className="text-xs">Campanhas</TabsTrigger>
