@@ -233,7 +233,7 @@ const Auth = () => {
       </div>
 
       {/* Step content - fixed height container for consistent layout */}
-      <div className="w-full max-w-sm h-[520px] relative overflow-hidden px-1">
+      <div className="w-[calc(100%+1.5rem)] max-w-[calc(24rem+1.5rem)] -mx-3 h-[520px] relative overflow-hidden">
         <AnimatePresence mode="wait" custom={direction} initial={false}>
           <motion.div
             key={step}
@@ -243,7 +243,7 @@ const Auth = () => {
             animate="center"
             exit="exit"
             transition={{ type: "tween", duration: 0.25 }}
-            className="w-full absolute inset-0"
+            className="absolute inset-y-0 inset-x-3"
           >
             {step === "email" && (
               <AuthStepEmail
