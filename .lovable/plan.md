@@ -15,6 +15,7 @@ Página pública, em PT-BR, com a identidade do Paddock (fundo escuro #0E1117, b
    - Capture: aponte e fotografe, inclusive vários de uma vez;
    - Identifique em segundos: marca, modelo, ano, fabricante, origem;
    - Índice de raridade certificado: critérios e nota (raridade, exclusividade, estado, embalagem, fabricante, idade, escala);
+   - Quanto vale: valor aproximado de cada colecionável em reais, logo após a captura;
    - Sua coleção em valor e raridade: total, ranking, organização por marca/país/ano.
 5. **Rede social do colecionador** — feed, novidades, ver coleções de outros, mensagens, mercado para comprar e vender.
 6. **Números/prova** — destaques curtos (ex.: "Identificação em segundos", "Índice em 6 critérios").
