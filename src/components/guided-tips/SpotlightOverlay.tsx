@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useLocation } from "react-router-dom";
 import { useGuidedTips } from "@/contexts/GuidedTipsContext";
 
 interface SpotlightPosition {
@@ -20,7 +21,10 @@ export const SpotlightOverlay = () => {
     skipAllTips,
     isTipsActive,
     isOnboardingComplete,
+    dismissTip,
   } = useGuidedTips();
+  const { pathname } = useLocation();
+  const onScanner = pathname.startsWith("/scanner");
 
   const [spotlightPos, setSpotlightPos] = useState<SpotlightPosition | null>(null);
 
@@ -72,6 +76,13 @@ export const SpotlightOverlay = () => {
     }
   }, [currentTip, calculateSpotlightPosition]);
 
+  // Rede de segurança: no scanner a dica nunca fica presa na tela.
+  useEffect(() => {
+    if (!onScanner || !currentTip) return;
+    const t = setTimeout(() => dismissTip(), 12000);
+    return () => clearTimeout(t);
+  }, [onScanner, currentTip, dismissTip]);
+
   // Don't show tips during onboarding or if not active
   if (!isTipsActive || !currentTip || !isOnboardingComplete) return null;
 
@@ -84,8 +95,9 @@ export const SpotlightOverlay = () => {
         exit={{ opacity: 0 }}
         className="fixed inset-0 z-[100] pointer-events-auto flex items-center justify-center px-6"
         onClick={(e) => {
-          // Only allow clicks on the tooltip, block everything else
           e.stopPropagation();
+          // Tocar fora do cartão fecha a dica, para a tela nunca ficar bloqueada.
+          if (e.target === e.currentTarget || !(e.target as HTMLElement).closest("[data-tip-card]")) dismissTip();
         }}
       >
         {/* Dark overlay with spotlight cutout */}
@@ -146,7 +158,7 @@ export const SpotlightOverlay = () => {
           >
             {/* Pulsing ring animation */}
             <motion.div
-              animate={{ 
+              animate={onScanner ? undefined : { 
                 scale: [1, 1.05, 1],
                 opacity: [0.5, 0.8, 0.5],
               }}
@@ -165,6 +177,8 @@ export const SpotlightOverlay = () => {
           initial={{ scale: 0.9, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           transition={{ delay: 0.1, type: "spring", stiffness: 300, damping: 25 }}
+          data-tip-card
+          onClick={(e) => e.stopPropagation()}
           className="relative bg-card border border-border rounded-2xl p-4 shadow-2xl z-[110] w-full max-w-[320px] max-h-[70vh] overflow-auto"
         >
           {/* Skip button - always visible and clickable */}
