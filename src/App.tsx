@@ -37,6 +37,7 @@ const ListingDetails = lazy(() => import("./pages/ListingDetails"));
 const PaymentSuccess = lazy(() => import("./pages/PaymentSuccess"));
 const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy"));
 const Install = lazy(() => import("./pages/Install"));
+const Landing = lazy(() => import("./pages/Landing"));
 const PaymentCanceled = lazy(() => import("./pages/PaymentCanceled"));
 const Seller = lazy(() => import("./pages/Seller"));
 const SellerMobile = lazy(() => import("./pages/SellerMobile"));
