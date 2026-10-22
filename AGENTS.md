@@ -1,6 +1,6 @@
 # Project decisions
 
-- Keep account deletion in a JWT-authenticated edge function with service-only transactional data cleanup and a shared confirmation item in both settings surfaces, so deletion is reachable without redesigning profile settings and cannot target another account.
+- Keep account deletion in a JWT-authenticated edge function with service-only transactional data cleanup and a shared confirmation item in both settings surfaces; keep the authenticated profile accessible after trial expiration so deletion never requires payment.
 
 - Keep each newly captured collection photo in `user_collection.original_image_url` and its chosen 4:3 presentation in `image_url`, so future adjustments can recover the full frame without changing other items.
 - Reuse `CollectiblePhotoEditor` for scanner review, batch review, and owned collection details so framing behavior stays consistent.

@@ -66,8 +66,11 @@ Deno.serve(async (req) => {
       },
       removeFiles: async () => {
         // Read ownership through a service-only function; delete bytes exclusively via Storage API.
+        // Repeat because the Data API caps result pages; never leave files beyond the first page.
+        while (true) {
         const { data, error } = await admin.rpc("account_deletion_files", { p_user_id: userId });
         if (error) throw error;
+        if (!data?.length) break;
         const buckets = new Map<string, string[]>();
         for (const file of data ?? []) {
           const paths = buckets.get(file.bucket_id) ?? [];
@@ -79,6 +82,7 @@ Deno.serve(async (req) => {
             const { error: storageError } = await admin.storage.from(bucket).remove(paths.slice(start, start + 100));
             if (storageError) throw storageError;
           }
+        }
         }
       },
       removeData: async () => {
