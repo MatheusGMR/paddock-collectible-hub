@@ -48,6 +48,7 @@ import { Capacitor } from "@capacitor/core";
 import { App } from "@capacitor/app";
 import { resetBiometricPrompt } from "@/components/auth/BiometricPrompt";
 import { SubscriptionSheet } from "@/components/profile/SubscriptionSheet";
+import { DeleteAccountItem } from "@/components/profile/DeleteAccountItem";
 
 interface SettingsSheetProps {
   open: boolean;
@@ -510,6 +511,7 @@ export const SettingsSheet = ({ open, onOpenChange, onSignOut }: SettingsSheetPr
               )}
               
               {/* Sign Out */}
+              <DeleteAccountItem />
               <button 
                 onClick={handleSignOut}
                 className="w-full flex items-center justify-between p-4 hover:bg-destructive/10 transition-colors group"

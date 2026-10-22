@@ -151,6 +151,12 @@ const PrivacyPolicy = () => {
           </section>
 
           <section>
+            <h2 className="text-lg font-semibold text-foreground mb-3">Como excluir sua conta</h2>
+            <p>No app, acesse Perfil → Configurações → Excluir conta e digite EXCLUIR para confirmar. A exclusão é permanente e remove seu perfil, coleção, posts, mensagens, anúncios e arquivos, além de cancelar sua assinatura ativa ou em teste. Se houver pedidos em andamento como lojista, conclua ou cancele antes.</p>
+            <p className="mt-2">Se você não tiver mais acesso à conta, solicite a exclusão pelo e-mail <a className="underline" href="mailto:privacidade@paddock.app">privacidade@paddock.app</a>.</p>
+          </section>
+
+          <section>
             <h2 className="text-lg font-semibold text-foreground mb-3">11. Contato</h2>
             <p>
               Se você tiver dúvidas sobre esta Política de Privacidade ou sobre nossas práticas de 

@@ -1591,7 +1591,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      account_deletion_files: {
+        Args: { p_user_id: string }
+        Returns: {
+          bucket_id: string
+          name: string
+        }[]
+      }
       check_email_exists: { Args: { p_email: string }; Returns: Json }
+      delete_account_data: { Args: { p_user_id: string }; Returns: undefined }
       find_or_create_conversation: {
         Args: { other_user_id: string }
         Returns: string

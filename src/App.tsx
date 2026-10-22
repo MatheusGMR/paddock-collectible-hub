@@ -261,7 +261,8 @@ const SubscriptionFlow = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   // Bypass subscription flow for admin and auth routes
-  const bypassRoutes = ["/admin", "/auth", "/privacy", "/instalar", "/conheca", "/payment-success", "/payment-canceled", "/subscription-success", "/seller", "/store", "/listing"];
+  // Account settings/deletion must remain accessible after a trial expires.
+  const bypassRoutes = ["/admin", "/auth", "/privacy", "/instalar", "/conheca", "/profile", "/payment-success", "/payment-canceled", "/subscription-success", "/seller", "/store", "/listing"];
   if (bypassRoutes.some(r => location.pathname.startsWith(r))) {
     return <>{children}</>;
   }
