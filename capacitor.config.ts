@@ -1,8 +1,8 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'app.lovable.ec82142056a94147adde54a8d514aaac',
-  appName: 'paddock-collectible-hub',
+  appId: 'com.paddockonline.app',
+  appName: 'Paddock',
   webDir: 'dist',
   ios: {
     // Transparente para permitir camera-preview no Scanner

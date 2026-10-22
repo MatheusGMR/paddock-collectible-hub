@@ -36,6 +36,7 @@ import { Capacitor } from "@capacitor/core";
 import { App } from "@capacitor/app";
 import { resetBiometricPrompt } from "@/components/auth/BiometricPrompt";
 import { SubscriptionSheet } from "@/components/profile/SubscriptionSheet";
+import { DeleteAccountItem } from "@/components/profile/DeleteAccountItem";
 
 declare const __WEB_BUILD_ID__: string;
 
@@ -346,6 +347,7 @@ export const SettingsSection = ({ onSignOut, isSeller }: SettingsSectionProps) =
             </button>
           )}
 
+          <DeleteAccountItem />
           <button onClick={handleSignOut} className="w-full flex items-center justify-between p-4 hover:bg-destructive/10 transition-colors group">
             <div className="flex items-center gap-3">
               <div className="h-10 w-10 rounded-full bg-destructive/10 flex items-center justify-center">

@@ -7,3 +7,6 @@
 - [x] Impedir que a revisão múltipla feche durante adições sequenciais.
 - [x] Fazer fotos de colecionáveis preencherem cards e miniaturas sem faixas.
 - [x] Mostrar no perfil o enquadramento 4:3 inteiro das fotos ajustadas, sem recortar o carro.
+- [ ] Ajustar nome e identificador nativos conforme histórico Android.
+- [ ] Implementar exclusão de conta, proteção de pedidos e limpeza de dados.
+- [ ] Documentar exclusão em Privacidade e verificar fluxo.
